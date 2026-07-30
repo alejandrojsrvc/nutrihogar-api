@@ -1,16 +1,41 @@
-import { Controller, Get, Inject, Param, Query, UseGuards } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
 import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
-import { FoodNotFoundError } from '../../application/errors/food-not-found.error';
+import {
+  CREATE_CUSTOM_FOOD_USE_CASE,
+  CreateCustomFoodUseCase,
+  DELETE_CUSTOM_FOOD_USE_CASE,
+  DeleteCustomFoodUseCase,
+  UPDATE_CUSTOM_FOOD_USE_CASE,
+  UpdateCustomFoodUseCase,
+} from '../../application/use-cases/custom-food-use-cases';
 import {
   GET_FOOD_DETAIL_USE_CASE,
   GetFoodDetailUseCase,
@@ -27,8 +52,12 @@ import {
   FoodSearchResponseDto,
   NutrientDefinitionResponseDto,
 } from './dto/food-catalog-response.dto';
+import {
+  CreateCustomFoodRequestDto,
+  UpdateCustomFoodRequestDto,
+} from './dto/custom-food-request.dto';
 import { SearchFoodsQueryDto } from './dto/search-foods-query.dto';
-import { NotFoundException } from '@nestjs/common';
+import { rethrowFoodCatalogHttpError } from './food-catalog-http-error.mapper';
 
 @ApiTags('food-catalog')
 @ApiBearerAuth()
@@ -42,6 +71,12 @@ export class FoodCatalogController {
     @Inject(LIST_FOOD_CATEGORIES_USE_CASE)
     private readonly listCategories: ListFoodCategoriesUseCase,
     @Inject(LIST_NUTRIENTS_USE_CASE) private readonly listNutrients: ListNutrientsUseCase,
+    @Inject(CREATE_CUSTOM_FOOD_USE_CASE)
+    private readonly createCustomFood: CreateCustomFoodUseCase,
+    @Inject(UPDATE_CUSTOM_FOOD_USE_CASE)
+    private readonly updateCustomFood: UpdateCustomFoodUseCase,
+    @Inject(DELETE_CUSTOM_FOOD_USE_CASE)
+    private readonly deleteCustomFood: DeleteCustomFoodUseCase,
   ) {}
 
   @Get('foods')
@@ -77,8 +112,74 @@ export class FoodCatalogController {
     try {
       return await this.getFood.execute(user.id, foodId);
     } catch (error) {
-      if (error instanceof FoodNotFoundError) throw new NotFoundException(error.message);
-      throw error;
+      rethrowFoodCatalogHttpError(error);
+    }
+  }
+
+  @Post('households/:householdId/foods')
+  @ApiOperation({ summary: 'Crea un alimento personalizado para un hogar' })
+  @ApiParam({ name: 'householdId', format: 'uuid' })
+  @ApiCreatedResponse({ type: FoodDetailResponseDto })
+  @ApiBadRequestResponse({ description: 'Los datos nutricionales son inválidos.' })
+  @ApiForbiddenResponse({ description: 'El usuario no es integrante activo del hogar.' })
+  async create(
+    @Param('householdId') householdId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: CreateCustomFoodRequestDto,
+  ): Promise<FoodDetailResponseDto> {
+    try {
+      return await this.createCustomFood.execute({
+        actorId: user.id,
+        householdId,
+        ...body,
+      });
+    } catch (error) {
+      rethrowFoodCatalogHttpError(error);
+    }
+  }
+
+  @Patch('foods/:foodId')
+  @ApiOperation({ summary: 'Edita un alimento personalizado del hogar' })
+  @ApiParam({ name: 'foodId', format: 'uuid' })
+  @ApiOkResponse({ type: FoodDetailResponseDto })
+  @ApiBadRequestResponse({ description: 'Los datos nutricionales son inválidos.' })
+  @ApiForbiddenResponse({
+    description: 'El alimento es global o pertenece a otro hogar.',
+  })
+  @ApiNotFoundResponse({ description: 'El alimento no existe o fue eliminado.' })
+  async update(
+    @Param('foodId') foodId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: UpdateCustomFoodRequestDto,
+  ): Promise<FoodDetailResponseDto> {
+    try {
+      return await this.updateCustomFood.execute({
+        actorId: user.id,
+        foodId,
+        ...body,
+      });
+    } catch (error) {
+      rethrowFoodCatalogHttpError(error);
+    }
+  }
+
+  @Delete('foods/:foodId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Elimina lógicamente un alimento personalizado' })
+  @ApiParam({ name: 'foodId', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'El alimento fue eliminado lógicamente.' })
+  @ApiForbiddenResponse({
+    description: 'El alimento es global o pertenece a otro hogar.',
+  })
+  @ApiNotFoundResponse({ description: 'El alimento no existe o fue eliminado.' })
+  async remove(
+    @Param('foodId') foodId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<void> {
+    try {
+      await this.deleteCustomFood.execute(user.id, foodId);
+    } catch (error) {
+      rethrowFoodCatalogHttpError(error);
     }
   }
 

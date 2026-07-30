@@ -82,9 +82,7 @@ describe('Application (e2e)', () => {
   });
 
   it('GET /api/health returns the service status', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/api/health')
-      .expect(200);
+    const response = await request(app.getHttpServer()).get('/api/health').expect(200);
     const body = JSON.parse(response.text) as HealthResponseBody;
 
     expect(body.status).toBe('ok');
@@ -95,23 +93,17 @@ describe('Application (e2e)', () => {
   it('serves Swagger UI and the OpenAPI document', async () => {
     await request(app.getHttpServer()).get('/api/docs').expect(200);
 
-    const response = await request(app.getHttpServer())
-      .get('/api/docs-json')
-      .expect(200);
+    const response = await request(app.getHttpServer()).get('/api/docs-json').expect(200);
     const body = JSON.parse(response.text) as OpenApiResponseBody;
 
     expect(body.info.title).toBe('NutriHogar API');
     expect(body.paths['/api/health']).toBeDefined();
     expect(body.paths['/api/households']).toBeDefined();
-    expect(
-      body.paths['/api/households/{householdId}/invitations'],
-    ).toBeDefined();
-    expect(
-      body.paths['/api/household-invitations/{token}/accept'],
-    ).toBeDefined();
-    expect(
-      body.paths['/api/household-invitations/{invitationId}/cancel'],
-    ).toBeDefined();
+    expect(body.paths['/api/households/{householdId}/invitations']).toBeDefined();
+    expect(body.paths['/api/household-invitations/{token}/accept']).toBeDefined();
+    expect(body.paths['/api/household-invitations/{invitationId}/cancel']).toBeDefined();
+    expect(body.paths['/api/households/{householdId}/adult-profiles']).toBeDefined();
+    expect(body.paths['/api/adult-profiles/{profileId}']).toBeDefined();
     expect(body.paths['/api/users/me'].get.security).toEqual([{ bearer: [] }]);
   });
 

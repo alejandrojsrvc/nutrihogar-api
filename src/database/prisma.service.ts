@@ -2,8 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 
-const testDatabaseUrl =
-  'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+const testDatabaseUrl = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
@@ -12,8 +11,7 @@ export class PrismaService extends PrismaClient {
 
   constructor(configService: ConfigService) {
     const nodeEnvironment = configService.get<string>('NODE_ENV');
-    const databaseUrl =
-      configService.get<string>('DATABASE_URL') || testDatabaseUrl;
+    const databaseUrl = configService.get<string>('DATABASE_URL') || testDatabaseUrl;
 
     super({ datasourceUrl: databaseUrl });
     this.isTestEnvironment = nodeEnvironment === 'test';

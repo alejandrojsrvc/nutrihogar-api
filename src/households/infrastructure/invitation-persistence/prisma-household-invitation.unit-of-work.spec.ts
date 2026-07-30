@@ -50,9 +50,8 @@ describe('PrismaHouseholdInvitationUnitOfWork', () => {
     const updateInvitation: jest.MockedFunction<
       (input: InvitationUpdateManyInput) => Promise<{ count: number }>
     > = jest.fn().mockResolvedValue({ count: 1 });
-    const createMembership: jest.MockedFunction<
-      (input: MembershipCreateInput) => Promise<object>
-    > = jest.fn().mockResolvedValue({});
+    const createMembership: jest.MockedFunction<(input: MembershipCreateInput) => Promise<object>> =
+      jest.fn().mockResolvedValue({});
     const transactionClient = {
       householdInvitation: {
         findUnique: jest.fn().mockResolvedValue(invitation),
@@ -66,11 +65,8 @@ describe('PrismaHouseholdInvitationUnitOfWork', () => {
       },
     };
     const transaction = jest.fn(
-      async (
-        callback: (
-          client: typeof transactionClient,
-        ) => Promise<HouseholdInvitation>,
-      ) => callback(transactionClient),
+      async (callback: (client: typeof transactionClient) => Promise<HouseholdInvitation>) =>
+        callback(transactionClient),
     );
     const prisma = { $transaction: transaction } as unknown as PrismaService;
     const unitOfWork = new PrismaHouseholdInvitationUnitOfWork(prisma);

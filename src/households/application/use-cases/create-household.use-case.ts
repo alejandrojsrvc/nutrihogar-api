@@ -1,7 +1,4 @@
-import {
-  CreateHouseholdInput,
-  HouseholdUnitOfWork,
-} from '../ports/household-unit-of-work.port';
+import { CreateHouseholdInput, HouseholdUnitOfWork } from '../ports/household-unit-of-work.port';
 import { HouseholdView } from '../models/household-view';
 
 export const CREATE_HOUSEHOLD_USE_CASE = Symbol('CreateHouseholdUseCase');

@@ -10,9 +10,7 @@ import {
 } from '../invitation-errors/household-invitation.errors';
 import { HouseholdInvitationView } from '../invitation-models/household-invitation-view';
 
-export const ACCEPT_HOUSEHOLD_INVITATION_USE_CASE = Symbol(
-  'AcceptHouseholdInvitationUseCase',
-);
+export const ACCEPT_HOUSEHOLD_INVITATION_USE_CASE = Symbol('AcceptHouseholdInvitationUseCase');
 
 export interface AcceptHouseholdInvitationCommand {
   userId: string;
@@ -27,9 +25,7 @@ export class AcceptHouseholdInvitationUseCase {
     private readonly tokenService: InvitationTokenService,
   ) {}
 
-  async execute(
-    command: AcceptHouseholdInvitationCommand,
-  ): Promise<HouseholdInvitationView> {
+  async execute(command: AcceptHouseholdInvitationCommand): Promise<HouseholdInvitationView> {
     const invitation = await this.invitations.findByTokenHash(
       this.tokenService.hash(command.token),
     );
@@ -52,18 +48,12 @@ export class AcceptHouseholdInvitationUseCase {
     }
 
     if (
-      normalizeInvitationEmail(command.userEmail) !==
-      normalizeInvitationEmail(invitation.email)
+      normalizeInvitationEmail(command.userEmail) !== normalizeInvitationEmail(invitation.email)
     ) {
       throw new HouseholdInvitationEmailMismatchError();
     }
 
-    if (
-      await this.invitations.hasActiveMembershipForUser(
-        invitation.householdId,
-        command.userId,
-      )
-    ) {
+    if (await this.invitations.hasActiveMembershipForUser(invitation.householdId, command.userId)) {
       throw new HouseholdInvitationAlreadyMemberError();
     }
 

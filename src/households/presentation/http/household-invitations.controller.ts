@@ -86,10 +86,7 @@ export class HouseholdInvitationsController {
         role: body.role,
       });
 
-      return HouseholdInvitationHttpMapper.toResponse(
-        result.invitation,
-        result.token,
-      );
+      return HouseholdInvitationHttpMapper.toResponse(result.invitation, result.token);
     } catch (error) {
       rethrowHouseholdHttpError(error);
     }

@@ -38,9 +38,9 @@ describe('Household use cases', () => {
     unitOfWork.createWithAdminMembership.mockResolvedValue(household);
     const useCase = new CreateHouseholdUseCase(unitOfWork);
 
-    await expect(
-      useCase.execute({ actorId: 'admin-id', name: household.name }),
-    ).resolves.toEqual(household);
+    await expect(useCase.execute({ actorId: 'admin-id', name: household.name })).resolves.toEqual(
+      household,
+    );
 
     expect(unitOfWork.createWithAdminMembership.mock.calls[0]?.[0]).toEqual({
       createdById: 'admin-id',

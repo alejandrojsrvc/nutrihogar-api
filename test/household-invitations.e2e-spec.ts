@@ -135,9 +135,7 @@ describe('Household invitations HTTP API (e2e)', () => {
     invitations.findById.mockReset();
     invitations.findByTokenHash.mockReset();
     invitations.findByHouseholdAndEmail.mockReset().mockResolvedValue(null);
-    invitations.hasActiveMembershipForEmail
-      .mockReset()
-      .mockResolvedValue(false);
+    invitations.hasActiveMembershipForEmail.mockReset().mockResolvedValue(false);
     invitations.hasActiveMembershipForUser.mockReset().mockResolvedValue(false);
     invitations.listByHousehold.mockReset();
     invitations.create.mockReset().mockImplementation((input) =>

@@ -7,8 +7,7 @@ const databaseUrl = Joi.string()
     is: 'test',
     then: Joi.optional().allow(''),
     otherwise: Joi.required().messages({
-      'any.required':
-        'DATABASE_URL es obligatoria fuera del entorno de pruebas.',
+      'any.required': 'DATABASE_URL es obligatoria fuera del entorno de pruebas.',
     }),
   });
 const supabaseUrl = Joi.string()
@@ -24,15 +23,12 @@ const supabasePublishableKey = Joi.string().when('NODE_ENV', {
   is: 'test',
   then: Joi.optional().allow(''),
   otherwise: Joi.required().messages({
-    'any.required':
-      'SUPABASE_PUBLISHABLE_KEY es obligatoria para validar Auth.',
+    'any.required': 'SUPABASE_PUBLISHABLE_KEY es obligatoria para validar Auth.',
   }),
 });
 
 export const environmentValidationSchema = Joi.object({
-  NODE_ENV: Joi.string()
-    .valid('development', 'test', 'production')
-    .default('development'),
+  NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
   PORT: Joi.number().port().default(3000),
   DATABASE_URL: databaseUrl,
   DIRECT_URL: optionalString,

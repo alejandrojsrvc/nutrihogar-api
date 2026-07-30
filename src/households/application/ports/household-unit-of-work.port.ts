@@ -10,7 +10,5 @@ export interface CreateHouseholdInput {
 }
 
 export interface HouseholdUnitOfWork {
-  createWithAdminMembership(
-    input: CreateHouseholdInput,
-  ): Promise<HouseholdView>;
+  createWithAdminMembership(input: CreateHouseholdInput): Promise<HouseholdView>;
 }

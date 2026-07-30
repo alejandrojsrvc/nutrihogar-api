@@ -11,9 +11,7 @@ import { HouseholdInvitationRepository } from '../invitation-ports/household-inv
 import { InvitationTokenService } from '../invitation-ports/invitation-token-service.port';
 import { ensureHouseholdAdminAccess } from './ensure-household-admin-access';
 
-export const CREATE_HOUSEHOLD_INVITATION_USE_CASE = Symbol(
-  'CreateHouseholdInvitationUseCase',
-);
+export const CREATE_HOUSEHOLD_INVITATION_USE_CASE = Symbol('CreateHouseholdInvitationUseCase');
 
 const invitationLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 
@@ -31,14 +29,8 @@ export class CreateHouseholdInvitationUseCase {
     private readonly tokenService: InvitationTokenService,
   ) {}
 
-  async execute(
-    command: CreateHouseholdInvitationCommand,
-  ): Promise<CreatedHouseholdInvitation> {
-    await ensureHouseholdAdminAccess(
-      this.households,
-      command.actorId,
-      command.householdId,
-    );
+  async execute(command: CreateHouseholdInvitationCommand): Promise<CreatedHouseholdInvitation> {
+    await ensureHouseholdAdminAccess(this.households, command.actorId, command.householdId);
 
     const email = normalizeInvitationEmail(command.email);
     const isActiveMember = await this.invitations.hasActiveMembershipForEmail(

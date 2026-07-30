@@ -22,9 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = context.getRequest<Request>();
     const response = context.getResponse<Response>();
     const statusCode =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
     const payload = this.getPayload(exception);
 
     if (!(exception instanceof HttpException)) {
@@ -59,9 +57,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const payload = response as ErrorPayload;
     return {
       error:
-        typeof payload.error === 'string'
-          ? payload.error
-          : this.statusLabel(exception.getStatus()),
+        typeof payload.error === 'string' ? payload.error : this.statusLabel(exception.getStatus()),
       message: payload.message ?? exception.message,
     };
   }

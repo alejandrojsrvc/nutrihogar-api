@@ -15,19 +15,13 @@ export class UpdateHouseholdUseCase {
   constructor(private readonly households: HouseholdRepository) {}
 
   async execute(command: UpdateHouseholdCommand): Promise<HouseholdView> {
-    const access = await this.households.findAccess(
-      command.actorId,
-      command.householdId,
-    );
+    const access = await this.households.findAccess(command.actorId, command.householdId);
 
     if (!access || access.status !== 'ACTIVE' || access.role !== 'ADMIN') {
       throw new HouseholdAccessDeniedError();
     }
 
-    const household = await this.households.updateName(
-      command.householdId,
-      command.name,
-    );
+    const household = await this.households.updateName(command.householdId, command.name);
 
     if (!household) {
       throw new HouseholdNotFoundError();

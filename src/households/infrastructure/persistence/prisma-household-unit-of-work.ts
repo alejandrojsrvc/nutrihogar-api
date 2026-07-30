@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  HouseholdMembershipRole,
-  HouseholdMembershipStatus,
-} from '@prisma/client';
+import { HouseholdMembershipRole, HouseholdMembershipStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import {
   CreateHouseholdInput,
@@ -15,9 +12,7 @@ import { PrismaHouseholdMapper } from './prisma-household.mapper';
 export class PrismaHouseholdUnitOfWork implements HouseholdUnitOfWork {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createWithAdminMembership(
-    input: CreateHouseholdInput,
-  ): Promise<HouseholdView> {
+  async createWithAdminMembership(input: CreateHouseholdInput): Promise<HouseholdView> {
     const household = await this.prisma.$transaction(async (transaction) => {
       const createdHousehold = await transaction.household.create({
         data: {

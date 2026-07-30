@@ -21,11 +21,7 @@ export class HouseholdInvitationHttpMapper {
     };
   }
 
-  static toResponseList(
-    invitations: HouseholdInvitationView[],
-  ): HouseholdInvitationResponseDto[] {
-    return invitations.map((invitation) =>
-      HouseholdInvitationHttpMapper.toResponse(invitation),
-    );
+  static toResponseList(invitations: HouseholdInvitationView[]): HouseholdInvitationResponseDto[] {
+    return invitations.map((invitation) => HouseholdInvitationHttpMapper.toResponse(invitation));
   }
 }

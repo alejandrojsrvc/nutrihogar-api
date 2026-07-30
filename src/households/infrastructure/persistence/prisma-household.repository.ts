@@ -21,15 +21,10 @@ export class PrismaHouseholdRepository implements HouseholdRepository {
       orderBy: { joinedAt: 'asc' },
     });
 
-    return memberships.map(({ household }) =>
-      PrismaHouseholdMapper.toView(household),
-    );
+    return memberships.map(({ household }) => PrismaHouseholdMapper.toView(household));
   }
 
-  async findAccess(
-    userId: string,
-    householdId: string,
-  ): Promise<HouseholdAccess | null> {
+  async findAccess(userId: string, householdId: string): Promise<HouseholdAccess | null> {
     const membership = await this.prisma.householdMembership.findUnique({
       where: {
         householdId_userId: { householdId, userId },
@@ -44,10 +39,7 @@ export class PrismaHouseholdRepository implements HouseholdRepository {
     return PrismaHouseholdMapper.toAccess(membership);
   }
 
-  async updateName(
-    householdId: string,
-    name: string,
-  ): Promise<HouseholdView | null> {
+  async updateName(householdId: string, name: string): Promise<HouseholdView | null> {
     const result = await this.prisma.household.updateMany({
       where: { id: householdId, deletedAt: null },
       data: { name },

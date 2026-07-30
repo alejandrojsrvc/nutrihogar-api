@@ -8,12 +8,112 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum HouseholdMembershipRole {
+  ADMIN
+  MEMBER
+}
+
+enum HouseholdMembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum HouseholdInvitationRole {
+  ADMIN
+  MEMBER
+}
+
+enum HouseholdInvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
-// Product entities belong to their bounded contexts and will be added later.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
   key       String   @unique @db.VarChar(100)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("_technical_seed")
+}
+
+model User {
+  id             String               @id @default(uuid()) @db.Uuid
+  authProviderId String               @unique @map("auth_provider_id") @db.VarChar(255)
+  email          String               @unique @db.VarChar(320)
+  displayName    String?              @map("display_name") @db.VarChar(150)
+  avatarUrl      String?              @map("avatar_url") @db.VarChar(2048)
+  timezone       String               @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  locale         String               @default("es-AR") @db.VarChar(10)
+  lastLoginAt    DateTime?            @map("last_login_at") @db.Timestamptz(6)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdHouseholds Household[]        @relation("HouseholdCreatedBy")
+  memberships       HouseholdMembership[] @relation("UserMemberships")
+  invitationsSent   HouseholdInvitation[] @relation("HouseholdInvitationInviter")
+  invitationsAccepted HouseholdInvitation[] @relation("HouseholdInvitationAccepter")
+
+  @@map("users")
+}
+
+model Household {
+  id          String                @id @default(uuid()) @db.Uuid
+  name        String                @db.VarChar(150)
+  timezone    String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  currency    String                @default("ARS") @db.VarChar(3)
+  weeklyBudget Decimal?             @map("weekly_budget") @db.Decimal(12, 2)
+  createdById String                @map("created_by_id") @db.Uuid
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdBy   User                  @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships HouseholdMembership[]
+  invitations HouseholdInvitation[]
+
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("households")
+}
+
+model HouseholdMembership {
+  id          String                   @id @default(uuid()) @db.Uuid
+  householdId String                   @map("household_id") @db.Uuid
+  userId      String                   @map("user_id") @db.Uuid
+  role        HouseholdMembershipRole
+  status      HouseholdMembershipStatus
+  joinedAt    DateTime                 @default(now()) @map("joined_at") @db.Timestamptz(6)
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household   Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User                     @relation("UserMemberships", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([householdId, userId])
+  @@index([householdId, status])
+  @@index([userId, status])
+  @@map("household_memberships")
+}
+
+model HouseholdInvitation {
+  id           String                   @id @default(uuid()) @db.Uuid
+  householdId  String                   @map("household_id") @db.Uuid
+  email        String                   @db.VarChar(320)
+  tokenHash    String                   @unique @map("token_hash") @db.VarChar(255)
+  role         HouseholdInvitationRole
+  status       HouseholdInvitationStatus
+  expiresAt    DateTime                 @map("expires_at") @db.Timestamptz(6)
+  invitedById  String                   @map("invited_by_id") @db.Uuid
+  acceptedById String?                  @map("accepted_by_id") @db.Uuid
+  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household    Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  invitedBy    User                     @relation("HouseholdInvitationInviter", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptedBy   User?                    @relation("HouseholdInvitationAccepter", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([householdId, status])
+  @@index([email])
+  @@index([invitedById])
+  @@index([acceptedById])
+  @@map("household_invitations")
 }

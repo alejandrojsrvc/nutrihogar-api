@@ -25,6 +25,7 @@ interface OpenApiResponseBody {
   };
   paths: {
     '/api/health': unknown;
+    '/api/households': unknown;
     '/api/users/me': {
       get: {
         security: Array<Record<string, string[]>>;
@@ -98,6 +99,7 @@ describe('Application (e2e)', () => {
 
     expect(body.info.title).toBe('NutriHogar API');
     expect(body.paths['/api/health']).toBeDefined();
+    expect(body.paths['/api/households']).toBeDefined();
     expect(body.paths['/api/users/me'].get.security).toEqual([{ bearer: [] }]);
   });
 

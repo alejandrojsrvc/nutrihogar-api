@@ -12,6 +12,17 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:reset": "npm run supabase:reset && npm run db:deploy && npm run db:seed",
+    "supabase:init": "supabase init",
+    "supabase:start": "supabase start",
+    "supabase:status": "supabase status",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "npm run lint -- --fix",
     "test": "jest",
@@ -29,6 +40,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.5",
+    "@prisma/client": "6.19.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "joi": "^18.2.3",
@@ -51,12 +63,15 @@
     "globals": "^17.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
+    "prisma": "6.19.3",
     "source-map-support": "^0.5.21",
+    "supabase": "2.110.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "4.23.1",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
@@ -76,5 +91,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

@@ -14,4 +14,17 @@ describe('environmentValidationSchema', () => {
 
     expect(result.error).toBeUndefined();
   });
+
+  it('requires the Supabase Auth configuration outside tests', () => {
+    const result = environmentValidationSchema.validate(
+      {
+        NODE_ENV: 'development',
+        DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres',
+      },
+      { abortEarly: false },
+    );
+
+    expect(result.error?.message).toContain('SUPABASE_URL');
+    expect(result.error?.message).toContain('SUPABASE_PUBLISHABLE_KEY');
+  });
 });

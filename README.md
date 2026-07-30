@@ -95,21 +95,26 @@ subirse al repositorio.
 | `PORT` | Puerto HTTP de la API | No, valor por defecto `3000` |
 | `DATABASE_URL` | Conexión PostgreSQL usada por la API y Prisma Client | Sí fuera de `test` |
 | `DIRECT_URL` | Conexión directa usada por Prisma Migrate y herramientas administrativas | Sí para los comandos Prisma |
-| `SUPABASE_URL` | URL del proyecto Supabase usado por Auth/Storage | No hasta integrar sus adaptadores |
-| `SUPABASE_PUBLISHABLE_KEY` | Clave pública preferida para clientes Supabase | No hasta integrar Auth |
+| `SUPABASE_URL` | URL del proyecto Supabase usado por Auth/Storage | Sí para Auth y Storage |
+| `SUPABASE_PUBLISHABLE_KEY` | Clave pública preferida para validar sesiones de Auth | Sí para Auth |
 | `SUPABASE_SECRET_KEY` | Clave privada preferida para operaciones de servidor | No; nunca debe exponerse al frontend |
-| `SUPABASE_ANON_KEY` | Clave pública legacy, compatible durante la transición | No hasta integrar Auth |
+| `SUPABASE_ANON_KEY` | Clave pública legacy, conservada para integraciones antiguas | No; el guard usa la clave publishable |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clave privada legacy, compatible durante la transición | No; nunca debe exponerse al frontend |
-| `SUPABASE_JWT_SECRET` | Secreto de validación JWT del proyecto | No hasta integrar el guard de Auth |
+| `SUPABASE_JWT_SECRET` | Secreto de validación JWT del proyecto | No; el guard valida mediante Supabase Auth |
 | `SUPABASE_STORAGE_BUCKET` | Bucket privado por defecto para archivos | No, valor por defecto `user-files` |
 | `FRONTEND_URL` | Origen permitido por CORS | No, valor por defecto `http://localhost:5173` |
 
 No se deben subir archivos `.env` ni credenciales al repositorio.
 
-En el entorno local, `DATABASE_URL` y `DIRECT_URL` apuntan al puerto `54322`. Después de `supabase start`, copia
-las claves locales que entrega `supabase status` en `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` y
-`SUPABASE_JWT_SECRET` cuando sean necesarias. Las variables `SUPABASE_ANON_KEY` y
-`SUPABASE_SERVICE_ROLE_KEY` se mantienen para compatibilidad con integraciones legacy.
+En el entorno local, `DATABASE_URL` y `DIRECT_URL` apuntan al puerto `54322`. Después de `supabase start`, copia la
+clave pública que entrega `supabase status` en `SUPABASE_PUBLISHABLE_KEY`. Las claves secretas solo se configurarán
+cuando un adaptador de servidor las necesite; `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` se mantienen para
+compatibilidad con integraciones legacy.
+
+El backend valida `Authorization: Bearer <access-token>` consultando el endpoint local o remoto
+`SUPABASE_URL/auth/v1/user` con la clave publishable. La clave `SUPABASE_SECRET_KEY` no se usa en el navegador y no
+se necesita para este guard. La identidad válida se sincroniza en `users` usando `authProviderId`; el primer acceso
+crea el usuario y los accesos siguientes actualizan `lastLoginAt`.
 
 ## Prisma, migraciones y seeds
 
@@ -209,11 +214,21 @@ el sistema de archivos efímero de Vercel.
 
 6. Inicia sesión con `POST /auth/v1/token?grant_type=password` y la misma clave pública; la respuesta debe incluir
    la sesión local.
-7. Abre `http://127.0.0.1:54324` y confirma que Mailpit recibe los correos de Auth cuando se habiliten
+7. Usa el `access_token` de la respuesta para consultar el usuario autenticado:
+
+   ```bash
+   curl --request GET \
+     --url http://localhost:3000/api/users/me \
+     --header "Authorization: Bearer $ACCESS_TOKEN"
+   ```
+
+   La primera llamada crea el registro en `users`; las siguientes actualizan `lastLoginAt`.
+
+8. Abre `http://127.0.0.1:54324` y confirma que Mailpit recibe los correos de Auth cuando se habiliten
    confirmaciones.
-8. Ejecuta `npm run db:reset` y confirma que la migración técnica y el seed se aplican otra vez.
-9. Verifica en Studio que el bucket privado `user-files` existe en el proyecto local. Los buckets de staging y
-   producción se crean y revisan en sus proyectos remotos respectivos.
+9. Ejecuta `npm run db:reset` y confirma que la migración técnica y el seed se aplican otra vez.
+10. Verifica en Studio que el bucket privado `user-files` existe en el proyecto local. Los buckets de staging y
+    producción se crean y revisan en sus proyectos remotos respectivos.
 
 ## Ejecución
 

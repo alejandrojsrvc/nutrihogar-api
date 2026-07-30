@@ -1,12 +1,16 @@
 import { PrismaClient } from '@prisma/client';
+import { seedNutritionCatalog } from '../src/food-catalog/infrastructure/seed/nutrition-catalog.seeder';
 
 const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
-  await prisma.technicalSeed.upsert({
-    where: { key: 'local-environment' },
-    update: {},
-    create: { key: 'local-environment' },
+  await prisma.$transaction(async (transaction) => {
+    await transaction.technicalSeed.upsert({
+      where: { key: 'local-environment' },
+      update: {},
+      create: { key: 'local-environment' },
+    });
+    await seedNutritionCatalog(transaction);
   });
 }
 

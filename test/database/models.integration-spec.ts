@@ -11,6 +11,12 @@ import {
   PrismaClient,
   ReferenceUnit,
 } from '@prisma/client';
+import {
+  FOOD_CATEGORIES,
+  NUTRIENT_DEFINITIONS,
+  NUTRITION_CATALOG_FOODS,
+} from '../../src/food-catalog/infrastructure/seed/nutrition-catalog.data';
+import { seedNutritionCatalog } from '../../src/food-catalog/infrastructure/seed/nutrition-catalog.seeder';
 
 const testDatabaseUrl = process.env.DATABASE_URL_TEST;
 
@@ -308,6 +314,52 @@ databaseTests('Identity and household persistence', () => {
       expect(food.householdId).toBe(household.id);
       expect(food.createdById).toBe(user.id);
       expect(food.foodType).toBe(FoodType.CUSTOM);
+    });
+  });
+
+  it('seeds the nutrition catalog twice without duplicating records', async () => {
+    await runInRollback(async (transaction) => {
+      const sources = [...new Set(NUTRITION_CATALOG_FOODS.map(({ source }) => source))];
+      const categoryCodes = FOOD_CATEGORIES.map(({ code }) => code);
+      const nutrientCodes = NUTRIENT_DEFINITIONS.map(({ code }) => code);
+
+      await transaction.food.deleteMany({ where: { source: { in: sources } } });
+      await transaction.foodCategory.deleteMany({ where: { code: { in: categoryCodes } } });
+      await transaction.nutrientDefinition.deleteMany({
+        where: { code: { in: nutrientCodes } },
+      });
+
+      await seedNutritionCatalog(transaction);
+      await seedNutritionCatalog(transaction);
+
+      const [categoryCount, nutrientCount, foods] = await Promise.all([
+        transaction.foodCategory.count({ where: { code: { in: categoryCodes } } }),
+        transaction.nutrientDefinition.count({ where: { code: { in: nutrientCodes } } }),
+        transaction.food.findMany({
+          where: { source: { in: sources } },
+          include: {
+            nutrients: {
+              include: { nutrientDefinition: true },
+            },
+            servings: true,
+          },
+        }),
+      ]);
+
+      expect(categoryCount).toBe(12);
+      expect(nutrientCount).toBe(14);
+      expect(foods).toHaveLength(25);
+      expect(
+        foods.every(
+          ({ nutrients }) =>
+            nutrients.filter(({ nutrientDefinition }) => nutrientDefinition.isRequired).length ===
+            4,
+        ),
+      ).toBe(true);
+      expect(
+        foods.flatMap(({ servings }) => servings).filter(({ equivalentGrams }) => equivalentGrams)
+          .length,
+      ).toBe(4);
     });
   });
 });

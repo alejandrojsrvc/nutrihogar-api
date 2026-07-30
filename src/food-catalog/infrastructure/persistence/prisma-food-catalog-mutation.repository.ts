@@ -19,7 +19,7 @@ export class PrismaFoodCatalogMutationRepository
         userId: actorId,
         householdId,
         status: HouseholdMembershipStatus.ACTIVE,
-        household: { isActive: true },
+        household: { deletedAt: null },
       },
       select: { id: true },
     });

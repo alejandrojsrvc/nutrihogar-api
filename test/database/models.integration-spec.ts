@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import {
+  ConfidenceLevel,
+  FoodType,
   HouseholdInvitationRole,
   HouseholdInvitationStatus,
   HouseholdMembershipRole,
   HouseholdMembershipStatus,
+  PreparationState,
   Prisma,
   PrismaClient,
+  ReferenceUnit,
 } from '@prisma/client';
 
 const testDatabaseUrl = process.env.DATABASE_URL_TEST;
@@ -188,6 +192,122 @@ databaseTests('Identity and household persistence', () => {
       await expect(transaction.user.delete({ where: { id: user.id } })).rejects.toMatchObject({
         code: 'P2003',
       });
+    });
+  });
+
+  it('creates a global food with nutrients, servings and aliases', async () => {
+    await runInRollback(async (transaction) => {
+      const category = await transaction.foodCategory.create({
+        data: {
+          code: `CATEGORY-${randomUUID()}`,
+          name: 'Categoría de prueba',
+          displayOrder: 1,
+        },
+      });
+      const energy = await transaction.nutrientDefinition.create({
+        data: {
+          code: `ENERGY-${randomUUID()}`,
+          name: 'Energía',
+          unit: 'kcal',
+          group: 'ENERGY',
+          displayOrder: 1,
+          isRequired: true,
+        },
+      });
+      const food = await transaction.food.create({
+        data: {
+          name: 'Alimento global',
+          categoryId: category.id,
+          foodType: FoodType.GENERIC,
+          preparationState: PreparationState.RAW,
+          referenceQuantity: new Prisma.Decimal(100),
+          referenceUnit: ReferenceUnit.GRAM,
+          source: 'TEST',
+          sourceReference: randomUUID(),
+          confidenceLevel: ConfidenceLevel.VERIFIED,
+          isGlobal: true,
+          nutrients: {
+            create: {
+              nutrientDefinitionId: energy.id,
+              amount: new Prisma.Decimal('120.5'),
+            },
+          },
+          servings: {
+            create: {
+              name: 'Porción',
+              quantity: new Prisma.Decimal(1),
+              unit: 'UNIT',
+              equivalentGrams: new Prisma.Decimal(50),
+            },
+          },
+          aliases: {
+            create: { alias: 'Alias global' },
+          },
+        },
+        include: {
+          nutrients: true,
+          servings: true,
+          aliases: true,
+        },
+      });
+
+      expect(food.householdId).toBeNull();
+      expect(food.nutrients).toHaveLength(1);
+      expect(food.servings[0]?.equivalentGrams?.toString()).toBe('50');
+      expect(food.aliases[0]?.alias).toBe('Alias global');
+
+      await expect(
+        transaction.foodNutrient.create({
+          data: {
+            foodId: food.id,
+            nutrientDefinitionId: energy.id,
+            amount: new Prisma.Decimal(121),
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'P2002' });
+    });
+  });
+
+  it('creates a custom food owned by a household', async () => {
+    await runInRollback(async (transaction) => {
+      const user = await transaction.user.create({
+        data: {
+          authProviderId: `auth-${randomUUID()}`,
+          email: `food-owner-${randomUUID()}@nutrihogar.local`,
+        },
+      });
+      const household = await transaction.household.create({
+        data: {
+          name: 'Hogar con alimento personalizado',
+          createdById: user.id,
+        },
+      });
+      const category = await transaction.foodCategory.create({
+        data: {
+          code: `CUSTOM-${randomUUID()}`,
+          name: 'Categoría personalizada',
+          displayOrder: 1,
+        },
+      });
+      const food = await transaction.food.create({
+        data: {
+          householdId: household.id,
+          name: 'Alimento personalizado',
+          categoryId: category.id,
+          foodType: FoodType.CUSTOM,
+          preparationState: PreparationState.NOT_APPLICABLE,
+          referenceQuantity: new Prisma.Decimal(100),
+          referenceUnit: ReferenceUnit.GRAM,
+          source: 'USER',
+          confidenceLevel: ConfidenceLevel.USER_PROVIDED,
+          isGlobal: false,
+          createdById: user.id,
+        },
+      });
+
+      expect(food.householdId).toBe(household.id);
+      expect(food.createdById).toBe(user.id);
+      expect(food.foodType).toBe(FoodType.CUSTOM);
     });
   });
 });

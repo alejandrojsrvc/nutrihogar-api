@@ -55,6 +55,34 @@ enum DietaryRestrictionType {
   PREFERENCE
 }
 
+enum FoodType {
+  GENERIC
+  COMMERCIAL
+  CUSTOM
+  PREPARED
+}
+
+enum PreparationState {
+  RAW
+  COOKED
+  READY_TO_EAT
+  NOT_APPLICABLE
+}
+
+enum ReferenceUnit {
+  GRAM
+  MILLILITER
+  UNIT
+}
+
+enum ConfidenceLevel {
+  VERIFIED
+  HIGH
+  MEDIUM
+  LOW
+  USER_PROVIDED
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
@@ -80,6 +108,7 @@ model User {
   invitationsSent     HouseholdInvitation[] @relation("HouseholdInvitationInviter")
   invitationsAccepted HouseholdInvitation[] @relation("HouseholdInvitationAccepter")
   adultProfiles       AdultProfile[]
+  foodsCreated        Food[]                @relation("FoodCreatedBy")
 
   @@map("users")
 }
@@ -98,6 +127,7 @@ model Household {
   memberships   HouseholdMembership[]
   invitations   HouseholdInvitation[]
   adultProfiles AdultProfile[]
+  foods         Food[]
 
   @@index([createdById])
   @@index([deletedAt])
@@ -182,4 +212,106 @@ model DietaryRestriction {
 
   @@index([adultProfileId])
   @@map("dietary_restrictions")
+}
+
+model FoodCategory {
+  id           String  @id @default(uuid()) @db.Uuid
+  code         String  @unique @db.VarChar(50)
+  name         String  @db.VarChar(100)
+  displayOrder Int     @map("display_order")
+  isActive     Boolean @default(true) @map("is_active")
+  foods        Food[]
+
+  @@index([isActive, displayOrder])
+  @@map("food_categories")
+}
+
+model NutrientDefinition {
+  id            String         @id @default(uuid()) @db.Uuid
+  code          String         @unique @db.VarChar(50)
+  name          String         @db.VarChar(100)
+  unit          String         @db.VarChar(20)
+  group         String         @map("nutrient_group") @db.VarChar(50)
+  displayOrder  Int            @map("display_order")
+  isRequired    Boolean        @default(false) @map("is_required")
+  foodNutrients FoodNutrient[]
+
+  @@index([group, displayOrder])
+  @@index([isRequired])
+  @@map("nutrient_definitions")
+}
+
+model Food {
+  id                String           @id @default(uuid()) @db.Uuid
+  householdId       String?          @map("household_id") @db.Uuid
+  name              String           @db.VarChar(150)
+  brand             String?          @db.VarChar(150)
+  description       String?          @db.Text
+  categoryId        String           @map("category_id") @db.Uuid
+  foodType          FoodType         @map("food_type")
+  preparationState  PreparationState @map("preparation_state")
+  referenceQuantity Decimal          @map("reference_quantity") @db.Decimal(12, 4)
+  referenceUnit     ReferenceUnit    @map("reference_unit")
+  source            String           @db.VarChar(100)
+  sourceReference   String?          @map("source_reference") @db.VarChar(255)
+  confidenceLevel   ConfidenceLevel  @map("confidence_level")
+  isGlobal          Boolean          @default(false) @map("is_global")
+  isActive          Boolean          @default(true) @map("is_active")
+  createdById       String?          @map("created_by_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt         DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  household         Household?       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  category          FoodCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy         User?            @relation("FoodCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  nutrients         FoodNutrient[]
+  servings          FoodServing[]
+  aliases           FoodAlias[]
+
+  @@unique([source, sourceReference])
+  @@index([householdId, isActive])
+  @@index([isGlobal, isActive])
+  @@index([categoryId, isActive])
+  @@index([name])
+  @@index([createdById])
+  @@index([deletedAt])
+  @@map("foods")
+}
+
+model FoodNutrient {
+  id                   String             @id @default(uuid()) @db.Uuid
+  foodId               String             @map("food_id") @db.Uuid
+  nutrientDefinitionId String             @map("nutrient_definition_id") @db.Uuid
+  amount               Decimal            @db.Decimal(18, 6)
+  food                 Food               @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  nutrientDefinition   NutrientDefinition @relation(fields: [nutrientDefinitionId], references: [id], onDelete: Restrict)
+
+  @@unique([foodId, nutrientDefinitionId])
+  @@index([nutrientDefinitionId])
+  @@map("food_nutrients")
+}
+
+model FoodServing {
+  id                    String   @id @default(uuid()) @db.Uuid
+  foodId                String   @map("food_id") @db.Uuid
+  name                  String   @db.VarChar(100)
+  quantity              Decimal  @db.Decimal(12, 4)
+  unit                  String   @db.VarChar(50)
+  equivalentGrams       Decimal? @map("equivalent_grams") @db.Decimal(12, 4)
+  equivalentMilliliters Decimal? @map("equivalent_milliliters") @db.Decimal(12, 4)
+  food                  Food     @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@index([foodId])
+  @@map("food_servings")
+}
+
+model FoodAlias {
+  id     String @id @default(uuid()) @db.Uuid
+  foodId String @map("food_id") @db.Uuid
+  alias  String @db.VarChar(150)
+  food   Food   @relation(fields: [foodId], references: [id], onDelete: Cascade)
+
+  @@unique([foodId, alias])
+  @@index([alias])
+  @@map("food_aliases")
 }

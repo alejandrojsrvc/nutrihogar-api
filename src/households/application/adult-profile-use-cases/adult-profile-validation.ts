@@ -1,6 +1,7 @@
 import {
   InvalidAdultProfileBirthDateError,
   InvalidAdultProfileHeightError,
+  InvalidAdultProfileWeightError,
 } from '../adult-profile-errors/adult-profile.errors';
 
 const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,6 +26,12 @@ export function parseBirthDate(value: string, today = new Date()): Date {
 export function ensureValidHeight(heightCm: number): void {
   if (!Number.isFinite(heightCm) || heightCm <= 0) {
     throw new InvalidAdultProfileHeightError();
+  }
+}
+
+export function ensureValidWeight(weightKg: number): void {
+  if (!Number.isFinite(weightKg) || weightKg <= 0) {
+    throw new InvalidAdultProfileWeightError();
   }
 }
 

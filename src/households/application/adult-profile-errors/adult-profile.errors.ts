@@ -25,3 +25,10 @@ export class InvalidAdultProfileHeightError extends Error {
     this.name = InvalidAdultProfileHeightError.name;
   }
 }
+
+export class InvalidAdultProfileWeightError extends Error {
+  constructor() {
+    super('Weight must be greater than zero.');
+    this.name = InvalidAdultProfileWeightError.name;
+  }
+}

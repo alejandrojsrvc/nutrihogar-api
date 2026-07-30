@@ -82,6 +82,13 @@ export class CreateAdultProfileRequestDto {
   @IsEnum(BiologicalSexDto)
   biologicalSex!: BiologicalSexDto;
 
+  @ApiPropertyOptional({ example: 80.5, minimum: 0, exclusiveMinimum: true })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  weightKg?: number | null;
+
   @ApiProperty({ example: 175.5, minimum: 0, exclusiveMinimum: true })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })

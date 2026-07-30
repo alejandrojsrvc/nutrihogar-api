@@ -14,7 +14,7 @@ import {
 import { HouseholdAccessDeniedError } from '../errors/household-access-denied.error';
 import { HouseholdRepository } from '../ports/household-repository.port';
 import { normalizeDietaryRestrictions } from './adult-profile-input';
-import { ensureValidHeight, parseBirthDate } from './adult-profile-validation';
+import { ensureValidHeight, ensureValidWeight, parseBirthDate } from './adult-profile-validation';
 
 export const UPDATE_ADULT_PROFILE_USE_CASE = Symbol('UpdateAdultProfileUseCase');
 
@@ -24,6 +24,7 @@ export interface UpdateAdultProfileCommand {
   name?: string;
   birthDate?: string;
   biologicalSex?: BiologicalSex;
+  weightKg?: number | null;
   heightCm?: number;
   activityLevel?: ActivityLevel;
   primaryGoal?: PrimaryGoal;
@@ -60,6 +61,10 @@ export class UpdateAdultProfileUseCase {
     }
     if (command.biologicalSex !== undefined) {
       input.biologicalSex = command.biologicalSex;
+    }
+    if (command.weightKg !== undefined) {
+      if (command.weightKg !== null) ensureValidWeight(command.weightKg);
+      input.weightKg = command.weightKg;
     }
     if (command.heightCm !== undefined) {
       ensureValidHeight(command.heightCm);

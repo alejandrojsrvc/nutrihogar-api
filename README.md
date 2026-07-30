@@ -142,6 +142,20 @@ npm run db:seed
 npm run db:studio
 ```
 
+El esquema inicial de identidad y hogares está en `prisma/schema.prisma` y contiene `User`, `Household`,
+`HouseholdMembership` y `HouseholdInvitation`. La relación `createdBy` impide borrar físicamente al creador de un
+hogar; la membresía tiene una restricción única por usuario y hogar, y las invitaciones guardan únicamente
+`tokenHash`. La creación del hogar y la membresía `ADMIN` se coordinarán en el caso de uso correspondiente.
+
+La prueba de integración de persistencia usa una transacción que siempre hace rollback. Para ejecutarla contra el
+PostgreSQL local, hay que proporcionar explícitamente una URL local; nunca se ejecuta contra staging o producción:
+
+```bash
+DATABASE_URL_TEST=postgresql://postgres:postgres@127.0.0.1:54322/postgres npm run test:db
+```
+
+Sin `DATABASE_URL_TEST`, la suite queda omitida para que `npm run test` y `npm run test:e2e` no dependan de Docker.
+
 El reinicio completo local se ejecuta así:
 
 ```bash

@@ -17,6 +17,7 @@ const profile: AdultProfile = {
   name: 'Alejandro',
   birthDate: new Date('1990-05-20T00:00:00.000Z'),
   biologicalSex: BiologicalSex.MALE,
+  weightKg: new Prisma.Decimal('80.5'),
   heightCm: new Prisma.Decimal('175.5'),
   activityLevel: ActivityLevel.MODERATE,
   primaryGoal: PrimaryGoal.MAINTENANCE,
@@ -64,6 +65,7 @@ describe('PrismaAdultProfileUnitOfWork', () => {
         name: profile.name,
         birthDate: profile.birthDate,
         biologicalSex: 'MALE',
+        weightKg: 80.5,
         heightCm: 175.5,
         activityLevel: 'MODERATE',
         primaryGoal: 'MAINTENANCE',
@@ -79,6 +81,7 @@ describe('PrismaAdultProfileUnitOfWork', () => {
       }),
     ).resolves.toMatchObject({
       id: profile.id,
+      weightKg: 80.5,
       heightCm: 175.5,
       dietaryRestrictions: [{ name: 'Maní' }],
     });
@@ -91,6 +94,7 @@ describe('PrismaAdultProfileUnitOfWork', () => {
         name: profile.name,
         birthDate: profile.birthDate,
         biologicalSex: 'MALE',
+        weightKg: 80.5,
         heightCm: 175.5,
         activityLevel: 'MODERATE',
         primaryGoal: 'MAINTENANCE',

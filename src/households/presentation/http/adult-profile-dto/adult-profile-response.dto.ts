@@ -54,6 +54,9 @@ export class AdultProfileResponseDto {
   @ApiProperty({ enum: ['MALE', 'FEMALE'] })
   biologicalSex!: BiologicalSex;
 
+  @ApiProperty({ example: 80.5, nullable: true })
+  weightKg!: number | null;
+
   @ApiProperty({ example: 175.5 })
   heightCm!: number;
 

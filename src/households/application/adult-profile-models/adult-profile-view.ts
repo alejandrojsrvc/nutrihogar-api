@@ -22,6 +22,7 @@ export interface AdultProfileView {
   birthDate: Date;
   age: number;
   biologicalSex: BiologicalSex;
+  weightKg: number | null;
   heightCm: number;
   activityLevel: ActivityLevel;
   primaryGoal: PrimaryGoal;

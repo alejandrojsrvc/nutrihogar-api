@@ -19,6 +19,7 @@ export class PrismaAdultProfileMapper {
       birthDate: profile.birthDate,
       age: calculateAge(profile.birthDate),
       biologicalSex: profile.biologicalSex,
+      weightKg: profile.weightKg?.toNumber() ?? null,
       heightCm: decimalToNumber(profile.heightCm),
       activityLevel: profile.activityLevel,
       primaryGoal: profile.primaryGoal,

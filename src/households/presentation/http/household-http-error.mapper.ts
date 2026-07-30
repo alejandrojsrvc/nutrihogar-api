@@ -10,6 +10,7 @@ import {
   AdultProfileNotFoundError,
   InvalidAdultProfileBirthDateError,
   InvalidAdultProfileHeightError,
+  InvalidAdultProfileWeightError,
 } from '../../application/adult-profile-errors/adult-profile.errors';
 import { HouseholdAccessDeniedError } from '../../application/errors/household-access-denied.error';
 import { HouseholdNotFoundError } from '../../application/errors/household-not-found.error';
@@ -25,7 +26,8 @@ import {
 export function rethrowHouseholdHttpError(error: unknown): never {
   if (
     error instanceof InvalidAdultProfileBirthDateError ||
-    error instanceof InvalidAdultProfileHeightError
+    error instanceof InvalidAdultProfileHeightError ||
+    error instanceof InvalidAdultProfileWeightError
   ) {
     throw new BadRequestException(error.message);
   }

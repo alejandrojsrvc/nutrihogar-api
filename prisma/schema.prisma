@@ -190,6 +190,7 @@ model AdultProfile {
   name                     String                    @db.VarChar(150)
   birthDate                DateTime                  @map("birth_date") @db.Date
   biologicalSex            BiologicalSex             @map("biological_sex")
+  weightKg                 Decimal?                  @map("weight_kg") @db.Decimal(5, 2)
   heightCm                 Decimal                   @map("height_cm") @db.Decimal(5, 2)
   activityLevel            ActivityLevel             @map("activity_level")
   primaryGoal              PrimaryGoal               @map("primary_goal")

@@ -14,6 +14,7 @@ export interface CreateAdultProfileInput {
   name: string;
   birthDate: Date;
   biologicalSex: BiologicalSex;
+  weightKg?: number | null;
   heightCm: number;
   activityLevel: ActivityLevel;
   primaryGoal: PrimaryGoal;
@@ -25,6 +26,7 @@ export interface UpdateAdultProfileInput {
   name?: string;
   birthDate?: Date;
   biologicalSex?: BiologicalSex;
+  weightKg?: number | null;
   heightCm?: number;
   activityLevel?: ActivityLevel;
   primaryGoal?: PrimaryGoal;

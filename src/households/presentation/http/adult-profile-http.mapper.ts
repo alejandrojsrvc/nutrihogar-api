@@ -14,6 +14,7 @@ export class AdultProfileHttpMapper {
       birthDate: profile.birthDate.toISOString().slice(0, 10),
       age: profile.age,
       biologicalSex: profile.biologicalSex,
+      weightKg: profile.weightKg,
       heightCm: profile.heightCm,
       activityLevel: profile.activityLevel,
       primaryGoal: profile.primaryGoal,

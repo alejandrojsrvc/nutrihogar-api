@@ -11,7 +11,7 @@ import { AdultProfileUnitOfWork } from '../adult-profile-ports/adult-profile-uni
 import { HouseholdRepository } from '../ports/household-repository.port';
 import { ensureHouseholdMemberAccess } from './ensure-household-member-access';
 import { normalizeDietaryRestrictions } from './adult-profile-input';
-import { ensureValidHeight, parseBirthDate } from './adult-profile-validation';
+import { ensureValidHeight, ensureValidWeight, parseBirthDate } from './adult-profile-validation';
 
 export const CREATE_ADULT_PROFILE_USE_CASE = Symbol('CreateAdultProfileUseCase');
 
@@ -21,6 +21,7 @@ export interface CreateAdultProfileCommand {
   name: string;
   birthDate: string;
   biologicalSex: BiologicalSex;
+  weightKg?: number | null;
   heightCm: number;
   activityLevel: ActivityLevel;
   primaryGoal: PrimaryGoal;
@@ -47,6 +48,7 @@ export class CreateAdultProfileUseCase {
     }
 
     ensureValidHeight(command.heightCm);
+    if (command.weightKg != null) ensureValidWeight(command.weightKg);
 
     return this.unitOfWork.create({
       householdId: command.householdId,
@@ -54,6 +56,7 @@ export class CreateAdultProfileUseCase {
       name: command.name.trim(),
       birthDate: parseBirthDate(command.birthDate),
       biologicalSex: command.biologicalSex,
+      weightKg: command.weightKg ?? null,
       heightCm: command.heightCm,
       activityLevel: command.activityLevel,
       primaryGoal: command.primaryGoal,

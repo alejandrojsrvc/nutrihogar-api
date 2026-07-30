@@ -31,5 +31,6 @@ import { SupabaseAuthGuard } from './presentation/http/supabase-auth.guard';
     },
     SupabaseAuthGuard,
   ],
+  exports: [GET_CURRENT_USER_USE_CASE, SupabaseAuthGuard],
 })
 export class IdentityModule {}

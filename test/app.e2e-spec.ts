@@ -104,6 +104,10 @@ describe('Application (e2e)', () => {
     expect(body.paths['/api/household-invitations/{invitationId}/cancel']).toBeDefined();
     expect(body.paths['/api/households/{householdId}/adult-profiles']).toBeDefined();
     expect(body.paths['/api/adult-profiles/{profileId}']).toBeDefined();
+    expect(body.paths['/api/foods']).toBeDefined();
+    expect(body.paths['/api/foods/{foodId}']).toBeDefined();
+    expect(body.paths['/api/food-categories']).toBeDefined();
+    expect(body.paths['/api/nutrients']).toBeDefined();
     expect(body.paths['/api/users/me'].get.security).toEqual([{ bearer: [] }]);
   });
 

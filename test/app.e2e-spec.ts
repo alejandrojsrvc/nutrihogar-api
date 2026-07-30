@@ -6,6 +6,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { configureApplication } from '../src/configure-application';
+import { InvalidIdentityError } from '../src/identity/application/errors/invalid-identity.error';
+import { GET_CURRENT_USER_USE_CASE } from '../src/identity/application/use-cases/get-current-user.use-case';
 
 class ValidationRequestDto {
   @IsString()
@@ -20,6 +22,14 @@ interface HealthResponseBody {
 interface OpenApiResponseBody {
   info: {
     title: string;
+  };
+  paths: {
+    '/api/health': unknown;
+    '/api/users/me': {
+      get: {
+        security: Array<Record<string, string[]>>;
+      };
+    };
   };
 }
 
@@ -41,12 +51,18 @@ class ValidationTestController {
 
 describe('Application (e2e)', () => {
   let app: INestApplication<App>;
+  const getCurrentUser = {
+    execute: jest.fn(),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [ValidationTestController],
-    }).compile();
+    })
+      .overrideProvider(GET_CURRENT_USER_USE_CASE)
+      .useValue(getCurrentUser)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     configureApplication(app, app.get(ConfigService));
@@ -55,6 +71,10 @@ describe('Application (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  beforeEach(() => {
+    getCurrentUser.execute.mockReset();
   });
 
   it('GET /api/health returns the service status', async () => {
@@ -77,6 +97,47 @@ describe('Application (e2e)', () => {
     const body = JSON.parse(response.text) as OpenApiResponseBody;
 
     expect(body.info.title).toBe('NutriHogar API');
+    expect(body.paths['/api/health']).toBeDefined();
+    expect(body.paths['/api/users/me'].get.security).toEqual([{ bearer: [] }]);
+  });
+
+  it('rejects a request without a Supabase access token', async () => {
+    await request(app.getHttpServer()).get('/api/users/me').expect(401);
+
+    expect(getCurrentUser.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects a request with an invalid Supabase access token', async () => {
+    getCurrentUser.execute.mockRejectedValue(new InvalidIdentityError());
+
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .set('Authorization', 'Bearer invalid-token')
+      .expect(401);
+  });
+
+  it('returns the authenticated local user', async () => {
+    getCurrentUser.execute.mockResolvedValue({
+      id: 'local-user-id',
+      email: 'usuario@example.com',
+      displayName: 'Alejandro',
+      avatarUrl: null,
+      timezone: 'America/Argentina/Buenos_Aires',
+      locale: 'es-AR',
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .set('Authorization', 'Bearer valid-token')
+      .expect(200)
+      .expect({
+        id: 'local-user-id',
+        email: 'usuario@example.com',
+        displayName: 'Alejandro',
+        avatarUrl: null,
+        timezone: 'America/Argentina/Buenos_Aires',
+        locale: 'es-AR',
+      });
   });
 
   it('returns a consistent error for an invalid DTO', async () => {

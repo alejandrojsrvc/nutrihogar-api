@@ -1,12 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import {
+  ConfidenceLevel,
+  FoodType,
   HouseholdInvitationRole,
   HouseholdInvitationStatus,
   HouseholdMembershipRole,
   HouseholdMembershipStatus,
+  PreparationState,
   Prisma,
   PrismaClient,
+  ReferenceUnit,
 } from '@prisma/client';
+import {
+  FOOD_CATEGORIES,
+  NUTRIENT_DEFINITIONS,
+  NUTRITION_CATALOG_FOODS,
+} from '../../src/food-catalog/infrastructure/seed/nutrition-catalog.data';
+import { seedNutritionCatalog } from '../../src/food-catalog/infrastructure/seed/nutrition-catalog.seeder';
 
 const testDatabaseUrl = process.env.DATABASE_URL_TEST;
 
@@ -188,6 +198,168 @@ databaseTests('Identity and household persistence', () => {
       await expect(transaction.user.delete({ where: { id: user.id } })).rejects.toMatchObject({
         code: 'P2003',
       });
+    });
+  });
+
+  it('creates a global food with nutrients, servings and aliases', async () => {
+    await runInRollback(async (transaction) => {
+      const category = await transaction.foodCategory.create({
+        data: {
+          code: `CATEGORY-${randomUUID()}`,
+          name: 'Categoría de prueba',
+          displayOrder: 1,
+        },
+      });
+      const energy = await transaction.nutrientDefinition.create({
+        data: {
+          code: `ENERGY-${randomUUID()}`,
+          name: 'Energía',
+          unit: 'kcal',
+          group: 'ENERGY',
+          displayOrder: 1,
+          isRequired: true,
+        },
+      });
+      const food = await transaction.food.create({
+        data: {
+          name: 'Alimento global',
+          categoryId: category.id,
+          foodType: FoodType.GENERIC,
+          preparationState: PreparationState.RAW,
+          referenceQuantity: new Prisma.Decimal(100),
+          referenceUnit: ReferenceUnit.GRAM,
+          source: 'TEST',
+          sourceReference: randomUUID(),
+          confidenceLevel: ConfidenceLevel.VERIFIED,
+          isGlobal: true,
+          nutrients: {
+            create: {
+              nutrientDefinitionId: energy.id,
+              amount: new Prisma.Decimal('120.5'),
+            },
+          },
+          servings: {
+            create: {
+              name: 'Porción',
+              quantity: new Prisma.Decimal(1),
+              unit: 'UNIT',
+              equivalentGrams: new Prisma.Decimal(50),
+            },
+          },
+          aliases: {
+            create: { alias: 'Alias global' },
+          },
+        },
+        include: {
+          nutrients: true,
+          servings: true,
+          aliases: true,
+        },
+      });
+
+      expect(food.householdId).toBeNull();
+      expect(food.nutrients).toHaveLength(1);
+      expect(food.servings[0]?.equivalentGrams?.toString()).toBe('50');
+      expect(food.aliases[0]?.alias).toBe('Alias global');
+
+      await expect(
+        transaction.foodNutrient.create({
+          data: {
+            foodId: food.id,
+            nutrientDefinitionId: energy.id,
+            amount: new Prisma.Decimal(121),
+          },
+        }),
+      ).rejects.toMatchObject({ code: 'P2002' });
+    });
+  });
+
+  it('creates a custom food owned by a household', async () => {
+    await runInRollback(async (transaction) => {
+      const user = await transaction.user.create({
+        data: {
+          authProviderId: `auth-${randomUUID()}`,
+          email: `food-owner-${randomUUID()}@nutrihogar.local`,
+        },
+      });
+      const household = await transaction.household.create({
+        data: {
+          name: 'Hogar con alimento personalizado',
+          createdById: user.id,
+        },
+      });
+      const category = await transaction.foodCategory.create({
+        data: {
+          code: `CUSTOM-${randomUUID()}`,
+          name: 'Categoría personalizada',
+          displayOrder: 1,
+        },
+      });
+      const food = await transaction.food.create({
+        data: {
+          householdId: household.id,
+          name: 'Alimento personalizado',
+          categoryId: category.id,
+          foodType: FoodType.CUSTOM,
+          preparationState: PreparationState.NOT_APPLICABLE,
+          referenceQuantity: new Prisma.Decimal(100),
+          referenceUnit: ReferenceUnit.GRAM,
+          source: 'USER',
+          confidenceLevel: ConfidenceLevel.USER_PROVIDED,
+          isGlobal: false,
+          createdById: user.id,
+        },
+      });
+
+      expect(food.householdId).toBe(household.id);
+      expect(food.createdById).toBe(user.id);
+      expect(food.foodType).toBe(FoodType.CUSTOM);
+    });
+  });
+
+  it('seeds the nutrition catalog twice without duplicating records', async () => {
+    await runInRollback(async (transaction) => {
+      const sources = [...new Set(NUTRITION_CATALOG_FOODS.map(({ source }) => source))];
+      const categoryCodes = FOOD_CATEGORIES.map(({ code }) => code);
+      const nutrientCodes = NUTRIENT_DEFINITIONS.map(({ code }) => code);
+
+      await transaction.food.deleteMany({ where: { source: { in: sources } } });
+      await transaction.foodCategory.deleteMany({ where: { code: { in: categoryCodes } } });
+      await transaction.nutrientDefinition.deleteMany({
+        where: { code: { in: nutrientCodes } },
+      });
+
+      await seedNutritionCatalog(transaction);
+      await seedNutritionCatalog(transaction);
+
+      const [categoryCount, nutrientCount, foods] = await Promise.all([
+        transaction.foodCategory.count({ where: { code: { in: categoryCodes } } }),
+        transaction.nutrientDefinition.count({ where: { code: { in: nutrientCodes } } }),
+        transaction.food.findMany({
+          where: { source: { in: sources } },
+          include: {
+            nutrients: {
+              include: { nutrientDefinition: true },
+            },
+            servings: true,
+          },
+        }),
+      ]);
+
+      expect(categoryCount).toBe(12);
+      expect(nutrientCount).toBe(14);
+      expect(foods).toHaveLength(25);
+      expect(
+        foods.every(
+          ({ nutrients }) =>
+            nutrients.filter(({ nutrientDefinition }) => nutrientDefinition.isRequired).length ===
+            4,
+        ),
+      ).toBe(true);
+      expect(
+        foods.flatMap(({ servings }) => servings).filter(({ equivalentGrams }) => equivalentGrams)
+          .length,
+      ).toBe(4);
     });
   });
 });

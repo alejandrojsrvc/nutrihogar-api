@@ -83,6 +83,13 @@ enum ConfidenceLevel {
   USER_PROVIDED
 }
 
+enum NutritionGoalSuggestionStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  EXPIRED
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
@@ -93,22 +100,23 @@ model TechnicalSeed {
 }
 
 model User {
-  id                  String                @id @default(uuid()) @db.Uuid
-  authProviderId      String                @unique @map("auth_provider_id") @db.VarChar(255)
-  email               String                @unique @db.VarChar(320)
-  displayName         String?               @map("display_name") @db.VarChar(150)
-  avatarUrl           String?               @map("avatar_url") @db.VarChar(2048)
-  timezone            String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
-  locale              String                @default("es-AR") @db.VarChar(10)
-  lastLoginAt         DateTime?             @map("last_login_at") @db.Timestamptz(6)
-  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdHouseholds   Household[]           @relation("HouseholdCreatedBy")
-  memberships         HouseholdMembership[] @relation("UserMemberships")
-  invitationsSent     HouseholdInvitation[] @relation("HouseholdInvitationInviter")
-  invitationsAccepted HouseholdInvitation[] @relation("HouseholdInvitationAccepter")
-  adultProfiles       AdultProfile[]
-  foodsCreated        Food[]                @relation("FoodCreatedBy")
+  id                      String                @id @default(uuid()) @db.Uuid
+  authProviderId          String                @unique @map("auth_provider_id") @db.VarChar(255)
+  email                   String                @unique @db.VarChar(320)
+  displayName             String?               @map("display_name") @db.VarChar(150)
+  avatarUrl               String?               @map("avatar_url") @db.VarChar(2048)
+  timezone                String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  locale                  String                @default("es-AR") @db.VarChar(10)
+  lastLoginAt             DateTime?             @map("last_login_at") @db.Timestamptz(6)
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdHouseholds       Household[]           @relation("HouseholdCreatedBy")
+  memberships             HouseholdMembership[] @relation("UserMemberships")
+  invitationsSent         HouseholdInvitation[] @relation("HouseholdInvitationInviter")
+  invitationsAccepted     HouseholdInvitation[] @relation("HouseholdInvitationAccepter")
+  adultProfiles           AdultProfile[]
+  foodsCreated            Food[]                @relation("FoodCreatedBy")
+  nutritionGoalsConfirmed NutritionGoal[]       @relation("NutritionGoalConfirmedBy")
 
   @@map("users")
 }
@@ -176,27 +184,76 @@ model HouseholdInvitation {
 }
 
 model AdultProfile {
-  id                  String               @id @default(uuid()) @db.Uuid
-  householdId         String               @map("household_id") @db.Uuid
-  userId              String               @map("user_id") @db.Uuid
-  name                String               @db.VarChar(150)
-  birthDate           DateTime             @map("birth_date") @db.Date
-  biologicalSex       BiologicalSex        @map("biological_sex")
-  heightCm            Decimal              @map("height_cm") @db.Decimal(5, 2)
-  activityLevel       ActivityLevel        @map("activity_level")
-  primaryGoal         PrimaryGoal          @map("primary_goal")
-  hasKitchenScale     Boolean              @map("has_kitchen_scale")
-  isActive            Boolean              @default(true) @map("is_active")
-  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt           DateTime?            @map("deleted_at") @db.Timestamptz(6)
-  household           Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-  dietaryRestrictions DietaryRestriction[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  householdId              String                    @map("household_id") @db.Uuid
+  userId                   String                    @map("user_id") @db.Uuid
+  name                     String                    @db.VarChar(150)
+  birthDate                DateTime                  @map("birth_date") @db.Date
+  biologicalSex            BiologicalSex             @map("biological_sex")
+  heightCm                 Decimal                   @map("height_cm") @db.Decimal(5, 2)
+  activityLevel            ActivityLevel             @map("activity_level")
+  primaryGoal              PrimaryGoal               @map("primary_goal")
+  hasKitchenScale          Boolean                   @map("has_kitchen_scale")
+  isActive                 Boolean                   @default(true) @map("is_active")
+  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                DateTime?                 @map("deleted_at") @db.Timestamptz(6)
+  household                Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user                     User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  dietaryRestrictions      DietaryRestriction[]
+  nutritionGoalSuggestions NutritionGoalSuggestion[]
+  nutritionGoals           NutritionGoal[]
 
   @@index([householdId, isActive])
   @@index([userId, isActive])
   @@map("adult_profiles")
+}
+
+model NutritionGoalSuggestion {
+  id                         String                        @id @default(uuid()) @db.Uuid
+  adultProfileId             String                        @map("adult_profile_id") @db.Uuid
+  calculationMethod          String                        @map("calculation_method") @db.VarChar(100)
+  calculationInput           Json                          @map("calculation_input")
+  bmr                        Decimal                       @db.Decimal(12, 4)
+  tdee                       Decimal                       @db.Decimal(12, 4)
+  suggestedCalories          Decimal                       @map("suggested_calories") @db.Decimal(12, 4)
+  suggestedProteinGrams      Decimal                       @map("suggested_protein_grams") @db.Decimal(12, 4)
+  suggestedCarbohydrateGrams Decimal                       @map("suggested_carbohydrate_grams") @db.Decimal(12, 4)
+  suggestedFatGrams          Decimal                       @map("suggested_fat_grams") @db.Decimal(12, 4)
+  suggestedFiberGrams        Decimal                       @map("suggested_fiber_grams") @db.Decimal(12, 4)
+  status                     NutritionGoalSuggestionStatus @default(PENDING)
+  createdAt                  DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt                  DateTime                      @map("expires_at") @db.Timestamptz(6)
+  adultProfile               AdultProfile                  @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+
+  @@index([adultProfileId, status])
+  @@index([status, expiresAt])
+  @@map("nutrition_goal_suggestions")
+}
+
+/// The migration adds a partial unique index for one row with valid_until IS NULL per profile.
+model NutritionGoal {
+  id                String       @id @default(uuid()) @db.Uuid
+  adultProfileId    String       @map("adult_profile_id") @db.Uuid
+  validFrom         DateTime     @map("valid_from") @db.Timestamptz(6)
+  validUntil        DateTime?    @map("valid_until") @db.Timestamptz(6)
+  dailyCalories     Decimal      @map("daily_calories") @db.Decimal(12, 4)
+  proteinGrams      Decimal      @map("protein_grams") @db.Decimal(12, 4)
+  carbohydrateGrams Decimal      @map("carbohydrate_grams") @db.Decimal(12, 4)
+  fatGrams          Decimal      @map("fat_grams") @db.Decimal(12, 4)
+  fiberGrams        Decimal      @map("fiber_grams") @db.Decimal(12, 4)
+  goalType          String       @map("goal_type") @db.VarChar(50)
+  calculationMethod String       @map("calculation_method") @db.VarChar(100)
+  calculationInput  Json         @map("calculation_input")
+  confirmedById     String       @map("confirmed_by_id") @db.Uuid
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  adultProfile      AdultProfile @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  confirmedBy       User         @relation("NutritionGoalConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
+
+  @@index([adultProfileId, validFrom])
+  @@index([confirmedById])
+  @@map("nutrition_goals")
 }
 
 model DietaryRestriction {

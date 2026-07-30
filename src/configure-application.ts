@@ -3,10 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-export function configureApplication(
-  app: INestApplication,
-  configService: ConfigService,
-): void {
+export function configureApplication(app: INestApplication, configService: ConfigService): void {
   app.setGlobalPrefix('api');
   app.enableCors({
     origin: configService.getOrThrow<string>('FRONTEND_URL'),
@@ -23,9 +20,7 @@ export function configureApplication(
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('NutriHogar API')
-    .setDescription(
-      'API REST para la plataforma de control nutricional familiar',
-    )
+    .setDescription('API REST para la plataforma de control nutricional familiar')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

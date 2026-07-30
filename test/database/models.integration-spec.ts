@@ -17,10 +17,7 @@ function pointsToLocalSupabase(databaseUrl: string | undefined): boolean {
 
   try {
     const parsedUrl = new URL(databaseUrl);
-    return (
-      ['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) &&
-      parsedUrl.port === '54322'
-    );
+    return ['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) && parsedUrl.port === '54322';
   } catch {
     return false;
   }
@@ -188,9 +185,9 @@ databaseTests('Identity and household persistence', () => {
         },
       });
 
-      await expect(
-        transaction.user.delete({ where: { id: user.id } }),
-      ).rejects.toMatchObject({ code: 'P2003' });
+      await expect(transaction.user.delete({ where: { id: user.id } })).rejects.toMatchObject({
+        code: 'P2003',
+      });
     });
   });
 });

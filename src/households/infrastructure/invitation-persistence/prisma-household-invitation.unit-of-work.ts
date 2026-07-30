@@ -20,18 +20,13 @@ import { PrismaHouseholdInvitationMapper } from './prisma-household-invitation.m
 export class PrismaHouseholdInvitationUnitOfWork implements HouseholdInvitationUnitOfWork {
   constructor(private readonly prisma: PrismaService) {}
 
-  async accept(
-    input: AcceptHouseholdInvitationInput,
-  ): Promise<HouseholdInvitationView> {
+  async accept(input: AcceptHouseholdInvitationInput): Promise<HouseholdInvitationView> {
     return this.prisma.$transaction(async (transaction) => {
       const invitation = await transaction.householdInvitation.findUnique({
         where: { id: input.invitationId },
       });
 
-      if (
-        !invitation ||
-        invitation.status !== PrismaHouseholdInvitationStatus.PENDING
-      ) {
+      if (!invitation || invitation.status !== PrismaHouseholdInvitationStatus.PENDING) {
         throw new HouseholdInvitationAlreadyHandledError();
       }
 
@@ -39,15 +34,14 @@ export class PrismaHouseholdInvitationUnitOfWork implements HouseholdInvitationU
         throw new HouseholdInvitationExpiredError();
       }
 
-      const existingMembership =
-        await transaction.householdMembership.findUnique({
-          where: {
-            householdId_userId: {
-              householdId: invitation.householdId,
-              userId: input.userId,
-            },
+      const existingMembership = await transaction.householdMembership.findUnique({
+        where: {
+          householdId_userId: {
+            householdId: invitation.householdId,
+            userId: input.userId,
           },
-        });
+        },
+      });
 
       if (existingMembership?.status === HouseholdMembershipStatus.ACTIVE) {
         throw new HouseholdInvitationAlreadyMemberError();
@@ -89,10 +83,9 @@ export class PrismaHouseholdInvitationUnitOfWork implements HouseholdInvitationU
         });
       }
 
-      const acceptedInvitation =
-        await transaction.householdInvitation.findUniqueOrThrow({
-          where: { id: invitation.id },
-        });
+      const acceptedInvitation = await transaction.householdInvitation.findUniqueOrThrow({
+        where: { id: invitation.id },
+      });
 
       return PrismaHouseholdInvitationMapper.toView(acceptedInvitation);
     });

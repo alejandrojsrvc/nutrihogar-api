@@ -3,9 +3,7 @@ import { HouseholdInvitationRepository } from '../invitation-ports/household-inv
 import { HouseholdInvitationView } from '../invitation-models/household-invitation-view';
 import { ensureHouseholdAdminAccess } from './ensure-household-admin-access';
 
-export const LIST_HOUSEHOLD_INVITATIONS_USE_CASE = Symbol(
-  'ListHouseholdInvitationsUseCase',
-);
+export const LIST_HOUSEHOLD_INVITATIONS_USE_CASE = Symbol('ListHouseholdInvitationsUseCase');
 
 export interface ListHouseholdInvitationsCommand {
   actorId: string;
@@ -18,14 +16,8 @@ export class ListHouseholdInvitationsUseCase {
     private readonly invitations: HouseholdInvitationRepository,
   ) {}
 
-  async execute(
-    command: ListHouseholdInvitationsCommand,
-  ): Promise<HouseholdInvitationView[]> {
-    await ensureHouseholdAdminAccess(
-      this.households,
-      command.actorId,
-      command.householdId,
-    );
+  async execute(command: ListHouseholdInvitationsCommand): Promise<HouseholdInvitationView[]> {
+    await ensureHouseholdAdminAccess(this.households, command.actorId, command.householdId);
 
     return this.invitations.listByHousehold(command.householdId);
   }

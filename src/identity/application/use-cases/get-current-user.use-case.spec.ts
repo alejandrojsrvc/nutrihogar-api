@@ -43,9 +43,7 @@ describe('GetCurrentUserUseCase', () => {
 
     const result = await useCase.execute('access-token');
 
-    expect(identityProvider.verifyAccessToken.mock.calls).toContainEqual([
-      'access-token',
-    ]);
+    expect(identityProvider.verifyAccessToken.mock.calls).toContainEqual(['access-token']);
     const createInput = userRepository.create.mock.calls[0]?.[0];
 
     expect(createInput).toEqual(

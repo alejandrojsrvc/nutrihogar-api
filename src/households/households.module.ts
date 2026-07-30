@@ -1,6 +1,30 @@
 import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity/identity.module';
 import {
+  ADULT_PROFILE_REPOSITORY,
+  AdultProfileRepository,
+} from './application/adult-profile-ports/adult-profile-repository.port';
+import {
+  ADULT_PROFILE_UNIT_OF_WORK,
+  AdultProfileUnitOfWork,
+} from './application/adult-profile-ports/adult-profile-unit-of-work.port';
+import {
+  CREATE_ADULT_PROFILE_USE_CASE,
+  CreateAdultProfileUseCase,
+} from './application/adult-profile-use-cases/create-adult-profile.use-case';
+import {
+  GET_ADULT_PROFILE_USE_CASE,
+  GetAdultProfileUseCase,
+} from './application/adult-profile-use-cases/get-adult-profile.use-case';
+import {
+  LIST_ADULT_PROFILES_USE_CASE,
+  ListAdultProfilesUseCase,
+} from './application/adult-profile-use-cases/list-adult-profiles.use-case';
+import {
+  UPDATE_ADULT_PROFILE_USE_CASE,
+  UpdateAdultProfileUseCase,
+} from './application/adult-profile-use-cases/update-adult-profile.use-case';
+import {
   HOUSEHOLD_INVITATION_REPOSITORY,
   HouseholdInvitationRepository,
 } from './application/invitation-ports/household-invitation-repository.port';
@@ -52,15 +76,26 @@ import { PrismaHouseholdUnitOfWork } from './infrastructure/persistence/prisma-h
 import { CryptoInvitationTokenService } from './infrastructure/invitation-persistence/crypto-invitation-token.service';
 import { PrismaHouseholdInvitationRepository } from './infrastructure/invitation-persistence/prisma-household-invitation.repository';
 import { PrismaHouseholdInvitationUnitOfWork } from './infrastructure/invitation-persistence/prisma-household-invitation.unit-of-work';
+import { PrismaAdultProfileRepository } from './infrastructure/adult-profile-persistence/prisma-adult-profile.repository';
+import { PrismaAdultProfileUnitOfWork } from './infrastructure/adult-profile-persistence/prisma-adult-profile.unit-of-work';
+import { AdultProfilesController } from './presentation/http/adult-profiles.controller';
 import { HouseholdInvitationsController } from './presentation/http/household-invitations.controller';
 import { HouseholdsController } from './presentation/http/households.controller';
 
 @Module({
   imports: [IdentityModule],
-  controllers: [HouseholdsController, HouseholdInvitationsController],
+  controllers: [HouseholdsController, HouseholdInvitationsController, AdultProfilesController],
   providers: [
     { provide: HOUSEHOLD_REPOSITORY, useClass: PrismaHouseholdRepository },
     { provide: HOUSEHOLD_UNIT_OF_WORK, useClass: PrismaHouseholdUnitOfWork },
+    {
+      provide: ADULT_PROFILE_REPOSITORY,
+      useClass: PrismaAdultProfileRepository,
+    },
+    {
+      provide: ADULT_PROFILE_UNIT_OF_WORK,
+      useClass: PrismaAdultProfileUnitOfWork,
+    },
     {
       provide: HOUSEHOLD_INVITATION_REPOSITORY,
       useClass: PrismaHouseholdInvitationRepository,
@@ -76,52 +111,67 @@ import { HouseholdsController } from './presentation/http/households.controller'
     {
       provide: CREATE_HOUSEHOLD_USE_CASE,
       inject: [HOUSEHOLD_UNIT_OF_WORK],
-      useFactory: (unitOfWork: PrismaHouseholdUnitOfWork) =>
-        new CreateHouseholdUseCase(unitOfWork),
+      useFactory: (unitOfWork: PrismaHouseholdUnitOfWork) => new CreateHouseholdUseCase(unitOfWork),
+    },
+    {
+      provide: CREATE_ADULT_PROFILE_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, ADULT_PROFILE_REPOSITORY, ADULT_PROFILE_UNIT_OF_WORK],
+      useFactory: (
+        households: HouseholdRepository,
+        profiles: AdultProfileRepository,
+        unitOfWork: AdultProfileUnitOfWork,
+      ) => new CreateAdultProfileUseCase(households, profiles, unitOfWork),
+    },
+    {
+      provide: LIST_ADULT_PROFILES_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, ADULT_PROFILE_REPOSITORY],
+      useFactory: (households: HouseholdRepository, profiles: AdultProfileRepository) =>
+        new ListAdultProfilesUseCase(households, profiles),
+    },
+    {
+      provide: GET_ADULT_PROFILE_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, ADULT_PROFILE_REPOSITORY],
+      useFactory: (households: HouseholdRepository, profiles: AdultProfileRepository) =>
+        new GetAdultProfileUseCase(households, profiles),
+    },
+    {
+      provide: UPDATE_ADULT_PROFILE_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, ADULT_PROFILE_REPOSITORY, ADULT_PROFILE_UNIT_OF_WORK],
+      useFactory: (
+        households: HouseholdRepository,
+        profiles: AdultProfileRepository,
+        unitOfWork: AdultProfileUnitOfWork,
+      ) => new UpdateAdultProfileUseCase(households, profiles, unitOfWork),
     },
     {
       provide: LIST_HOUSEHOLDS_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY],
-      useFactory: (households: PrismaHouseholdRepository) =>
-        new ListHouseholdsUseCase(households),
+      useFactory: (households: PrismaHouseholdRepository) => new ListHouseholdsUseCase(households),
     },
     {
       provide: GET_HOUSEHOLD_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY],
-      useFactory: (households: PrismaHouseholdRepository) =>
-        new GetHouseholdUseCase(households),
+      useFactory: (households: PrismaHouseholdRepository) => new GetHouseholdUseCase(households),
     },
     {
       provide: UPDATE_HOUSEHOLD_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY],
-      useFactory: (households: PrismaHouseholdRepository) =>
-        new UpdateHouseholdUseCase(households),
+      useFactory: (households: PrismaHouseholdRepository) => new UpdateHouseholdUseCase(households),
     },
     {
       provide: CREATE_HOUSEHOLD_INVITATION_USE_CASE,
-      inject: [
-        HOUSEHOLD_REPOSITORY,
-        HOUSEHOLD_INVITATION_REPOSITORY,
-        INVITATION_TOKEN_SERVICE,
-      ],
+      inject: [HOUSEHOLD_REPOSITORY, HOUSEHOLD_INVITATION_REPOSITORY, INVITATION_TOKEN_SERVICE],
       useFactory: (
         households: HouseholdRepository,
         invitations: HouseholdInvitationRepository,
         tokenService: InvitationTokenService,
-      ) =>
-        new CreateHouseholdInvitationUseCase(
-          households,
-          invitations,
-          tokenService,
-        ),
+      ) => new CreateHouseholdInvitationUseCase(households, invitations, tokenService),
     },
     {
       provide: LIST_HOUSEHOLD_INVITATIONS_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY, HOUSEHOLD_INVITATION_REPOSITORY],
-      useFactory: (
-        households: HouseholdRepository,
-        invitations: HouseholdInvitationRepository,
-      ) => new ListHouseholdInvitationsUseCase(households, invitations),
+      useFactory: (households: HouseholdRepository, invitations: HouseholdInvitationRepository) =>
+        new ListHouseholdInvitationsUseCase(households, invitations),
     },
     {
       provide: ACCEPT_HOUSEHOLD_INVITATION_USE_CASE,
@@ -134,20 +184,13 @@ import { HouseholdsController } from './presentation/http/households.controller'
         invitations: HouseholdInvitationRepository,
         unitOfWork: HouseholdInvitationUnitOfWork,
         tokenService: InvitationTokenService,
-      ) =>
-        new AcceptHouseholdInvitationUseCase(
-          invitations,
-          unitOfWork,
-          tokenService,
-        ),
+      ) => new AcceptHouseholdInvitationUseCase(invitations, unitOfWork, tokenService),
     },
     {
       provide: CANCEL_HOUSEHOLD_INVITATION_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY, HOUSEHOLD_INVITATION_REPOSITORY],
-      useFactory: (
-        households: HouseholdRepository,
-        invitations: HouseholdInvitationRepository,
-      ) => new CancelHouseholdInvitationUseCase(households, invitations),
+      useFactory: (households: HouseholdRepository, invitations: HouseholdInvitationRepository) =>
+        new CancelHouseholdInvitationUseCase(households, invitations),
     },
   ],
 })

@@ -1,13 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Param,
-  Patch,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -91,9 +82,7 @@ export class HouseholdsController {
     summary: 'Lista los hogares activos del usuario autenticado',
   })
   @ApiOkResponse({ type: HouseholdResponseDto, isArray: true })
-  async list(
-    @CurrentUser() user: CurrentUserModel,
-  ): Promise<HouseholdResponseDto[]> {
+  async list(@CurrentUser() user: CurrentUserModel): Promise<HouseholdResponseDto[]> {
     try {
       const households = await this.listHouseholds.execute(user.id);
 

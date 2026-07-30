@@ -5,9 +5,6 @@ export const HOUSEHOLD_REPOSITORY = Symbol('HouseholdRepository');
 
 export interface HouseholdRepository {
   findActiveForUser(userId: string): Promise<HouseholdView[]>;
-  findAccess(
-    userId: string,
-    householdId: string,
-  ): Promise<HouseholdAccess | null>;
+  findAccess(userId: string, householdId: string): Promise<HouseholdAccess | null>;
   updateName(householdId: string, name: string): Promise<HouseholdView | null>;
 }

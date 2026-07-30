@@ -9,9 +9,7 @@ describe('SupabaseIdentityProvider', () => {
   };
 
   const configService = {
-    get: jest.fn(
-      (key: string) => configValues[key as keyof typeof configValues],
-    ),
+    get: jest.fn((key: string) => configValues[key as keyof typeof configValues]),
   } as unknown as ConfigService;
 
   afterEach(() => {
@@ -62,8 +60,8 @@ describe('SupabaseIdentityProvider', () => {
     } as Response);
     const provider = new SupabaseIdentityProvider(configService);
 
-    await expect(
-      provider.verifyAccessToken('invalid-token'),
-    ).rejects.toBeInstanceOf(InvalidIdentityError);
+    await expect(provider.verifyAccessToken('invalid-token')).rejects.toBeInstanceOf(
+      InvalidIdentityError,
+    );
   });
 });

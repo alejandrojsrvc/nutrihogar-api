@@ -24,11 +24,8 @@ describe('PrismaHouseholdUnitOfWork', () => {
       },
     };
     const transaction = jest.fn(
-      async (
-        callback: (
-          client: typeof transactionClient,
-        ) => Promise<PrismaHousehold>,
-      ) => callback(transactionClient),
+      async (callback: (client: typeof transactionClient) => Promise<PrismaHousehold>) =>
+        callback(transactionClient),
     );
     const prisma = { $transaction: transaction } as unknown as PrismaService;
     const unitOfWork = new PrismaHouseholdUnitOfWork(prisma);

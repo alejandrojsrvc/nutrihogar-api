@@ -10,10 +10,7 @@ interface SupabaseAuthUserResponse {
   user_metadata?: unknown;
 }
 
-function readString(
-  metadata: Record<string, unknown>,
-  ...keys: string[]
-): string | null {
+function readString(metadata: Record<string, unknown>, ...keys: string[]): string | null {
   for (const key of keys) {
     const value = metadata[key];
 
@@ -26,9 +23,7 @@ function readString(
 }
 
 function readMetadata(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-    ? (value as Record<string, unknown>)
-    : {};
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }
 
 @Injectable()
@@ -37,11 +32,8 @@ export class SupabaseIdentityProvider implements IdentityProvider {
   private readonly publishableKey: string;
 
   constructor(configService: ConfigService) {
-    this.supabaseUrl = (
-      configService.get<string>('SUPABASE_URL') ?? ''
-    ).replace(/\/+$/, '');
-    this.publishableKey =
-      configService.get<string>('SUPABASE_PUBLISHABLE_KEY') ?? '';
+    this.supabaseUrl = (configService.get<string>('SUPABASE_URL') ?? '').replace(/\/+$/, '');
+    this.publishableKey = configService.get<string>('SUPABASE_PUBLISHABLE_KEY') ?? '';
   }
 
   async verifyAccessToken(accessToken: string): Promise<AuthenticatedIdentity> {
@@ -84,13 +76,7 @@ export class SupabaseIdentityProvider implements IdentityProvider {
     return {
       authProviderId: payload.id,
       email: payload.email,
-      displayName: readString(
-        metadata,
-        'displayName',
-        'display_name',
-        'full_name',
-        'name',
-      ),
+      displayName: readString(metadata, 'displayName', 'display_name', 'full_name', 'name'),
       avatarUrl: readString(metadata, 'avatarUrl', 'avatar_url', 'picture'),
       timezone: readString(metadata, 'timezone') ?? undefined,
       locale: readString(metadata, 'locale') ?? undefined,

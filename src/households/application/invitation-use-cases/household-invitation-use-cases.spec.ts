@@ -101,11 +101,7 @@ describe('Household invitation use cases', () => {
         expiresAt: input.expiresAt,
       }),
     );
-    const useCase = new CreateHouseholdInvitationUseCase(
-      households,
-      invitations,
-      tokenService,
-    );
+    const useCase = new CreateHouseholdInvitationUseCase(households, invitations, tokenService);
 
     const result = await useCase.execute({
       actorId: adminId,
@@ -140,11 +136,7 @@ describe('Household invitation use cases', () => {
       role: 'MEMBER',
       status: 'ACTIVE',
     });
-    const useCase = new CreateHouseholdInvitationUseCase(
-      households,
-      invitations,
-      tokenService,
-    );
+    const useCase = new CreateHouseholdInvitationUseCase(households, invitations, tokenService);
 
     await expect(
       useCase.execute({
@@ -158,11 +150,7 @@ describe('Household invitation use cases', () => {
 
   it('rejects a duplicate pending invitation', async () => {
     invitations.findByHouseholdAndEmail.mockResolvedValue(pendingInvitation);
-    const useCase = new CreateHouseholdInvitationUseCase(
-      households,
-      invitations,
-      tokenService,
-    );
+    const useCase = new CreateHouseholdInvitationUseCase(households, invitations, tokenService);
 
     await expect(
       useCase.execute({
@@ -177,11 +165,7 @@ describe('Household invitation use cases', () => {
 
   it('rejects an invitation for an active household member', async () => {
     invitations.hasActiveMembershipForEmail.mockResolvedValue(true);
-    const useCase = new CreateHouseholdInvitationUseCase(
-      households,
-      invitations,
-      tokenService,
-    );
+    const useCase = new CreateHouseholdInvitationUseCase(households, invitations, tokenService);
 
     await expect(
       useCase.execute({
@@ -195,11 +179,7 @@ describe('Household invitation use cases', () => {
 
   it('rejects an invalid invitation token', async () => {
     invitations.findByTokenHash.mockResolvedValue(null);
-    const useCase = new AcceptHouseholdInvitationUseCase(
-      invitations,
-      unitOfWork,
-      tokenService,
-    );
+    const useCase = new AcceptHouseholdInvitationUseCase(invitations, unitOfWork, tokenService);
 
     await expect(
       useCase.execute({
@@ -215,11 +195,7 @@ describe('Household invitation use cases', () => {
       ...pendingInvitation,
       expiresAt: new Date('2026-07-30T11:59:59.000Z'),
     });
-    const useCase = new AcceptHouseholdInvitationUseCase(
-      invitations,
-      unitOfWork,
-      tokenService,
-    );
+    const useCase = new AcceptHouseholdInvitationUseCase(invitations, unitOfWork, tokenService);
 
     await expect(
       useCase.execute({
@@ -232,11 +208,7 @@ describe('Household invitation use cases', () => {
 
   it('rejects acceptance by a different email', async () => {
     invitations.findByTokenHash.mockResolvedValue(pendingInvitation);
-    const useCase = new AcceptHouseholdInvitationUseCase(
-      invitations,
-      unitOfWork,
-      tokenService,
-    );
+    const useCase = new AcceptHouseholdInvitationUseCase(invitations, unitOfWork, tokenService);
 
     await expect(
       useCase.execute({
@@ -253,11 +225,7 @@ describe('Household invitation use cases', () => {
       status: 'ACCEPTED',
       acceptedById: invitedUserId,
     });
-    const useCase = new AcceptHouseholdInvitationUseCase(
-      invitations,
-      unitOfWork,
-      tokenService,
-    );
+    const useCase = new AcceptHouseholdInvitationUseCase(invitations, unitOfWork, tokenService);
 
     await expect(
       useCase.execute({
@@ -276,11 +244,7 @@ describe('Household invitation use cases', () => {
     };
     invitations.findByTokenHash.mockResolvedValue(pendingInvitation);
     unitOfWork.accept.mockResolvedValue(acceptedInvitation);
-    const useCase = new AcceptHouseholdInvitationUseCase(
-      invitations,
-      unitOfWork,
-      tokenService,
-    );
+    const useCase = new AcceptHouseholdInvitationUseCase(invitations, unitOfWork, tokenService);
 
     await expect(
       useCase.execute({
@@ -299,14 +263,11 @@ describe('Household invitation use cases', () => {
 
   it('lists invitations for an administrator', async () => {
     invitations.listByHousehold.mockResolvedValue([pendingInvitation]);
-    const useCase = new ListHouseholdInvitationsUseCase(
-      households,
-      invitations,
-    );
+    const useCase = new ListHouseholdInvitationsUseCase(households, invitations);
 
-    await expect(
-      useCase.execute({ actorId: adminId, householdId }),
-    ).resolves.toEqual([pendingInvitation]);
+    await expect(useCase.execute({ actorId: adminId, householdId })).resolves.toEqual([
+      pendingInvitation,
+    ]);
   });
 
   it('cancels a pending invitation as an administrator', async () => {
@@ -316,10 +277,7 @@ describe('Household invitation use cases', () => {
     };
     invitations.findById.mockResolvedValue(pendingInvitation);
     invitations.cancel.mockResolvedValue(cancelledInvitation);
-    const useCase = new CancelHouseholdInvitationUseCase(
-      households,
-      invitations,
-    );
+    const useCase = new CancelHouseholdInvitationUseCase(households, invitations);
 
     await expect(
       useCase.execute({

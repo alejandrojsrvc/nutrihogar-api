@@ -16,9 +16,7 @@ export class GetCurrentUserUseCase {
   async execute(accessToken: string): Promise<CurrentUser> {
     const identity = await this.identityProvider.verifyAccessToken(accessToken);
     const now = new Date();
-    const existingUser = await this.userRepository.findByAuthProviderId(
-      identity.authProviderId,
-    );
+    const existingUser = await this.userRepository.findByAuthProviderId(identity.authProviderId);
 
     if (!existingUser) {
       return this.userRepository.create({

@@ -2,11 +2,8 @@ import { HouseholdInvitation as PrismaHouseholdInvitation } from '@prisma/client
 import { HouseholdInvitationView } from '../../application/invitation-models/household-invitation-view';
 
 export class PrismaHouseholdInvitationMapper {
-  static toView(
-    invitation: PrismaHouseholdInvitation,
-  ): HouseholdInvitationView {
-    const isExpired =
-      invitation.status === 'PENDING' && invitation.expiresAt <= new Date();
+  static toView(invitation: PrismaHouseholdInvitation): HouseholdInvitationView {
+    const isExpired = invitation.status === 'PENDING' && invitation.expiresAt <= new Date();
 
     return {
       id: invitation.id,

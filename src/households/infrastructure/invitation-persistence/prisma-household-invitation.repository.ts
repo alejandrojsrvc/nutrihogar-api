@@ -15,28 +15,20 @@ import { PrismaHouseholdInvitationMapper } from './prisma-household-invitation.m
 export class PrismaHouseholdInvitationRepository implements HouseholdInvitationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findById(
-    invitationId: string,
-  ): Promise<HouseholdInvitationView | null> {
+  async findById(invitationId: string): Promise<HouseholdInvitationView | null> {
     const invitation = await this.prisma.householdInvitation.findUnique({
       where: { id: invitationId },
     });
 
-    return invitation
-      ? PrismaHouseholdInvitationMapper.toView(invitation)
-      : null;
+    return invitation ? PrismaHouseholdInvitationMapper.toView(invitation) : null;
   }
 
-  async findByTokenHash(
-    tokenHash: string,
-  ): Promise<HouseholdInvitationView | null> {
+  async findByTokenHash(tokenHash: string): Promise<HouseholdInvitationView | null> {
     const invitation = await this.prisma.householdInvitation.findUnique({
       where: { tokenHash },
     });
 
-    return invitation
-      ? PrismaHouseholdInvitationMapper.toView(invitation)
-      : null;
+    return invitation ? PrismaHouseholdInvitationMapper.toView(invitation) : null;
   }
 
   async findByHouseholdAndEmail(
@@ -52,15 +44,10 @@ export class PrismaHouseholdInvitationRepository implements HouseholdInvitationR
       orderBy: { createdAt: 'desc' },
     });
 
-    return invitation
-      ? PrismaHouseholdInvitationMapper.toView(invitation)
-      : null;
+    return invitation ? PrismaHouseholdInvitationMapper.toView(invitation) : null;
   }
 
-  async hasActiveMembershipForEmail(
-    householdId: string,
-    email: string,
-  ): Promise<boolean> {
+  async hasActiveMembershipForEmail(householdId: string, email: string): Promise<boolean> {
     const membership = await this.prisma.householdMembership.findFirst({
       where: {
         householdId,
@@ -73,10 +60,7 @@ export class PrismaHouseholdInvitationRepository implements HouseholdInvitationR
     return membership !== null;
   }
 
-  async hasActiveMembershipForUser(
-    householdId: string,
-    userId: string,
-  ): Promise<boolean> {
+  async hasActiveMembershipForUser(householdId: string, userId: string): Promise<boolean> {
     const membership = await this.prisma.householdMembership.findUnique({
       where: {
         householdId_userId: { householdId, userId },
@@ -87,22 +71,16 @@ export class PrismaHouseholdInvitationRepository implements HouseholdInvitationR
     return membership?.status === HouseholdMembershipStatus.ACTIVE;
   }
 
-  async listByHousehold(
-    householdId: string,
-  ): Promise<HouseholdInvitationView[]> {
+  async listByHousehold(householdId: string): Promise<HouseholdInvitationView[]> {
     const invitations = await this.prisma.householdInvitation.findMany({
       where: { householdId },
       orderBy: { createdAt: 'desc' },
     });
 
-    return invitations.map((invitation) =>
-      PrismaHouseholdInvitationMapper.toView(invitation),
-    );
+    return invitations.map((invitation) => PrismaHouseholdInvitationMapper.toView(invitation));
   }
 
-  async create(
-    input: CreateHouseholdInvitationInput,
-  ): Promise<HouseholdInvitationView> {
+  async create(input: CreateHouseholdInvitationInput): Promise<HouseholdInvitationView> {
     const invitation = await this.prisma.householdInvitation.create({
       data: {
         householdId: input.householdId,

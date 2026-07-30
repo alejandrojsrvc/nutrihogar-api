@@ -3,9 +3,7 @@ import {
   HouseholdInvitationView,
 } from '../invitation-models/household-invitation-view';
 
-export const HOUSEHOLD_INVITATION_UNIT_OF_WORK = Symbol(
-  'HouseholdInvitationUnitOfWork',
-);
+export const HOUSEHOLD_INVITATION_UNIT_OF_WORK = Symbol('HouseholdInvitationUnitOfWork');
 
 export interface AcceptHouseholdInvitationInput {
   invitationId: string;
@@ -15,7 +13,5 @@ export interface AcceptHouseholdInvitationInput {
 }
 
 export interface HouseholdInvitationUnitOfWork {
-  accept(
-    input: AcceptHouseholdInvitationInput,
-  ): Promise<HouseholdInvitationView>;
+  accept(input: AcceptHouseholdInvitationInput): Promise<HouseholdInvitationView>;
 }

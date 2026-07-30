@@ -16,8 +16,6 @@ export class HouseholdHttpMapper {
   }
 
   static toResponseList(households: HouseholdView[]): HouseholdResponseDto[] {
-    return households.map((household) =>
-      HouseholdHttpMapper.toResponse(household),
-    );
+    return households.map((household) => HouseholdHttpMapper.toResponse(household));
   }
 }

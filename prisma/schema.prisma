@@ -30,6 +30,31 @@ enum HouseholdInvitationStatus {
   CANCELLED
 }
 
+enum BiologicalSex {
+  MALE
+  FEMALE
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  HIGH
+  VERY_HIGH
+}
+
+enum PrimaryGoal {
+  FAT_LOSS
+  MAINTENANCE
+  MUSCLE_GAIN
+}
+
+enum DietaryRestrictionType {
+  ALLERGY
+  INTOLERANCE
+  PREFERENCE
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
@@ -40,37 +65,39 @@ model TechnicalSeed {
 }
 
 model User {
-  id             String               @id @default(uuid()) @db.Uuid
-  authProviderId String               @unique @map("auth_provider_id") @db.VarChar(255)
-  email          String               @unique @db.VarChar(320)
-  displayName    String?              @map("display_name") @db.VarChar(150)
-  avatarUrl      String?              @map("avatar_url") @db.VarChar(2048)
-  timezone       String               @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
-  locale         String               @default("es-AR") @db.VarChar(10)
-  lastLoginAt    DateTime?            @map("last_login_at") @db.Timestamptz(6)
-  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdHouseholds Household[]        @relation("HouseholdCreatedBy")
-  memberships       HouseholdMembership[] @relation("UserMemberships")
-  invitationsSent   HouseholdInvitation[] @relation("HouseholdInvitationInviter")
+  id                  String                @id @default(uuid()) @db.Uuid
+  authProviderId      String                @unique @map("auth_provider_id") @db.VarChar(255)
+  email               String                @unique @db.VarChar(320)
+  displayName         String?               @map("display_name") @db.VarChar(150)
+  avatarUrl           String?               @map("avatar_url") @db.VarChar(2048)
+  timezone            String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  locale              String                @default("es-AR") @db.VarChar(10)
+  lastLoginAt         DateTime?             @map("last_login_at") @db.Timestamptz(6)
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdHouseholds   Household[]           @relation("HouseholdCreatedBy")
+  memberships         HouseholdMembership[] @relation("UserMemberships")
+  invitationsSent     HouseholdInvitation[] @relation("HouseholdInvitationInviter")
   invitationsAccepted HouseholdInvitation[] @relation("HouseholdInvitationAccepter")
+  adultProfiles       AdultProfile[]
 
   @@map("users")
 }
 
 model Household {
-  id          String                @id @default(uuid()) @db.Uuid
-  name        String                @db.VarChar(150)
-  timezone    String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
-  currency    String                @default("ARS") @db.VarChar(3)
-  weeklyBudget Decimal?             @map("weekly_budget") @db.Decimal(12, 2)
-  createdById String                @map("created_by_id") @db.Uuid
-  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt   DateTime?             @map("deleted_at") @db.Timestamptz(6)
-  createdBy   User                  @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  memberships HouseholdMembership[]
-  invitations HouseholdInvitation[]
+  id            String                @id @default(uuid()) @db.Uuid
+  name          String                @db.VarChar(150)
+  timezone      String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  currency      String                @default("ARS") @db.VarChar(3)
+  weeklyBudget  Decimal?              @map("weekly_budget") @db.Decimal(12, 2)
+  createdById   String                @map("created_by_id") @db.Uuid
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdBy     User                  @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships   HouseholdMembership[]
+  invitations   HouseholdInvitation[]
+  adultProfiles AdultProfile[]
 
   @@index([createdById])
   @@index([deletedAt])
@@ -78,16 +105,16 @@ model Household {
 }
 
 model HouseholdMembership {
-  id          String                   @id @default(uuid()) @db.Uuid
-  householdId String                   @map("household_id") @db.Uuid
-  userId      String                   @map("user_id") @db.Uuid
+  id          String                    @id @default(uuid()) @db.Uuid
+  householdId String                    @map("household_id") @db.Uuid
+  userId      String                    @map("user_id") @db.Uuid
   role        HouseholdMembershipRole
   status      HouseholdMembershipStatus
-  joinedAt    DateTime                 @default(now()) @map("joined_at") @db.Timestamptz(6)
-  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household   Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  user        User                     @relation("UserMemberships", fields: [userId], references: [id], onDelete: Restrict)
+  joinedAt    DateTime                  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  createdAt   DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household   Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user        User                      @relation("UserMemberships", fields: [userId], references: [id], onDelete: Restrict)
 
   @@unique([householdId, userId])
   @@index([householdId, status])
@@ -96,24 +123,63 @@ model HouseholdMembership {
 }
 
 model HouseholdInvitation {
-  id           String                   @id @default(uuid()) @db.Uuid
-  householdId  String                   @map("household_id") @db.Uuid
-  email        String                   @db.VarChar(320)
-  tokenHash    String                   @unique @map("token_hash") @db.VarChar(255)
+  id           String                    @id @default(uuid()) @db.Uuid
+  householdId  String                    @map("household_id") @db.Uuid
+  email        String                    @db.VarChar(320)
+  tokenHash    String                    @unique @map("token_hash") @db.VarChar(255)
   role         HouseholdInvitationRole
   status       HouseholdInvitationStatus
-  expiresAt    DateTime                 @map("expires_at") @db.Timestamptz(6)
-  invitedById  String                   @map("invited_by_id") @db.Uuid
-  acceptedById String?                  @map("accepted_by_id") @db.Uuid
-  createdAt    DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household    Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  invitedBy    User                     @relation("HouseholdInvitationInviter", fields: [invitedById], references: [id], onDelete: Restrict)
-  acceptedBy   User?                    @relation("HouseholdInvitationAccepter", fields: [acceptedById], references: [id], onDelete: SetNull)
+  expiresAt    DateTime                  @map("expires_at") @db.Timestamptz(6)
+  invitedById  String                    @map("invited_by_id") @db.Uuid
+  acceptedById String?                   @map("accepted_by_id") @db.Uuid
+  createdAt    DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household    Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  invitedBy    User                      @relation("HouseholdInvitationInviter", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptedBy   User?                     @relation("HouseholdInvitationAccepter", fields: [acceptedById], references: [id], onDelete: SetNull)
 
   @@index([householdId, status])
   @@index([email])
   @@index([invitedById])
   @@index([acceptedById])
   @@map("household_invitations")
+}
+
+model AdultProfile {
+  id                  String               @id @default(uuid()) @db.Uuid
+  householdId         String               @map("household_id") @db.Uuid
+  userId              String               @map("user_id") @db.Uuid
+  name                String               @db.VarChar(150)
+  birthDate           DateTime             @map("birth_date") @db.Date
+  biologicalSex       BiologicalSex        @map("biological_sex")
+  heightCm            Decimal              @map("height_cm") @db.Decimal(5, 2)
+  activityLevel       ActivityLevel        @map("activity_level")
+  primaryGoal         PrimaryGoal          @map("primary_goal")
+  hasKitchenScale     Boolean              @map("has_kitchen_scale")
+  isActive            Boolean              @default(true) @map("is_active")
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  household           Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  dietaryRestrictions DietaryRestriction[]
+
+  @@index([householdId, isActive])
+  @@index([userId, isActive])
+  @@map("adult_profiles")
+}
+
+model DietaryRestriction {
+  id             String                 @id @default(uuid()) @db.Uuid
+  adultProfileId String                 @map("adult_profile_id") @db.Uuid
+  type           DietaryRestrictionType
+  name           String                 @db.VarChar(150)
+  severity       String?                @db.VarChar(100)
+  notes          String?                @db.Text
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  adultProfile   AdultProfile           @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+
+  @@index([adultProfileId])
+  @@map("dietary_restrictions")
 }

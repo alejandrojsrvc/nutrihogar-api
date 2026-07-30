@@ -8,7 +8,7 @@ import {
 import { CurrentUser } from './current-user.decorator';
 import { CurrentUserResponseDto } from './dto/current-user-response.dto';
 import { SupabaseAuthGuard } from './supabase-auth.guard';
-import { CurrentUser as CurrentUserModel } from '../../application/models/current-user';
+import type { CurrentUser as CurrentUserModel } from '../../application/models/current-user';
 
 @ApiTags('users')
 @ApiBearerAuth()

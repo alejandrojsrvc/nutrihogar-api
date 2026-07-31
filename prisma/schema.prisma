@@ -106,6 +106,7 @@ enum MealStatus {
 enum MealSource {
   MANUAL
   DUPLICATED
+  PREPARED_BATCH
 }
 
 enum MealMeasurementMethod {
@@ -145,6 +146,13 @@ enum PortionRemainderDisposition {
   DISCARDED
   SHARED
   CONSUMED_LATER
+}
+
+enum PreparedFoodLeftoverStatus {
+  AVAILABLE
+  CONSUMED
+  DISCARDED
+  EXPIRED
 }
 
 // Technical model for validating the local Prisma migration and seed flow.
@@ -200,6 +208,7 @@ model Household {
   meals           Meal[]
   recipes         Recipe[]
   preparedBatches PreparedBatch[]
+  preparedFoodLeftovers PreparedFoodLeftover[]
 
   @@index([createdById])
   @@index([deletedAt])
@@ -589,6 +598,7 @@ model PreparedBatch {
   ingredients        PreparedBatchIngredient[]
   nutrientSnapshots  PreparedBatchNutrientSnapshot[]
   servedPortions     ServedPortion[]
+  preparedFoodLeftovers PreparedFoodLeftover[]
 
   @@index([householdId, status, preparedAt])
   @@index([recipeId])
@@ -702,4 +712,38 @@ model ServedPortionNutrientSnapshot {
   @@unique([servedPortionId, nutrientCode])
   @@index([servedPortionId])
   @@map("served_portion_nutrient_snapshots")
+}
+
+model PreparedFoodLeftover {
+  id                String                              @id @default(uuid()) @db.Uuid
+  preparedBatchId   String                              @map("prepared_batch_id") @db.Uuid
+  householdId       String                              @map("household_id") @db.Uuid
+  availableWeight   Decimal                             @map("available_weight") @db.Decimal(18, 6)
+  storedAt          DateTime                            @map("stored_at") @db.Timestamptz(6)
+  storageLocation   String?                             @map("storage_location") @db.VarChar(100)
+  notes             String?                             @db.Text
+  status            PreparedFoodLeftoverStatus          @default(AVAILABLE)
+  createdAt         DateTime                            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  preparedBatch     PreparedBatch                       @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
+  household         Household                           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  nutrientSnapshots PreparedFoodLeftoverNutrientSnapshot[]
+
+  @@index([preparedBatchId, status])
+  @@index([householdId, status, storedAt])
+  @@map("prepared_food_leftovers")
+}
+
+model PreparedFoodLeftoverNutrientSnapshot {
+  id                     String              @id @default(uuid()) @db.Uuid
+  preparedFoodLeftoverId String              @map("prepared_food_leftover_id") @db.Uuid
+  nutrientCode           String              @map("nutrient_code") @db.VarChar(50)
+  nutrientName           String              @map("nutrient_name") @db.VarChar(100)
+  unit                   String              @db.VarChar(20)
+  amountPerGram          Decimal             @map("amount_per_gram") @db.Decimal(18, 6)
+  leftover               PreparedFoodLeftover @relation(fields: [preparedFoodLeftoverId], references: [id], onDelete: Cascade)
+
+  @@unique([preparedFoodLeftoverId, nutrientCode])
+  @@index([preparedFoodLeftoverId])
+  @@map("prepared_food_leftover_nutrient_snapshots")
 }

@@ -16,6 +16,12 @@ import {
   ServedPortionsRequiredError,
 } from '../../domain/errors/served-portion.errors';
 import {
+  InvalidConsumptionDateError,
+  InvalidRemainderInputError,
+  ServedPortionConsumptionAccessDeniedError,
+  ServedPortionNotFoundError,
+} from '../../application/errors/served-portion-consumption.errors';
+import {
   PreparedBatchAccessDeniedError,
   PreparedBatchNotFoundError,
 } from '../../application/errors/prepared-batch-application.errors';
@@ -47,7 +53,9 @@ export function rethrowServedPortionHttpError(error: unknown): never {
     error instanceof InvalidServedWeightError ||
     error instanceof InvalidRemainderWeightError ||
     error instanceof InvalidServedAtError ||
-    error instanceof ServedPortionsRequiredError
+    error instanceof ServedPortionsRequiredError ||
+    error instanceof InvalidConsumptionDateError ||
+    error instanceof InvalidRemainderInputError
   ) {
     throw new BadRequestException(error.message);
   }
@@ -59,10 +67,17 @@ export function rethrowServedPortionHttpError(error: unknown): never {
   ) {
     throw new ConflictException(error.message);
   }
-  if (error instanceof PreparedBatchAccessDeniedError) {
+  if (
+    error instanceof PreparedBatchAccessDeniedError ||
+    error instanceof ServedPortionConsumptionAccessDeniedError
+  ) {
     throw new ForbiddenException(error.message);
   }
-  if (error instanceof PreparedBatchNotFoundError || error instanceof AdultProfileNotFoundError) {
+  if (
+    error instanceof PreparedBatchNotFoundError ||
+    error instanceof AdultProfileNotFoundError ||
+    error instanceof ServedPortionNotFoundError
+  ) {
     throw new NotFoundException(error.message);
   }
 

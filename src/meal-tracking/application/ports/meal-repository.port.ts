@@ -25,8 +25,8 @@ export interface MealNutrientSnapshotInput {
 }
 
 export interface MealItemInput {
-  foodId: string;
-  foodServingId?: string;
+  foodId: string | null;
+  foodServingId?: string | null;
   nameSnapshot: string;
   brandSnapshot: string | null;
   preparationStateSnapshot: string;

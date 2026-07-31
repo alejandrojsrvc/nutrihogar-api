@@ -86,16 +86,6 @@ export class PrismaServedPortionRepository
         select: { id: true },
       });
       const portionData = toPortionData(data);
-      const remainder = data.remainder
-        ? {
-            create: {
-              id: data.remainder.id,
-              weight: data.remainder.weight,
-              disposition: data.remainder.disposition,
-              createdAt: data.remainder.createdAt,
-            },
-          }
-        : undefined;
       const nutrients = {
         create: data.nutrients.map((nutrient) => ({
           nutrientCode: nutrient.code,
@@ -107,7 +97,22 @@ export class PrismaServedPortionRepository
 
       if (!existing) {
         await transaction.servedPortion.create({
-          data: { ...portionData, remainder, nutrientSnapshots: nutrients },
+          data: {
+            ...portionData,
+            ...(data.remainder
+              ? {
+                  remainder: {
+                    create: {
+                      id: data.remainder.id,
+                      weight: data.remainder.weight,
+                      disposition: data.remainder.disposition,
+                      createdAt: data.remainder.createdAt,
+                    },
+                  },
+                }
+              : {}),
+            nutrientSnapshots: nutrients,
+          },
         });
         return;
       }
@@ -116,13 +121,21 @@ export class PrismaServedPortionRepository
         where: { id: data.id },
         data: {
           ...portionData,
-          remainder: {
-            delete: data.remainder ? undefined : {},
-            ...remainder,
-          },
           nutrientSnapshots: { deleteMany: {}, ...nutrients },
         },
       });
+      await transaction.portionRemainder.deleteMany({ where: { servedPortionId: data.id } });
+      if (data.remainder) {
+        await transaction.portionRemainder.create({
+          data: {
+            id: data.remainder.id,
+            servedPortionId: data.id,
+            weight: data.remainder.weight,
+            disposition: data.remainder.disposition,
+            createdAt: data.remainder.createdAt,
+          },
+        });
+      }
     });
   }
 

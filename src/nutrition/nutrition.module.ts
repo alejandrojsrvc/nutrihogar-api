@@ -136,6 +136,7 @@ import { NutritionGoalSuggestionsController } from './presentation/http/nutritio
   ],
   exports: [
     NUTRITION_ENGINE_SERVICE,
+    CLOCK,
     NUTRITION_GOAL_REPOSITORY,
     NUTRITION_GOAL_UNIT_OF_WORK,
     SAVE_NUTRITION_GOAL_SUGGESTION_USE_CASE,

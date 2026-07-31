@@ -5,13 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  IncompleteNutritionGoalProfileError,
   InvalidNutritionGoalMetadataError,
-  InvalidNutritionGoalProfileAgeError,
   InvalidNutritionGoalValuesError,
 } from '../../domain/errors/nutrition-goal.errors';
 import {
   NutritionGoalAccessDeniedError,
+  IncompleteNutritionGoalProfileError,
+  InvalidNutritionGoalProfileAgeError,
   NutritionGoalProfileNotFoundError,
   NutritionGoalSuggestionAlreadyHandledError,
   NutritionGoalSuggestionExpiredError,

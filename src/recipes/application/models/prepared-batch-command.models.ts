@@ -26,3 +26,14 @@ export interface PreparedBatchActorCommand {
   actorId: string;
   batchId: string;
 }
+
+export interface FinalizePreparedBatchCommand extends PreparedBatchActorCommand {
+  finalCookedWeight: number | string;
+}
+
+export interface PreparedBatchNutritionWarning {
+  ingredientId: string;
+  foodId: string;
+  code: 'NUTRIENTS_UNAVAILABLE';
+  message: string;
+}

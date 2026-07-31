@@ -34,6 +34,14 @@ import {
   CancelPreparedBatchUseCase,
 } from '../../application/use-cases/cancel-prepared-batch.use-case';
 import {
+  CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE,
+  ConfirmPreparedBatchIngredientsUseCase,
+} from '../../application/use-cases/confirm-prepared-batch-ingredients.use-case';
+import {
+  FINALIZE_PREPARED_BATCH_USE_CASE,
+  FinalizePreparedBatchUseCase,
+} from '../../application/use-cases/finalize-prepared-batch.use-case';
+import {
   GET_PREPARED_BATCH_USE_CASE,
   GetPreparedBatchUseCase,
 } from '../../application/use-cases/get-prepared-batch.use-case';
@@ -46,6 +54,7 @@ import {
   UpdatePreparedBatchIngredientsUseCase,
 } from '../../application/use-cases/update-prepared-batch-ingredients.use-case';
 import {
+  FinalizePreparedBatchRequestDto,
   StartPreparedBatchRequestDto,
   UpdatePreparedBatchIngredientsRequestDto,
 } from './dto/prepared-batch-request.dto';
@@ -70,6 +79,10 @@ export class PreparedBatchesController {
     private readonly getPreparedBatch: GetPreparedBatchUseCase,
     @Inject(CANCEL_PREPARED_BATCH_USE_CASE)
     private readonly cancelPreparedBatch: CancelPreparedBatchUseCase,
+    @Inject(CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE)
+    private readonly confirmIngredients: ConfirmPreparedBatchIngredientsUseCase,
+    @Inject(FINALIZE_PREPARED_BATCH_USE_CASE)
+    private readonly finalizePreparedBatch: FinalizePreparedBatchUseCase,
   ) {}
 
   @Post('recipes/:recipeId/prepared-batches')
@@ -154,6 +167,54 @@ export class PreparedBatchesController {
   ): Promise<void> {
     try {
       await this.cancelPreparedBatch.execute(user.id, batchId);
+    } catch (error) {
+      rethrowPreparedBatchHttpError(error);
+    }
+  }
+
+  @Post('prepared-batches/:batchId/confirm-ingredients')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirma ingredientes y crea snapshots nutricionales' })
+  @ApiParam({ name: 'batchId', format: 'uuid' })
+  @ApiOkResponse({ type: PreparedBatchResponseDto })
+  @ApiBadRequestResponse({ description: 'Los ingredientes o equivalencias son invalidos.' })
+  @ApiConflictResponse({ description: 'La preparacion ya fue confirmada.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede confirmar la preparacion.' })
+  @ApiNotFoundResponse({ description: 'La preparacion o un alimento no existe.' })
+  async confirm(
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<PreparedBatchResponseDto> {
+    try {
+      const result = await this.confirmIngredients.execute(user.id, batchId);
+      return toPreparedBatchResponse(result.batch, result.warnings);
+    } catch (error) {
+      rethrowPreparedBatchHttpError(error);
+    }
+  }
+
+  @Post('prepared-batches/:batchId/finalize')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Finaliza una preparacion y calcula su densidad' })
+  @ApiParam({ name: 'batchId', format: 'uuid' })
+  @ApiOkResponse({ type: PreparedBatchResponseDto })
+  @ApiBadRequestResponse({ description: 'El peso cocido es invalido.' })
+  @ApiConflictResponse({ description: 'La preparacion no puede finalizarse.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede finalizar la preparacion.' })
+  @ApiNotFoundResponse({ description: 'La preparacion no existe.' })
+  async finalize(
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: FinalizePreparedBatchRequestDto,
+  ): Promise<PreparedBatchResponseDto> {
+    try {
+      return toPreparedBatchResponse(
+        await this.finalizePreparedBatch.execute({
+          actorId: user.id,
+          batchId,
+          finalCookedWeight: body.finalCookedWeight,
+        }),
+      );
     } catch (error) {
       rethrowPreparedBatchHttpError(error);
     }

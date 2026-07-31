@@ -20,6 +20,14 @@ import {
   CancelPreparedBatchUseCase,
 } from './application/use-cases/cancel-prepared-batch.use-case';
 import {
+  CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE,
+  ConfirmPreparedBatchIngredientsUseCase,
+} from './application/use-cases/confirm-prepared-batch-ingredients.use-case';
+import {
+  FINALIZE_PREPARED_BATCH_USE_CASE,
+  FinalizePreparedBatchUseCase,
+} from './application/use-cases/finalize-prepared-batch.use-case';
+import {
   GET_PREPARED_BATCH_USE_CASE,
   GetPreparedBatchUseCase,
 } from './application/use-cases/get-prepared-batch.use-case';
@@ -150,6 +158,25 @@ import {
         batches: PreparedBatchRepository,
         clock: Clock,
       ) => new CancelPreparedBatchUseCase(households, batches, clock),
+    },
+    {
+      provide: CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, PREPARED_BATCH_REPOSITORY, NUTRITION_ENGINE_SERVICE, CLOCK],
+      useFactory: (
+        households: HouseholdRepository,
+        batches: PreparedBatchRepository,
+        nutritionEngine: NutritionEngineService,
+        clock: Clock,
+      ) => new ConfirmPreparedBatchIngredientsUseCase(households, batches, nutritionEngine, clock),
+    },
+    {
+      provide: FINALIZE_PREPARED_BATCH_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, PREPARED_BATCH_REPOSITORY, CLOCK],
+      useFactory: (
+        households: HouseholdRepository,
+        batches: PreparedBatchRepository,
+        clock: Clock,
+      ) => new FinalizePreparedBatchUseCase(households, batches, clock),
     },
   ],
 })

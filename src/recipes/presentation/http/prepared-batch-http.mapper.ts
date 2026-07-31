@@ -31,18 +31,12 @@ import {
 } from '../../domain/errors/prepared-batch.errors';
 import { RecipeArchivedError } from '../../domain/errors/recipe.errors';
 import { PreparedBatch } from '../../domain/entities/prepared-batch';
+import type { PreparedBatchNutritionWarning } from '../../application/models/prepared-batch-command.models';
 import { PreparedBatchResponseDto } from './dto/prepared-batch-response.dto';
-
-export interface PreparedBatchWarning {
-  ingredientId: string;
-  foodId: string;
-  code: 'NUTRIENTS_UNAVAILABLE';
-  message: string;
-}
 
 export function toPreparedBatchResponse(
   batch: PreparedBatch,
-  warnings: PreparedBatchWarning[] = [],
+  warnings: PreparedBatchNutritionWarning[] = [],
 ): PreparedBatchResponseDto {
   return {
     id: batch.id,

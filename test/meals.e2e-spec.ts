@@ -10,6 +10,7 @@ import { CurrentUser } from '../src/identity/application/models/current-user';
 import { GET_CURRENT_USER_USE_CASE } from '../src/identity/application/use-cases/get-current-user.use-case';
 import { CANCEL_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/cancel-meal.use-case';
 import { DUPLICATE_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/duplicate-meal.use-case';
+import { GET_DAILY_NUTRITION_SUMMARY_USE_CASE } from '../src/meal-tracking/application/use-cases/get-daily-nutrition-summary.use-case';
 import { GET_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/get-meal.use-case';
 import { LIST_MEALS_USE_CASE } from '../src/meal-tracking/application/use-cases/list-meals.use-case';
 import { REGISTER_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/register-meal.use-case';
@@ -24,6 +25,7 @@ describe('Meals HTTP API (e2e)', () => {
   const updateMeal = { execute: jest.fn() };
   const cancelMeal = { execute: jest.fn() };
   const duplicateMeal = { execute: jest.fn() };
+  const dailySummary = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,6 +45,8 @@ describe('Meals HTTP API (e2e)', () => {
       .useValue(cancelMeal)
       .overrideProvider(DUPLICATE_MEAL_USE_CASE)
       .useValue(duplicateMeal)
+      .overrideProvider(GET_DAILY_NUTRITION_SUMMARY_USE_CASE)
+      .useValue(dailySummary)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -66,6 +70,20 @@ describe('Meals HTTP API (e2e)', () => {
     duplicateMeal.execute
       .mockReset()
       .mockResolvedValue({ ...meal, id: 'duplicated-meal-id', source: 'DUPLICATED' });
+    dailySummary.execute.mockReset().mockResolvedValue({
+      date: '2026-07-30',
+      profile: { id: 'profile-id', name: 'Alejandro' },
+      goal: null,
+      consumed: {
+        dailyCalories: 500,
+        proteinGrams: 40,
+        carbohydrateGrams: 60,
+        fatGrams: 15,
+        fiberGrams: 4,
+      },
+      remaining: null,
+      meals: [],
+    });
   });
 
   it('registers a manual meal', async () => {
@@ -133,6 +151,29 @@ describe('Meals HTTP API (e2e)', () => {
     expect(duplicateMeal.execute).toHaveBeenCalledWith(
       expect.objectContaining({ mealId: 'meal-id', mealType: 'DINNER' }),
     );
+  });
+
+  it('returns the daily nutrition summary', async () => {
+    await request(app.getHttpServer())
+      .get('/api/adult-profiles/profile-id/daily-nutrition-summary?date=2026-07-30')
+      .set('Authorization', 'Bearer valid-token')
+      .expect(200)
+      .expect((response) =>
+        expect(response.body).toEqual(
+          expect.objectContaining({
+            date: '2026-07-30',
+            profileId: 'profile-id',
+            consumed: {
+              dailyCalories: 500,
+              proteinGrams: 40,
+              carbohydrateGrams: 60,
+              fatGrams: 15,
+              fiberGrams: 4,
+            },
+            goal: null,
+          }),
+        ),
+      );
   });
 
   it('updates and cancels a meal', async () => {

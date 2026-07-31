@@ -32,13 +32,27 @@ import {
   NUTRITION_ENGINE_SERVICE,
   NutritionEngineService,
 } from '../nutrition/application/nutrition-engine.service';
+import {
+  DAILY_NUTRITION_SUMMARY_REPOSITORY,
+  DailyNutritionSummaryRepository,
+} from './application/ports/daily-nutrition-summary-repository.port';
+import {
+  GET_DAILY_NUTRITION_SUMMARY_USE_CASE,
+  GetDailyNutritionSummaryUseCase,
+} from './application/use-cases/get-daily-nutrition-summary.use-case';
+import { PrismaDailyNutritionSummaryRepository } from './infrastructure/persistence/prisma-daily-nutrition-summary.repository';
+import { DailyNutritionSummaryController } from './presentation/http/daily-nutrition-summary.controller';
 
 @Module({
   imports: [IdentityModule, NutritionModule],
-  controllers: [MealsController],
+  controllers: [MealsController, DailyNutritionSummaryController],
   providers: [
     { provide: MEAL_REPOSITORY, useClass: PrismaMealRepository },
     { provide: MEAL_UNIT_OF_WORK, useClass: PrismaMealRepository },
+    {
+      provide: DAILY_NUTRITION_SUMMARY_REPOSITORY,
+      useClass: PrismaDailyNutritionSummaryRepository,
+    },
     {
       provide: REGISTER_MEAL_USE_CASE,
       inject: [MEAL_REPOSITORY, MEAL_UNIT_OF_WORK, NUTRITION_ENGINE_SERVICE, CLOCK],
@@ -84,6 +98,12 @@ import {
       inject: [MEAL_REPOSITORY, MEAL_UNIT_OF_WORK, CLOCK],
       useFactory: (meals: MealRepository, unitOfWork: MealUnitOfWork, clock: Clock) =>
         new CancelMealUseCase(meals, unitOfWork, clock),
+    },
+    {
+      provide: GET_DAILY_NUTRITION_SUMMARY_USE_CASE,
+      inject: [DAILY_NUTRITION_SUMMARY_REPOSITORY],
+      useFactory: (summaries: DailyNutritionSummaryRepository) =>
+        new GetDailyNutritionSummaryUseCase(summaries),
     },
   ],
 })

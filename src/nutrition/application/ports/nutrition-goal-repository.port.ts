@@ -41,5 +41,11 @@ export interface ConfirmNutritionGoalSuggestionInput {
 export interface NutritionGoalUnitOfWork {
   createSuggestion(input: CreateNutritionGoalSuggestionInput): Promise<NutritionGoalSuggestionView>;
   confirmSuggestion(input: ConfirmNutritionGoalSuggestionInput): Promise<NutritionGoalView | null>;
+  rejectSuggestion(input: RejectNutritionGoalSuggestionInput): Promise<boolean>;
   expireSuggestion(suggestionId: string): Promise<void>;
+}
+
+export interface RejectNutritionGoalSuggestionInput {
+  suggestionId: string;
+  rejectedAt: Date;
 }

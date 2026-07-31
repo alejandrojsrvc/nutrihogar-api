@@ -50,11 +50,16 @@ export class PrismaNutritionFoodRepository implements NutritionFoodRepository {
 function toNutritionFood(food: NutritionFoodRecord): NutritionFoodData {
   return {
     id: food.id,
+    name: food.name,
+    brand: food.brand,
     preparationState: food.preparationState,
+    confidenceLevel: food.confidenceLevel,
     referenceQuantity: food.referenceQuantity.toString(),
     referenceUnit: food.referenceUnit,
     nutrients: food.nutrients.map(({ nutrientDefinition, amount }) => ({
       code: nutrientDefinition.code,
+      name: nutrientDefinition.name,
+      unit: nutrientDefinition.unit,
       amount: amount.toString(),
     })),
     servings: food.servings.map((serving) => ({

@@ -1,10 +1,23 @@
-import { Controller, Inject, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Get,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiConflictResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
@@ -18,6 +31,24 @@ import {
   GenerateNutritionGoalSuggestionUseCase,
 } from '../../application/use-cases/generate-nutrition-goal-suggestion.use-case';
 import {
+  CONFIRM_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+  ConfirmNutritionGoalSuggestionUseCase,
+} from '../../application/use-cases/confirm-nutrition-goal-suggestion.use-case';
+import {
+  REJECT_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+  RejectNutritionGoalSuggestionUseCase,
+} from '../../application/use-cases/reject-nutrition-goal-suggestion.use-case';
+import {
+  GET_CURRENT_NUTRITION_GOAL_USE_CASE,
+  GetCurrentNutritionGoalUseCase,
+} from '../../application/use-cases/get-current-nutrition-goal.use-case';
+import {
+  LIST_NUTRITION_GOALS_USE_CASE,
+  ListNutritionGoalsUseCase,
+} from '../../application/use-cases/list-nutrition-goals.use-case';
+import { NutritionGoalResponseDto } from './dto/nutrition-goal-response.dto';
+import { ConfirmNutritionGoalSuggestionRequestDto } from './dto/confirm-nutrition-goal-suggestion-request.dto';
+import {
   NutritionGoalCalculationResponseDto,
   NutritionGoalSuggestionResponseDto,
   NutritionGoalValuesResponseDto,
@@ -27,15 +58,23 @@ import { rethrowNutritionGoalHttpError } from './nutrition-goal-http.mapper';
 @ApiTags('nutrition-goals')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
-@Controller('adult-profiles/:profileId/nutrition-goal-suggestions')
+@Controller()
 @UseGuards(SupabaseAuthGuard)
 export class NutritionGoalSuggestionsController {
   constructor(
     @Inject(GENERATE_NUTRITION_GOAL_SUGGESTION_USE_CASE)
     private readonly generateSuggestion: GenerateNutritionGoalSuggestionUseCase,
+    @Inject(CONFIRM_NUTRITION_GOAL_SUGGESTION_USE_CASE)
+    private readonly confirmSuggestion: ConfirmNutritionGoalSuggestionUseCase,
+    @Inject(REJECT_NUTRITION_GOAL_SUGGESTION_USE_CASE)
+    private readonly rejectSuggestion: RejectNutritionGoalSuggestionUseCase,
+    @Inject(GET_CURRENT_NUTRITION_GOAL_USE_CASE)
+    private readonly getCurrentGoal: GetCurrentNutritionGoalUseCase,
+    @Inject(LIST_NUTRITION_GOALS_USE_CASE)
+    private readonly listGoals: ListNutritionGoalsUseCase,
   ) {}
 
-  @Post()
+  @Post('adult-profiles/:profileId/nutrition-goal-suggestions')
   @ApiOperation({
     summary: 'Calcula y guarda una propuesta nutricional pendiente',
     description:
@@ -68,6 +107,118 @@ export class NutritionGoalSuggestionsController {
       rethrowNutritionGoalHttpError(error);
     }
   }
+
+  @Post('nutrition-goal-suggestions/:suggestionId/confirm')
+  @ApiOperation({ summary: 'Confirma una propuesta nutricional' })
+  @ApiParam({ name: 'suggestionId', format: 'uuid' })
+  @ApiCreatedResponse({ type: NutritionGoalResponseDto })
+  @ApiBadRequestResponse({ description: 'Los valores nutricionales son inválidos.' })
+  @ApiConflictResponse({ description: 'La propuesta ya fue procesada o expiró.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder al perfil.' })
+  @ApiNotFoundResponse({ description: 'La propuesta no existe.' })
+  async confirm(
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: ConfirmNutritionGoalSuggestionRequestDto,
+  ): Promise<NutritionGoalResponseDto> {
+    try {
+      const goal = await this.confirmSuggestion.execute({
+        actorId: user.id,
+        suggestionId,
+        dailyCalories: body.dailyCalories,
+        proteinGrams: body.proteinGrams,
+        carbohydrateGrams: body.carbohydrateGrams,
+        fatGrams: body.fatGrams,
+        fiberGrams: body.fiberGrams,
+      });
+
+      return toGoalResponse(goal);
+    } catch (error) {
+      rethrowNutritionGoalHttpError(error);
+    }
+  }
+
+  @Post('nutrition-goal-suggestions/:suggestionId/reject')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Rechaza una propuesta nutricional' })
+  @ApiParam({ name: 'suggestionId', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'La propuesta fue rechazada.' })
+  @ApiConflictResponse({ description: 'La propuesta ya fue procesada o expiró.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder al perfil.' })
+  @ApiNotFoundResponse({ description: 'La propuesta no existe.' })
+  async reject(
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<void> {
+    try {
+      await this.rejectSuggestion.execute({ actorId: user.id, suggestionId });
+    } catch (error) {
+      rethrowNutritionGoalHttpError(error);
+    }
+  }
+
+  @Get('adult-profiles/:profileId/nutrition-goals/current')
+  @ApiOperation({ summary: 'Obtiene la meta nutricional actual' })
+  @ApiParam({ name: 'profileId', format: 'uuid' })
+  @ApiOkResponse({ type: NutritionGoalResponseDto, nullable: true })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder al perfil.' })
+  async current(
+    @Param('profileId') profileId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<NutritionGoalResponseDto | null> {
+    try {
+      const goal = await this.getCurrentGoal.execute({
+        actorId: user.id,
+        adultProfileId: profileId,
+      });
+
+      return goal ? toGoalResponse(goal) : null;
+    } catch (error) {
+      rethrowNutritionGoalHttpError(error);
+    }
+  }
+
+  @Get('adult-profiles/:profileId/nutrition-goals')
+  @ApiOperation({ summary: 'Obtiene el historial de metas nutricionales' })
+  @ApiParam({ name: 'profileId', format: 'uuid' })
+  @ApiOkResponse({ type: NutritionGoalResponseDto, isArray: true })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder al perfil.' })
+  async history(
+    @Param('profileId') profileId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<NutritionGoalResponseDto[]> {
+    try {
+      const goals = await this.listGoals.execute({
+        actorId: user.id,
+        adultProfileId: profileId,
+      });
+
+      return goals.map(toGoalResponse);
+    } catch (error) {
+      rethrowNutritionGoalHttpError(error);
+    }
+  }
+}
+
+function toGoalResponse(goal: Awaited<ReturnType<GetCurrentNutritionGoalUseCase['execute']>>) {
+  if (!goal) throw new Error('A nutrition goal is required.');
+
+  return {
+    id: goal.id,
+    adultProfileId: goal.adultProfileId,
+    validFrom: goal.validFrom,
+    validUntil: goal.validUntil,
+    dailyCalories: goal.values.calories.toNumber(),
+    proteinGrams: goal.values.proteinGrams.toNumber(),
+    carbohydrateGrams: goal.values.carbohydrateGrams.toNumber(),
+    fatGrams: goal.values.fatGrams.toNumber(),
+    fiberGrams: goal.values.fiberGrams.toNumber(),
+    goalType: goal.goalType,
+    calculationMethod: goal.calculationMethod,
+    confirmedById: goal.confirmedById,
+    createdAt: goal.createdAt,
+    updatedAt: goal.updatedAt,
+  };
 }
 
 function toCalculationResponse(

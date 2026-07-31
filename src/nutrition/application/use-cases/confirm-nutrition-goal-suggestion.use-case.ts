@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
-import { NutritionValues } from '../../domain/models/nutrition-goal.models';
+import { CalculationSnapshot, NutritionValues } from '../../domain/models/nutrition-goal.models';
+import { InvalidNutritionGoalMetadataError } from '../../domain/errors/nutrition-goal.errors';
 import {
   createNutritionValues,
   requiredNutritionGoalText,
@@ -23,7 +24,6 @@ export const CONFIRM_NUTRITION_GOAL_SUGGESTION_USE_CASE = Symbol(
 export interface ConfirmNutritionGoalSuggestionCommand {
   actorId: string;
   suggestionId: string;
-  goalType: string;
   dailyCalories?: Decimal.Value;
   proteinGrams?: Decimal.Value;
   carbohydrateGrams?: Decimal.Value;
@@ -61,7 +61,7 @@ export class ConfirmNutritionGoalSuggestionUseCase {
       confirmedById: command.actorId,
       confirmedAt: now,
       values: editedValues(suggestion.values, command),
-      goalType: requiredNutritionGoalText(command.goalType),
+      goalType: goalTypeFromSuggestion(suggestion.calculationInput),
       calculationMethod: suggestion.calculationMethod,
       calculationInput: structuredClone(suggestion.calculationInput),
     });
@@ -69,6 +69,13 @@ export class ConfirmNutritionGoalSuggestionUseCase {
 
     return goal;
   }
+}
+
+function goalTypeFromSuggestion(input: CalculationSnapshot): string {
+  const goalType = input.primaryGoal;
+  if (typeof goalType !== 'string') throw new InvalidNutritionGoalMetadataError();
+
+  return requiredNutritionGoalText(goalType);
 }
 
 function editedValues(

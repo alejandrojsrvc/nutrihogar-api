@@ -11,13 +11,16 @@ describe('PrismaNutritionFoodRepository', () => {
       .fn()
       .mockResolvedValue({
         id: 'food-id',
+        name: 'Arroz cocido',
+        brand: null,
         preparationState: 'COOKED',
+        confidenceLevel: 'VERIFIED',
         referenceQuantity: new Prisma.Decimal(100),
         referenceUnit: 'GRAM',
         nutrients: [
           {
             amount: new Prisma.Decimal('2.7'),
-            nutrientDefinition: { code: 'PROTEIN' },
+            nutrientDefinition: { code: 'PROTEIN', name: 'Proteína', unit: 'g' },
           },
         ],
         servings: [],
@@ -57,10 +60,13 @@ describe('PrismaNutritionFoodRepository', () => {
     );
     expect(result).toEqual({
       id: 'food-id',
+      name: 'Arroz cocido',
+      brand: null,
       preparationState: 'COOKED',
+      confidenceLevel: 'VERIFIED',
       referenceQuantity: '100',
       referenceUnit: 'GRAM',
-      nutrients: [{ code: 'PROTEIN', amount: '2.7' }],
+      nutrients: [{ code: 'PROTEIN', name: 'Proteína', unit: 'g', amount: '2.7' }],
       servings: [],
     });
   });

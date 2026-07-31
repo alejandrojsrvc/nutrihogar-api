@@ -48,7 +48,14 @@ export class NutritionEngineService {
       servingId: command.servingId,
     });
 
-    return this.calculator.calculate(food, base);
+    return {
+      ...this.calculator.calculate(food, base),
+      foodId: food.id,
+      foodName: food.name,
+      foodBrand: food.brand,
+      preparationState: food.preparationState,
+      confidenceLevel: food.confidenceLevel,
+    };
   }
 
   async calculateMany(

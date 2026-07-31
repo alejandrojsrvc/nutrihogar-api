@@ -24,6 +24,18 @@ import {
   ConfirmNutritionGoalSuggestionUseCase,
 } from './application/use-cases/confirm-nutrition-goal-suggestion.use-case';
 import {
+  REJECT_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+  RejectNutritionGoalSuggestionUseCase,
+} from './application/use-cases/reject-nutrition-goal-suggestion.use-case';
+import {
+  GET_CURRENT_NUTRITION_GOAL_USE_CASE,
+  GetCurrentNutritionGoalUseCase,
+} from './application/use-cases/get-current-nutrition-goal.use-case';
+import {
+  LIST_NUTRITION_GOALS_USE_CASE,
+  ListNutritionGoalsUseCase,
+} from './application/use-cases/list-nutrition-goals.use-case';
+import {
   SAVE_NUTRITION_GOAL_SUGGESTION_USE_CASE,
   SaveNutritionGoalSuggestionUseCase,
 } from './application/use-cases/save-nutrition-goal-suggestion.use-case';
@@ -102,13 +114,36 @@ import { NutritionGoalSuggestionsController } from './presentation/http/nutritio
         clock: Clock,
       ) => new ConfirmNutritionGoalSuggestionUseCase(goals, unitOfWork, clock),
     },
+    {
+      provide: REJECT_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+      inject: [NUTRITION_GOAL_REPOSITORY, NUTRITION_GOAL_UNIT_OF_WORK, CLOCK],
+      useFactory: (
+        goals: NutritionGoalRepository,
+        unitOfWork: NutritionGoalUnitOfWork,
+        clock: Clock,
+      ) => new RejectNutritionGoalSuggestionUseCase(goals, unitOfWork, clock),
+    },
+    {
+      provide: GET_CURRENT_NUTRITION_GOAL_USE_CASE,
+      inject: [NUTRITION_GOAL_REPOSITORY],
+      useFactory: (goals: NutritionGoalRepository) => new GetCurrentNutritionGoalUseCase(goals),
+    },
+    {
+      provide: LIST_NUTRITION_GOALS_USE_CASE,
+      inject: [NUTRITION_GOAL_REPOSITORY],
+      useFactory: (goals: NutritionGoalRepository) => new ListNutritionGoalsUseCase(goals),
+    },
   ],
   exports: [
     NUTRITION_ENGINE_SERVICE,
+    CLOCK,
     NUTRITION_GOAL_REPOSITORY,
     NUTRITION_GOAL_UNIT_OF_WORK,
     SAVE_NUTRITION_GOAL_SUGGESTION_USE_CASE,
     CONFIRM_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+    REJECT_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+    GET_CURRENT_NUTRITION_GOAL_USE_CASE,
+    LIST_NUTRITION_GOALS_USE_CASE,
   ],
 })
 export class NutritionModule {}

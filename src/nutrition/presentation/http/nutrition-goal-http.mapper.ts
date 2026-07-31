@@ -1,15 +1,29 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  InvalidNutritionGoalMetadataError,
+  InvalidNutritionGoalValuesError,
+} from '../../domain/errors/nutrition-goal.errors';
+import {
+  NutritionGoalAccessDeniedError,
   IncompleteNutritionGoalProfileError,
   InvalidNutritionGoalProfileAgeError,
-  NutritionGoalAccessDeniedError,
   NutritionGoalProfileNotFoundError,
+  NutritionGoalSuggestionAlreadyHandledError,
+  NutritionGoalSuggestionExpiredError,
+  NutritionGoalSuggestionNotFoundError,
 } from '../../application/errors/nutrition-goal.errors';
 
 export function rethrowNutritionGoalHttpError(error: unknown): never {
   if (
     error instanceof IncompleteNutritionGoalProfileError ||
-    error instanceof InvalidNutritionGoalProfileAgeError
+    error instanceof InvalidNutritionGoalProfileAgeError ||
+    error instanceof InvalidNutritionGoalMetadataError ||
+    error instanceof InvalidNutritionGoalValuesError
   ) {
     throw new BadRequestException(error.message);
   }
@@ -17,6 +31,15 @@ export function rethrowNutritionGoalHttpError(error: unknown): never {
     throw new ForbiddenException(error.message);
   }
   if (error instanceof NutritionGoalProfileNotFoundError) {
+    throw new NotFoundException(error.message);
+  }
+  if (
+    error instanceof NutritionGoalSuggestionAlreadyHandledError ||
+    error instanceof NutritionGoalSuggestionExpiredError
+  ) {
+    throw new ConflictException(error.message);
+  }
+  if (error instanceof NutritionGoalSuggestionNotFoundError) {
     throw new NotFoundException(error.message);
   }
 

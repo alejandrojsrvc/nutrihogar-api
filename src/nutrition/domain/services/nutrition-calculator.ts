@@ -18,6 +18,15 @@ export class NutritionCalculator {
       baseQuantity: base.quantity,
       baseUnit: base.unit,
       nutrients,
+      nutrientMetadata: Object.fromEntries(
+        food.nutrients.map((nutrient) => [
+          nutrient.code,
+          {
+            name: nutrient.name ?? nutrient.code,
+            unit: nutrient.unit ?? base.unit,
+          },
+        ]),
+      ),
     };
   }
 

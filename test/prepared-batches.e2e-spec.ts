@@ -12,6 +12,7 @@ import { CANCEL_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-c
 import { CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE } from '../src/recipes/application/use-cases/confirm-prepared-batch-ingredients.use-case';
 import { FINALIZE_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/finalize-prepared-batch.use-case';
 import { GET_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/get-prepared-batch.use-case';
+import { GET_PREPARED_BATCH_DETAILS_USE_CASE } from '../src/recipes/application/use-cases/get-prepared-batch-details.use-case';
 import { START_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/start-prepared-batch.use-case';
 import { SERVE_PREPARED_BATCH_PORTIONS_USE_CASE } from '../src/recipes/application/use-cases/serve-prepared-batch-portions.use-case';
 import { CONFIRM_SERVED_PORTION_CONSUMPTION_USE_CASE } from '../src/recipes/application/use-cases/confirm-served-portion-consumption.use-case';
@@ -29,6 +30,7 @@ describe('PreparedBatch HTTP API (e2e)', () => {
   const startPreparedBatch = { execute: jest.fn() };
   const updateIngredients = { execute: jest.fn() };
   const getPreparedBatch = { execute: jest.fn() };
+  const getPreparedBatchDetails = { execute: jest.fn() };
   const cancelPreparedBatch = { execute: jest.fn() };
   const confirmIngredients = { execute: jest.fn() };
   const finalizePreparedBatch = { execute: jest.fn() };
@@ -49,6 +51,8 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       .useValue(updateIngredients)
       .overrideProvider(GET_PREPARED_BATCH_USE_CASE)
       .useValue(getPreparedBatch)
+      .overrideProvider(GET_PREPARED_BATCH_DETAILS_USE_CASE)
+      .useValue(getPreparedBatchDetails)
       .overrideProvider(CANCEL_PREPARED_BATCH_USE_CASE)
       .useValue(cancelPreparedBatch)
       .overrideProvider(CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE)
@@ -81,6 +85,19 @@ describe('PreparedBatch HTTP API (e2e)', () => {
     startPreparedBatch.execute.mockReset().mockResolvedValue(batch);
     updateIngredients.execute.mockReset().mockResolvedValue(batch);
     getPreparedBatch.execute.mockReset().mockResolvedValue(batch);
+    getPreparedBatchDetails.execute.mockReset().mockResolvedValue({
+      batch: finalizedBatch,
+      availability: {
+        finalCookedWeight: new Decimal(1650),
+        servedWeight: new Decimal(900),
+        storedLeftoverWeight: new Decimal(500),
+        savedRemainderWeight: new Decimal(40),
+        discardedWeight: new Decimal(0),
+        availableWeight: new Decimal(250),
+      },
+      servedPortions: [],
+      leftovers: [preparedLeftover],
+    });
     cancelPreparedBatch.execute.mockReset().mockResolvedValue(undefined);
     confirmIngredients.execute
       .mockReset()
@@ -217,6 +234,18 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       .set('Authorization', 'Bearer valid-token')
       .expect(200)
       .expect((response) => expect(response.body).toHaveProperty('preparedBatchId', 'batch-id'));
+
+    await request(app.getHttpServer())
+      .get(`/api/prepared-batches/${batchIdPath}/details`)
+      .set('Authorization', 'Bearer valid-token')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toHaveProperty('batch.status', 'FINALIZED');
+        expect(response.body).toHaveProperty('availability.availableWeight', 250);
+        expect(response.body).toHaveProperty('availability.storedLeftoverWeight', 500);
+        expect(response.body).toHaveProperty('servedPortions', []);
+        expect(response.body).toHaveProperty('leftovers.0.id', preparedLeftover.id);
+      });
 
     await request(app.getHttpServer())
       .patch('/api/prepared-leftovers/00000000-0000-4000-8000-000000000040/status')

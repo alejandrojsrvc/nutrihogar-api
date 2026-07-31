@@ -6,6 +6,7 @@ import {
   PreparedFoodLeftoverListCriteria,
   PreparedFoodLeftoverRepository,
 } from '../../application/ports/prepared-food-leftover-repository.port';
+import { calculatePreparedBatchAvailability } from '../../application/services/calculate-prepared-batch-availability';
 import { PreparedBatchNotFinalizedError } from '../../domain/errors/prepared-batch.errors';
 import {
   PreparedFoodLeftoverAlreadyClosedError,
@@ -27,6 +28,15 @@ export class PrismaPreparedFoodLeftoverRepository implements PreparedFoodLeftove
       include: preparedFoodLeftoverInclude,
     });
     return record ? PrismaPreparedFoodLeftoverMapper.toDomain(record) : null;
+  }
+
+  async listByPreparedBatchId(batchId: string): Promise<PreparedFoodLeftover[]> {
+    const records = await this.prisma.preparedFoodLeftover.findMany({
+      where: { preparedBatchId: batchId },
+      include: preparedFoodLeftoverInclude,
+      orderBy: [{ storedAt: 'asc' }, { id: 'asc' }],
+    });
+    return records.map((record) => PrismaPreparedFoodLeftoverMapper.toDomain(record));
   }
 
   async list(criteria: PreparedFoodLeftoverListCriteria): Promise<PreparedFoodLeftover[]> {
@@ -63,10 +73,14 @@ export class PrismaPreparedFoodLeftoverRepository implements PreparedFoodLeftove
         where: { preparedBatchId: data.preparedBatchId },
         _sum: { availableWeight: true },
       });
-      const availableWeight = new Decimal(batch.finalCookedWeight.toString())
-        .sub(allocatedPortions._sum.servedWeight?.toString() ?? 0)
-        .sub(allocatedLeftovers._sum.availableWeight?.toString() ?? 0);
-      if (new Decimal(data.availableWeight).gt(availableWeight)) {
+      const currentAvailability = calculatePreparedBatchAvailability({
+        finalCookedWeight: new Decimal(batch.finalCookedWeight.toString()),
+        servedWeight: new Decimal(allocatedPortions._sum.servedWeight?.toString() ?? 0),
+        storedLeftoverWeight: new Decimal(allocatedLeftovers._sum.availableWeight?.toString() ?? 0),
+        savedRemainderWeight: new Decimal(0),
+        discardedWeight: new Decimal(0),
+      });
+      if (new Decimal(data.availableWeight).gt(currentAvailability.availableWeight)) {
         throw new PreparedFoodLeftoverAvailabilityExceededError();
       }
 

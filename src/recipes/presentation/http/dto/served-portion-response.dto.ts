@@ -10,7 +10,7 @@ export class ServedPortionResultResponseDto {
   @ApiProperty({ example: 520 })
   servedWeight!: number;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   estimatedNutrition!: Record<string, number>;
 }
 

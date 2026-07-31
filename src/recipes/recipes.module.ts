@@ -46,6 +46,10 @@ import {
   GetPreparedBatchUseCase,
 } from './application/use-cases/get-prepared-batch.use-case';
 import {
+  GET_PREPARED_BATCH_DETAILS_USE_CASE,
+  GetPreparedBatchDetailsUseCase,
+} from './application/use-cases/get-prepared-batch-details.use-case';
+import {
   START_PREPARED_BATCH_USE_CASE,
   StartPreparedBatchUseCase,
 } from './application/use-cases/start-prepared-batch.use-case';
@@ -208,6 +212,24 @@ import {
       inject: [HOUSEHOLD_REPOSITORY, PREPARED_BATCH_REPOSITORY],
       useFactory: (households: HouseholdRepository, batches: PreparedBatchRepository) =>
         new GetPreparedBatchUseCase(households, batches),
+    },
+    {
+      provide: GET_PREPARED_BATCH_DETAILS_USE_CASE,
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        PREPARED_BATCH_REPOSITORY,
+        PREPARED_BATCH_AVAILABILITY_REPOSITORY,
+        SERVED_PORTION_REPOSITORY,
+        PREPARED_FOOD_LEFTOVER_REPOSITORY,
+      ],
+      useFactory: (
+        households: HouseholdRepository,
+        batches: PreparedBatchRepository,
+        availability: PreparedBatchAvailabilityRepository,
+        portions: ServedPortionRepository,
+        leftovers: PreparedFoodLeftoverRepository,
+      ) =>
+        new GetPreparedBatchDetailsUseCase(households, batches, availability, portions, leftovers),
     },
     {
       provide: CANCEL_PREPARED_BATCH_USE_CASE,

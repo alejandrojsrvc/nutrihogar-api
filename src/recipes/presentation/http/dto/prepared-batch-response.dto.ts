@@ -40,7 +40,7 @@ export class PreparedBatchIngredientResponseDto {
   @ApiPropertyOptional({ nullable: true })
   baseUnit!: string | null;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   nutrients!: Record<string, number>;
 }
 
@@ -80,16 +80,16 @@ export class PreparedBatchResponseDto {
   @ApiProperty({ type: PreparedBatchIngredientResponseDto, isArray: true })
   ingredients!: PreparedBatchIngredientResponseDto[];
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   totalNutrients!: Record<string, number>;
 
   @ApiPropertyOptional({ nullable: true, example: 1650 })
   finalCookedWeight!: number | null;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   nutrientsPerGram!: Record<string, number>;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   nutrientsPer100Grams!: Record<string, number>;
 
   @ApiProperty({ type: PreparedBatchWarningResponseDto, isArray: true })

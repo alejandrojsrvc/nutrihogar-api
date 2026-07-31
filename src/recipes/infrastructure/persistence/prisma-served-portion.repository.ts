@@ -17,6 +17,7 @@ import {
   ServedPortionCancelledError,
 } from '../../domain/errors/served-portion.errors';
 import { ServedPortionNotFoundError } from '../../application/errors/served-portion-consumption.errors';
+import { calculatePreparedBatchAvailability } from '../../application/services/calculate-prepared-batch-availability';
 import { ServedPortion } from '../../domain/entities/served-portion';
 import { PrismaServedPortionMapper, servedPortionInclude } from './prisma-served-portion.mapper';
 
@@ -36,6 +37,15 @@ export class PrismaServedPortionRepository
       include: servedPortionInclude,
     });
     return record ? PrismaServedPortionMapper.toDomain(record) : null;
+  }
+
+  async findByPreparedBatchId(batchId: string): Promise<ServedPortion[]> {
+    const records = await this.prisma.servedPortion.findMany({
+      where: { preparedBatchId: batchId },
+      include: servedPortionInclude,
+      orderBy: [{ servedAt: 'asc' }, { id: 'asc' }],
+    });
+    return records.map((record) => PrismaServedPortionMapper.toDomain(record));
   }
 
   async sumAllocatedWeight(batchId: string): Promise<Decimal> {
@@ -60,6 +70,10 @@ export class PrismaServedPortionRepository
         remainder: { select: { weight: true, disposition: true } },
       },
     });
+    const storedLeftover = await this.prisma.preparedFoodLeftover.aggregate({
+      where: { preparedBatchId: batchId },
+      _sum: { availableWeight: true },
+    });
     const servedWeight = portions.reduce(
       (total, portion) => total.add(portion.servedWeight.toString()),
       new Decimal(0),
@@ -80,13 +94,13 @@ export class PrismaServedPortionRepository
     );
     const finalCookedWeight = new Decimal(batch.finalCookedWeight.toString());
 
-    return {
+    return calculatePreparedBatchAvailability({
       finalCookedWeight,
       servedWeight,
+      storedLeftoverWeight: new Decimal(storedLeftover._sum.availableWeight?.toString() ?? 0),
       savedRemainderWeight,
       discardedWeight,
-      availableWeight: finalCookedWeight.sub(servedWeight),
-    };
+    });
   }
 
   async save(portion: ServedPortion): Promise<void> {
@@ -170,12 +184,23 @@ export class PrismaServedPortionRepository
         where: { preparedBatchId: batchId, status: { not: ServedPortionStatus.CANCELLED } },
         _sum: { servedWeight: true },
       });
+      const storedLeftover = await transaction.preparedFoodLeftover.aggregate({
+        where: { preparedBatchId: batchId },
+        _sum: { availableWeight: true },
+      });
       const requested = portions.reduce(
         (total, portion) => total.add(portion.servedWeight),
         new Decimal(0),
       );
       const current = new Decimal(allocated._sum.servedWeight?.toString() ?? 0);
-      if (current.add(requested).gt(batch.finalCookedWeight.toString())) {
+      const currentAvailability = calculatePreparedBatchAvailability({
+        finalCookedWeight: new Decimal(batch.finalCookedWeight.toString()),
+        servedWeight: current,
+        storedLeftoverWeight: new Decimal(storedLeftover._sum.availableWeight?.toString() ?? 0),
+        savedRemainderWeight: new Decimal(0),
+        discardedWeight: new Decimal(0),
+      });
+      if (requested.gt(currentAvailability.availableWeight)) {
         throw new PortionAvailabilityExceededError();
       }
 

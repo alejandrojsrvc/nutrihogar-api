@@ -40,6 +40,7 @@ describe('Prepared food leftover use cases', () => {
     updateStatus = jest.fn().mockResolvedValue(undefined);
     leftovers = {
       findById: jest.fn(),
+      listByPreparedBatchId: jest.fn(),
       list,
       save,
       updateStatus,

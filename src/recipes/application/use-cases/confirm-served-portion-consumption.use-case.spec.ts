@@ -51,6 +51,7 @@ describe('ConfirmServedPortionConsumptionUseCase', () => {
     };
     portions = {
       findById: jest.fn().mockResolvedValue(portion),
+      findByPreparedBatchId: jest.fn(),
       save: jest.fn(),
       sumAllocatedWeight: jest.fn(),
     };

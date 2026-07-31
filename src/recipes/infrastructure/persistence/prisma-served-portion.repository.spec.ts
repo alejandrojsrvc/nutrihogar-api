@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { ServedPortion } from '../../domain/entities/served-portion';
+import { PortionAvailabilityExceededError } from '../../domain/errors/served-portion.errors';
 import { PreparedBatchMealInput } from '../../application/ports/served-portion-repository.port';
 import { PrismaServedPortionRepository } from './prisma-served-portion.repository';
 
@@ -23,6 +24,9 @@ describe('PrismaServedPortionRepository', () => {
         servedPortion: {
           aggregate: jest.fn().mockResolvedValue({ _sum: { servedWeight: new Prisma.Decimal(0) } }),
           createMany,
+        },
+        preparedFoodLeftover: {
+          aggregate: jest.fn().mockResolvedValue({ _sum: { availableWeight: null } }),
         },
       }),
     );
@@ -48,6 +52,74 @@ describe('PrismaServedPortionRepository', () => {
 
     expect(result?.remainder?.weight.equals(40)).toBe(true);
     expect(result?.nutritionSnapshot[0]?.amount.equals(700)).toBe(true);
+  });
+
+  it('prevents serving weight already reserved as a stored leftover', async () => {
+    const transaction = jest.fn((callback: (client: unknown) => unknown) =>
+      callback({
+        $queryRaw: jest.fn().mockResolvedValue([{ id: 'batch-id' }]),
+        preparedBatch: {
+          findUnique: jest.fn().mockResolvedValue({
+            status: 'FINALIZED',
+            finalCookedWeight: new Prisma.Decimal(1000),
+          }),
+        },
+        servedPortion: {
+          aggregate: jest.fn().mockResolvedValue({ _sum: { servedWeight: new Prisma.Decimal(0) } }),
+          createMany: jest.fn(),
+        },
+        preparedFoodLeftover: {
+          aggregate: jest.fn().mockResolvedValue({
+            _sum: { availableWeight: new Prisma.Decimal(700) },
+          }),
+        },
+      }),
+    );
+    const repository = new PrismaServedPortionRepository({
+      $transaction: transaction,
+    } as unknown as PrismaService);
+
+    await expect(repository.saveMany('batch-id', [createPortion(301)])).rejects.toBeInstanceOf(
+      PortionAvailabilityExceededError,
+    );
+  });
+
+  it('calculates availability by subtracting served portions and stored leftovers', async () => {
+    const repository = new PrismaServedPortionRepository({
+      preparedBatch: {
+        findUnique: jest.fn().mockResolvedValue({
+          status: 'FINALIZED',
+          finalCookedWeight: new Prisma.Decimal(1650),
+        }),
+      },
+      servedPortion: { findMany: jest.fn().mockResolvedValue([record]) },
+      preparedFoodLeftover: {
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { availableWeight: new Prisma.Decimal(500) },
+        }),
+      },
+    } as unknown as PrismaService);
+
+    const result = await repository.getAvailability('batch-id');
+
+    expect(result?.servedWeight.equals(520)).toBe(true);
+    expect(result?.storedLeftoverWeight.equals(500)).toBe(true);
+    expect(result?.savedRemainderWeight.equals(40)).toBe(true);
+    expect(result?.availableWeight.equals(630)).toBe(true);
+  });
+
+  it('lists all portions for a batch in served-date order', async () => {
+    const findMany = jest.fn().mockResolvedValue([record]);
+    const repository = new PrismaServedPortionRepository({
+      servedPortion: { findMany },
+    } as unknown as PrismaService);
+
+    const result = await repository.findByPreparedBatchId('batch-id');
+
+    expect(result).toHaveLength(1);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { preparedBatchId: 'batch-id' } }),
+    );
   });
 
   it('persists the generated meal and consumed portion in one transaction', async () => {

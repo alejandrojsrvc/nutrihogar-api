@@ -42,6 +42,7 @@ describe('ServePreparedBatchPortionsUseCase', () => {
       getAvailability: jest.fn().mockResolvedValue({
         finalCookedWeight: new Decimal(1650),
         servedWeight: new Decimal(0),
+        storedLeftoverWeight: new Decimal(0),
         savedRemainderWeight: new Decimal(0),
         discardedWeight: new Decimal(0),
         availableWeight: new Decimal(1650),

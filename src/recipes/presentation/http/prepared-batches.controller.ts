@@ -46,6 +46,10 @@ import {
   GetPreparedBatchUseCase,
 } from '../../application/use-cases/get-prepared-batch.use-case';
 import {
+  GET_PREPARED_BATCH_DETAILS_USE_CASE,
+  GetPreparedBatchDetailsUseCase,
+} from '../../application/use-cases/get-prepared-batch-details.use-case';
+import {
   START_PREPARED_BATCH_USE_CASE,
   StartPreparedBatchUseCase,
 } from '../../application/use-cases/start-prepared-batch.use-case';
@@ -59,10 +63,12 @@ import {
   UpdatePreparedBatchIngredientsRequestDto,
 } from './dto/prepared-batch-request.dto';
 import { PreparedBatchResponseDto } from './dto/prepared-batch-response.dto';
+import { PreparedBatchDetailsResponseDto } from './dto/prepared-batch-details-response.dto';
 import {
   rethrowPreparedBatchHttpError,
   toPreparedBatchResponse,
 } from './prepared-batch-http.mapper';
+import { toPreparedBatchDetailsResponse } from './prepared-batch-details-http.mapper';
 
 @ApiTags('prepared-batches')
 @ApiBearerAuth()
@@ -77,6 +83,8 @@ export class PreparedBatchesController {
     private readonly updateIngredients: UpdatePreparedBatchIngredientsUseCase,
     @Inject(GET_PREPARED_BATCH_USE_CASE)
     private readonly getPreparedBatch: GetPreparedBatchUseCase,
+    @Inject(GET_PREPARED_BATCH_DETAILS_USE_CASE)
+    private readonly getPreparedBatchDetails: GetPreparedBatchDetailsUseCase,
     @Inject(CANCEL_PREPARED_BATCH_USE_CASE)
     private readonly cancelPreparedBatch: CancelPreparedBatchUseCase,
     @Inject(CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE)
@@ -122,6 +130,25 @@ export class PreparedBatchesController {
   ): Promise<PreparedBatchResponseDto> {
     try {
       return toPreparedBatchResponse(await this.getPreparedBatch.execute(user.id, batchId));
+    } catch (error) {
+      rethrowPreparedBatchHttpError(error);
+    }
+  }
+
+  @Get('prepared-batches/:batchId/details')
+  @ApiOperation({ summary: 'Obtiene el detalle operativo de una preparacion' })
+  @ApiParam({ name: 'batchId', format: 'uuid' })
+  @ApiOkResponse({ type: PreparedBatchDetailsResponseDto })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder a la preparacion.' })
+  @ApiNotFoundResponse({ description: 'La preparacion no existe.' })
+  async getDetails(
+    @Param('batchId', new ParseUUIDPipe()) batchId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<PreparedBatchDetailsResponseDto> {
+    try {
+      return toPreparedBatchDetailsResponse(
+        await this.getPreparedBatchDetails.execute(user.id, batchId),
+      );
     } catch (error) {
       rethrowPreparedBatchHttpError(error);
     }

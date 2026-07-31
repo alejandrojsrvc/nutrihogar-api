@@ -13,7 +13,7 @@ export class RecipeNutritionIngredientResponseDto {
   @ApiProperty({ example: 'GRAM' })
   baseUnit!: string;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   nutrients!: Record<string, number>;
 }
 
@@ -41,10 +41,10 @@ export class RecipeNutritionResponseDto {
   @ApiProperty({ type: RecipeNutritionIngredientResponseDto, isArray: true })
   ingredients!: RecipeNutritionIngredientResponseDto[];
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   totalNutrients!: Record<string, number>;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   perServingNutrients!: Record<string, number>;
 
   @ApiProperty({ type: RecipeNutritionWarningResponseDto, isArray: true })

@@ -29,6 +29,7 @@ export interface PreparedBatchMealInput {
 export interface PreparedBatchAvailability {
   finalCookedWeight: Decimal;
   servedWeight: Decimal;
+  storedLeftoverWeight: Decimal;
   savedRemainderWeight: Decimal;
   discardedWeight: Decimal;
   availableWeight: Decimal;
@@ -36,6 +37,7 @@ export interface PreparedBatchAvailability {
 
 export interface ServedPortionRepository {
   findById(id: string): Promise<ServedPortion | null>;
+  findByPreparedBatchId(batchId: string): Promise<ServedPortion[]>;
   save(portion: ServedPortion): Promise<void>;
   sumAllocatedWeight(batchId: string): Promise<Decimal>;
 }

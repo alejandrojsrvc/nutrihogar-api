@@ -1,10 +1,7 @@
 import Decimal from 'decimal.js';
+import { CalculationSnapshot, NutritionValues } from '../../domain/models/nutrition-goal.models';
+import { InvalidNutritionGoalMetadataError } from '../../domain/errors/nutrition-goal.errors';
 import {
-  CalculationSnapshot,
-  NutritionValues,
-} from '../../domain/models/nutrition-goal.models';
-import {
-  InvalidNutritionGoalMetadataError,
   createNutritionValues,
   requiredNutritionGoalText,
 } from '../../domain/services/nutrition-goal-validation';

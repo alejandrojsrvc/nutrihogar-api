@@ -60,3 +60,10 @@ export class ServedPortionsRequiredError extends Error {
     this.name = ServedPortionsRequiredError.name;
   }
 }
+
+export class InvalidServedAtError extends Error {
+  constructor() {
+    super('The served date must be valid and cannot be in the future.');
+    this.name = InvalidServedAtError.name;
+  }
+}

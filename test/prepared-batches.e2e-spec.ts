@@ -13,6 +13,7 @@ import { CONFIRM_PREPARED_BATCH_INGREDIENTS_USE_CASE } from '../src/recipes/appl
 import { FINALIZE_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/finalize-prepared-batch.use-case';
 import { GET_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/get-prepared-batch.use-case';
 import { START_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/start-prepared-batch.use-case';
+import { SERVE_PREPARED_BATCH_PORTIONS_USE_CASE } from '../src/recipes/application/use-cases/serve-prepared-batch-portions.use-case';
 import { UPDATE_PREPARED_BATCH_INGREDIENTS_USE_CASE } from '../src/recipes/application/use-cases/update-prepared-batch-ingredients.use-case';
 import { PreparedBatch } from '../src/recipes/domain/entities/prepared-batch';
 
@@ -25,6 +26,7 @@ describe('PreparedBatch HTTP API (e2e)', () => {
   const cancelPreparedBatch = { execute: jest.fn() };
   const confirmIngredients = { execute: jest.fn() };
   const finalizePreparedBatch = { execute: jest.fn() };
+  const servePortions = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
@@ -42,6 +44,8 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       .useValue(confirmIngredients)
       .overrideProvider(FINALIZE_PREPARED_BATCH_USE_CASE)
       .useValue(finalizePreparedBatch)
+      .overrideProvider(SERVE_PREPARED_BATCH_PORTIONS_USE_CASE)
+      .useValue(servePortions)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -61,6 +65,18 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       .mockReset()
       .mockResolvedValue({ batch: confirmedBatch, warnings: [] });
     finalizePreparedBatch.execute.mockReset().mockResolvedValue(finalizedBatch);
+    servePortions.execute.mockReset().mockResolvedValue({
+      preparedBatchId: 'batch-id',
+      portions: [
+        {
+          id: 'portion-id',
+          adultProfileId: adultProfileIdPath,
+          servedWeight: new Decimal(520),
+          estimatedNutrition: { ENERGY_KCAL: new Decimal(204.5454545) },
+        },
+      ],
+      availableWeight: new Decimal(1130),
+    });
   });
 
   it('starts, edits, confirms, finalizes, reads and cancels a prepared batch', async () => {
@@ -114,6 +130,19 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       });
 
     await request(app.getHttpServer())
+      .post(`/api/prepared-batches/${batchIdPath}/served-portions`)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        portions: [{ adultProfileId: adultProfileIdPath, servedWeight: 520 }],
+        servedAt: '2026-07-31T12:30:00.000Z',
+      })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toHaveProperty('preparedBatchId', 'batch-id');
+        expect(response.body).toHaveProperty('availableWeight', 1130);
+      });
+
+    await request(app.getHttpServer())
       .delete(`/api/prepared-batches/${batchIdPath}`)
       .set('Authorization', 'Bearer valid-token')
       .expect(204);
@@ -131,6 +160,7 @@ const currentUser: CurrentUser = {
 
 const recipeIdPath = '00000000-0000-4000-8000-000000000010';
 const batchIdPath = '00000000-0000-4000-8000-000000000011';
+const adultProfileIdPath = '00000000-0000-4000-8000-000000000020';
 
 const batch = createBatch();
 const confirmedBatch = createBatch();

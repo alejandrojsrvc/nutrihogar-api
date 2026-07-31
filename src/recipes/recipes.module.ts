@@ -16,6 +16,13 @@ import {
   PreparedBatchRepository,
 } from './application/ports/prepared-batch-repository.port';
 import {
+  PREPARED_BATCH_AVAILABILITY_REPOSITORY,
+  SERVED_PORTION_REPOSITORY,
+  SERVED_PORTION_UNIT_OF_WORK,
+  PreparedBatchAvailabilityRepository,
+  ServedPortionUnitOfWork,
+} from './application/ports/served-portion-repository.port';
+import {
   CANCEL_PREPARED_BATCH_USE_CASE,
   CancelPreparedBatchUseCase,
 } from './application/use-cases/cancel-prepared-batch.use-case';
@@ -40,6 +47,10 @@ import {
   UpdatePreparedBatchIngredientsUseCase,
 } from './application/use-cases/update-prepared-batch-ingredients.use-case';
 import {
+  SERVE_PREPARED_BATCH_PORTIONS_USE_CASE,
+  ServePreparedBatchPortionsUseCase,
+} from './application/use-cases/serve-prepared-batch-portions.use-case';
+import {
   CREATE_RECIPE_USE_CASE,
   CreateRecipeUseCase,
 } from './application/use-cases/create-recipe.use-case';
@@ -54,8 +65,10 @@ import {
 } from './application/use-cases/update-recipe.use-case';
 import { PrismaRecipeRepository } from './infrastructure/persistence/prisma-recipe.repository';
 import { PrismaPreparedBatchRepository } from './infrastructure/persistence/prisma-prepared-batch.repository';
+import { PrismaServedPortionRepository } from './infrastructure/persistence/prisma-served-portion.repository';
 import { RecipesController } from './presentation/http/recipes.controller';
 import { PreparedBatchesController } from './presentation/http/prepared-batches.controller';
+import { ServedPortionsController } from './presentation/http/served-portions.controller';
 import { CLOCK, Clock } from '../nutrition/application/ports/clock.port';
 import {
   NUTRITION_ENGINE_SERVICE,
@@ -65,13 +78,20 @@ import {
   HOUSEHOLD_REPOSITORY,
   HouseholdRepository,
 } from '../households/application/ports/household-repository.port';
+import {
+  ADULT_PROFILE_REPOSITORY,
+  AdultProfileRepository,
+} from '../households/application/adult-profile-ports/adult-profile-repository.port';
 
 @Module({
   imports: [HouseholdsModule, IdentityModule, NutritionModule],
-  controllers: [RecipesController, PreparedBatchesController],
+  controllers: [RecipesController, PreparedBatchesController, ServedPortionsController],
   providers: [
     { provide: RECIPE_REPOSITORY, useClass: PrismaRecipeRepository },
     { provide: PREPARED_BATCH_REPOSITORY, useClass: PrismaPreparedBatchRepository },
+    { provide: SERVED_PORTION_REPOSITORY, useClass: PrismaServedPortionRepository },
+    { provide: PREPARED_BATCH_AVAILABILITY_REPOSITORY, useExisting: SERVED_PORTION_REPOSITORY },
+    { provide: SERVED_PORTION_UNIT_OF_WORK, useExisting: SERVED_PORTION_REPOSITORY },
     {
       provide: CREATE_RECIPE_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY, RECIPE_REPOSITORY, NUTRITION_ENGINE_SERVICE, CLOCK],
@@ -177,6 +197,33 @@ import {
         batches: PreparedBatchRepository,
         clock: Clock,
       ) => new FinalizePreparedBatchUseCase(households, batches, clock),
+    },
+    {
+      provide: SERVE_PREPARED_BATCH_PORTIONS_USE_CASE,
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        PREPARED_BATCH_REPOSITORY,
+        PREPARED_BATCH_AVAILABILITY_REPOSITORY,
+        SERVED_PORTION_UNIT_OF_WORK,
+        ADULT_PROFILE_REPOSITORY,
+        CLOCK,
+      ],
+      useFactory: (
+        households: HouseholdRepository,
+        batches: PreparedBatchRepository,
+        availability: PreparedBatchAvailabilityRepository,
+        portions: ServedPortionUnitOfWork,
+        adultProfiles: AdultProfileRepository,
+        clock: Clock,
+      ) =>
+        new ServePreparedBatchPortionsUseCase(
+          households,
+          batches,
+          availability,
+          portions,
+          adultProfiles,
+          clock,
+        ),
     },
   ],
 })

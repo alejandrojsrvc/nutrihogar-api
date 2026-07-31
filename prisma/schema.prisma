@@ -134,6 +134,19 @@ enum PreparedBatchStatus {
   CANCELLED
 }
 
+enum ServedPortionStatus {
+  SERVED
+  CONSUMED
+  CANCELLED
+}
+
+enum PortionRemainderDisposition {
+  SAVED
+  DISCARDED
+  SHARED
+  CONSUMED_LATER
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
@@ -164,6 +177,7 @@ model User {
   mealsCreated            Meal[]                @relation("MealCreatedBy")
   recipesCreated          Recipe[]              @relation("RecipeCreatedBy")
   preparedBatchesCreated  PreparedBatch[]       @relation("PreparedBatchCreatedBy")
+  servedPortionsCreated   ServedPortion[]       @relation("ServedPortionCreatedBy")
 
   @@map("users")
 }
@@ -255,6 +269,7 @@ model AdultProfile {
   nutritionGoalSuggestions NutritionGoalSuggestion[]
   nutritionGoals           NutritionGoal[]
   meals                    Meal[]
+  servedPortions           ServedPortion[]
 
   @@index([householdId, isActive])
   @@index([userId, isActive])
@@ -573,6 +588,7 @@ model PreparedBatch {
   createdBy          User                            @relation("PreparedBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   ingredients        PreparedBatchIngredient[]
   nutrientSnapshots  PreparedBatchNutrientSnapshot[]
+  servedPortions     ServedPortion[]
 
   @@index([householdId, status, preparedAt])
   @@index([recipeId])
@@ -633,4 +649,57 @@ model PreparedBatchNutrientSnapshot {
   @@unique([preparedBatchId, nutrientCode])
   @@index([preparedBatchId])
   @@map("prepared_batch_nutrient_snapshots")
+}
+
+model ServedPortion {
+  id                String                          @id @default(uuid()) @db.Uuid
+  preparedBatchId   String                          @map("prepared_batch_id") @db.Uuid
+  adultProfileId    String                          @map("adult_profile_id") @db.Uuid
+  servedWeight      Decimal                         @map("served_weight") @db.Decimal(18, 6)
+  servedAt          DateTime                        @map("served_at") @db.Timestamptz(6)
+  status            ServedPortionStatus             @default(SERVED)
+  remainderWeight   Decimal?                        @map("remainder_weight") @db.Decimal(18, 6)
+  consumedWeight    Decimal?                        @map("consumed_weight") @db.Decimal(18, 6)
+  mealId            String?                         @map("meal_id") @db.Uuid
+  createdById       String                          @map("created_by_id") @db.Uuid
+  createdAt         DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cancelledAt       DateTime?                       @map("cancelled_at") @db.Timestamptz(6)
+  preparedBatch     PreparedBatch                   @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
+  adultProfile      AdultProfile                    @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  createdBy         User                            @relation("ServedPortionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  remainder         PortionRemainder?
+  nutrientSnapshots ServedPortionNutrientSnapshot[]
+
+  @@index([preparedBatchId, status])
+  @@index([adultProfileId, servedAt])
+  @@index([createdById])
+  @@index([mealId])
+  @@map("served_portions")
+}
+
+model PortionRemainder {
+  id              String                      @id @default(uuid()) @db.Uuid
+  servedPortionId String                      @unique @map("served_portion_id") @db.Uuid
+  weight          Decimal                     @db.Decimal(18, 6)
+  disposition     PortionRemainderDisposition
+  createdAt       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  servedPortion   ServedPortion               @relation(fields: [servedPortionId], references: [id], onDelete: Cascade)
+
+  @@index([disposition, createdAt])
+  @@map("portion_remainders")
+}
+
+model ServedPortionNutrientSnapshot {
+  id              String        @id @default(uuid()) @db.Uuid
+  servedPortionId String        @map("served_portion_id") @db.Uuid
+  nutrientCode    String        @map("nutrient_code") @db.VarChar(50)
+  nutrientName    String        @map("nutrient_name") @db.VarChar(100)
+  unit            String        @db.VarChar(20)
+  amount          Decimal       @db.Decimal(18, 6)
+  servedPortion   ServedPortion @relation(fields: [servedPortionId], references: [id], onDelete: Cascade)
+
+  @@unique([servedPortionId, nutrientCode])
+  @@index([servedPortionId])
+  @@map("served_portion_nutrient_snapshots")
 }

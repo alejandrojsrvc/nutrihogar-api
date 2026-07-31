@@ -127,6 +127,13 @@ enum RecipeIngredientUnit {
   SERVING
 }
 
+enum PreparedBatchStatus {
+  DRAFT
+  INGREDIENTS_CONFIRMED
+  FINALIZED
+  CANCELLED
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
@@ -156,27 +163,29 @@ model User {
   nutritionGoalsConfirmed NutritionGoal[]       @relation("NutritionGoalConfirmedBy")
   mealsCreated            Meal[]                @relation("MealCreatedBy")
   recipesCreated          Recipe[]              @relation("RecipeCreatedBy")
+  preparedBatchesCreated  PreparedBatch[]       @relation("PreparedBatchCreatedBy")
 
   @@map("users")
 }
 
 model Household {
-  id            String                @id @default(uuid()) @db.Uuid
-  name          String                @db.VarChar(150)
-  timezone      String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
-  currency      String                @default("ARS") @db.VarChar(3)
-  weeklyBudget  Decimal?              @map("weekly_budget") @db.Decimal(12, 2)
-  createdById   String                @map("created_by_id") @db.Uuid
-  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt     DateTime?             @map("deleted_at") @db.Timestamptz(6)
-  createdBy     User                  @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  memberships   HouseholdMembership[]
-  invitations   HouseholdInvitation[]
-  adultProfiles AdultProfile[]
-  foods         Food[]
-  meals         Meal[]
-  recipes       Recipe[]
+  id              String                @id @default(uuid()) @db.Uuid
+  name            String                @db.VarChar(150)
+  timezone        String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  currency        String                @default("ARS") @db.VarChar(3)
+  weeklyBudget    Decimal?              @map("weekly_budget") @db.Decimal(12, 2)
+  createdById     String                @map("created_by_id") @db.Uuid
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  createdBy       User                  @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships     HouseholdMembership[]
+  invitations     HouseholdInvitation[]
+  adultProfiles   AdultProfile[]
+  foods           Food[]
+  meals           Meal[]
+  recipes         Recipe[]
+  preparedBatches PreparedBatch[]
 
   @@index([createdById])
   @@index([deletedAt])
@@ -342,33 +351,34 @@ model NutrientDefinition {
 }
 
 model Food {
-  id                String             @id @default(uuid()) @db.Uuid
-  householdId       String?            @map("household_id") @db.Uuid
-  name              String             @db.VarChar(150)
-  brand             String?            @db.VarChar(150)
-  description       String?            @db.Text
-  categoryId        String             @map("category_id") @db.Uuid
-  foodType          FoodType           @map("food_type")
-  preparationState  PreparationState   @map("preparation_state")
-  referenceQuantity Decimal            @map("reference_quantity") @db.Decimal(12, 4)
-  referenceUnit     ReferenceUnit      @map("reference_unit")
-  source            String             @db.VarChar(100)
-  sourceReference   String?            @map("source_reference") @db.VarChar(255)
-  confidenceLevel   ConfidenceLevel    @map("confidence_level")
-  isGlobal          Boolean            @default(false) @map("is_global")
-  isActive          Boolean            @default(true) @map("is_active")
-  createdById       String?            @map("created_by_id") @db.Uuid
-  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt         DateTime?          @map("deleted_at") @db.Timestamptz(6)
-  household         Household?         @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  category          FoodCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  createdBy         User?              @relation("FoodCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  nutrients         FoodNutrient[]
-  servings          FoodServing[]
-  aliases           FoodAlias[]
-  mealItems         MealItem[]
-  recipeIngredients RecipeIngredient[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  householdId              String?                   @map("household_id") @db.Uuid
+  name                     String                    @db.VarChar(150)
+  brand                    String?                   @db.VarChar(150)
+  description              String?                   @db.Text
+  categoryId               String                    @map("category_id") @db.Uuid
+  foodType                 FoodType                  @map("food_type")
+  preparationState         PreparationState          @map("preparation_state")
+  referenceQuantity        Decimal                   @map("reference_quantity") @db.Decimal(12, 4)
+  referenceUnit            ReferenceUnit             @map("reference_unit")
+  source                   String                    @db.VarChar(100)
+  sourceReference          String?                   @map("source_reference") @db.VarChar(255)
+  confidenceLevel          ConfidenceLevel           @map("confidence_level")
+  isGlobal                 Boolean                   @default(false) @map("is_global")
+  isActive                 Boolean                   @default(true) @map("is_active")
+  createdById              String?                   @map("created_by_id") @db.Uuid
+  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                DateTime?                 @map("deleted_at") @db.Timestamptz(6)
+  household                Household?                @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  category                 FoodCategory              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy                User?                     @relation("FoodCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  nutrients                FoodNutrient[]
+  servings                 FoodServing[]
+  aliases                  FoodAlias[]
+  mealItems                MealItem[]
+  recipeIngredients        RecipeIngredient[]
+  preparedBatchIngredients PreparedBatchIngredient[]
 
   @@unique([source, sourceReference])
   @@index([householdId, isActive])
@@ -394,16 +404,17 @@ model FoodNutrient {
 }
 
 model FoodServing {
-  id                    String             @id @default(uuid()) @db.Uuid
-  foodId                String             @map("food_id") @db.Uuid
-  name                  String             @db.VarChar(100)
-  quantity              Decimal            @db.Decimal(12, 4)
-  unit                  String             @db.VarChar(50)
-  equivalentGrams       Decimal?           @map("equivalent_grams") @db.Decimal(12, 4)
-  equivalentMilliliters Decimal?           @map("equivalent_milliliters") @db.Decimal(12, 4)
-  food                  Food               @relation(fields: [foodId], references: [id], onDelete: Cascade)
-  mealItems             MealItem[]
-  recipeIngredients     RecipeIngredient[]
+  id                       String                    @id @default(uuid()) @db.Uuid
+  foodId                   String                    @map("food_id") @db.Uuid
+  name                     String                    @db.VarChar(100)
+  quantity                 Decimal                   @db.Decimal(12, 4)
+  unit                     String                    @db.VarChar(50)
+  equivalentGrams          Decimal?                  @map("equivalent_grams") @db.Decimal(12, 4)
+  equivalentMilliliters    Decimal?                  @map("equivalent_milliliters") @db.Decimal(12, 4)
+  food                     Food                      @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  mealItems                MealItem[]
+  recipeIngredients        RecipeIngredient[]
+  preparedBatchIngredients PreparedBatchIngredient[]
 
   @@index([foodId])
   @@map("food_servings")
@@ -504,6 +515,7 @@ model Recipe {
   createdBy                   User                @relation("RecipeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   ingredients                 RecipeIngredient[]
   instructions                RecipeInstruction[]
+  preparedBatches             PreparedBatch[]
 
   @@index([householdId, status, name])
   @@index([createdById])
@@ -541,4 +553,84 @@ model RecipeInstruction {
   @@unique([recipeId, position])
   @@index([recipeId])
   @@map("recipe_instructions")
+}
+
+model PreparedBatch {
+  id                 String                          @id @default(uuid()) @db.Uuid
+  householdId        String                          @map("household_id") @db.Uuid
+  recipeId           String?                         @map("recipe_id") @db.Uuid
+  recipeNameSnapshot String                          @map("recipe_name_snapshot") @db.VarChar(150)
+  preparedAt         DateTime                        @map("prepared_at") @db.Timestamptz(6)
+  status             PreparedBatchStatus             @default(DRAFT)
+  finalCookedWeight  Decimal?                        @map("final_cooked_weight") @db.Decimal(18, 6)
+  createdById        String                          @map("created_by_id") @db.Uuid
+  createdAt          DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  finalizedAt        DateTime?                       @map("finalized_at") @db.Timestamptz(6)
+  cancelledAt        DateTime?                       @map("cancelled_at") @db.Timestamptz(6)
+  household          Household                       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipe             Recipe?                         @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  createdBy          User                            @relation("PreparedBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  ingredients        PreparedBatchIngredient[]
+  nutrientSnapshots  PreparedBatchNutrientSnapshot[]
+
+  @@index([householdId, status, preparedAt])
+  @@index([recipeId])
+  @@index([createdById])
+  @@map("prepared_batches")
+}
+
+model PreparedBatchIngredient {
+  id                       String                                    @id @default(uuid()) @db.Uuid
+  preparedBatchId          String                                    @map("prepared_batch_id") @db.Uuid
+  foodId                   String                                    @map("food_id") @db.Uuid
+  foodServingId            String?                                   @map("food_serving_id") @db.Uuid
+  quantity                 Decimal                                   @db.Decimal(18, 6)
+  unit                     RecipeIngredientUnit
+  position                 Int
+  notes                    String?                                   @db.Text
+  foodNameSnapshot         String?                                   @map("food_name_snapshot") @db.VarChar(150)
+  brandSnapshot            String?                                   @map("brand_snapshot") @db.VarChar(150)
+  preparationStateSnapshot PreparationState?                         @map("preparation_state_snapshot")
+  confidenceLevel          ConfidenceLevel?                          @map("confidence_level")
+  baseQuantity             Decimal?                                  @map("base_quantity") @db.Decimal(18, 6)
+  baseUnit                 String?                                   @map("base_unit") @db.VarChar(20)
+  preparedBatch            PreparedBatch                             @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
+  food                     Food                                      @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  foodServing              FoodServing?                              @relation(fields: [foodServingId], references: [id], onDelete: SetNull)
+  nutrientSnapshots        PreparedBatchIngredientNutrientSnapshot[]
+
+  @@unique([preparedBatchId, position])
+  @@index([preparedBatchId])
+  @@index([foodId])
+  @@index([foodServingId])
+  @@map("prepared_batch_ingredients")
+}
+
+model PreparedBatchIngredientNutrientSnapshot {
+  id                        String                  @id @default(uuid()) @db.Uuid
+  preparedBatchIngredientId String                  @map("prepared_batch_ingredient_id") @db.Uuid
+  nutrientCode              String                  @map("nutrient_code") @db.VarChar(50)
+  nutrientName              String                  @map("nutrient_name") @db.VarChar(100)
+  unit                      String                  @db.VarChar(20)
+  amount                    Decimal                 @db.Decimal(18, 6)
+  preparedBatchIngredient   PreparedBatchIngredient @relation(fields: [preparedBatchIngredientId], references: [id], onDelete: Cascade)
+
+  @@unique([preparedBatchIngredientId, nutrientCode])
+  @@index([preparedBatchIngredientId])
+  @@map("prepared_batch_ingredient_nutrient_snapshots")
+}
+
+model PreparedBatchNutrientSnapshot {
+  id              String        @id @default(uuid()) @db.Uuid
+  preparedBatchId String        @map("prepared_batch_id") @db.Uuid
+  nutrientCode    String        @map("nutrient_code") @db.VarChar(50)
+  nutrientName    String        @map("nutrient_name") @db.VarChar(100)
+  unit            String        @db.VarChar(20)
+  amount          Decimal       @db.Decimal(18, 6)
+  preparedBatch   PreparedBatch @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
+
+  @@unique([preparedBatchId, nutrientCode])
+  @@index([preparedBatchId])
+  @@map("prepared_batch_nutrient_snapshots")
 }

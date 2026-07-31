@@ -1,19 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class PreparedBatchNutrientResponseDto {
-  @ApiProperty({ example: 'ENERGY_KCAL' })
-  code!: string;
-
-  @ApiProperty({ example: 'Energy' })
-  name!: string;
-
-  @ApiProperty({ example: 'kcal' })
-  unit!: string;
-
-  @ApiProperty({ example: 2430 })
-  amount!: number;
-}
-
 export class PreparedBatchIngredientResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
@@ -54,8 +40,8 @@ export class PreparedBatchIngredientResponseDto {
   @ApiPropertyOptional({ nullable: true })
   baseUnit!: string | null;
 
-  @ApiProperty({ type: PreparedBatchNutrientResponseDto, isArray: true })
-  nutrients!: PreparedBatchNutrientResponseDto[];
+  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  nutrients!: Record<string, number>;
 }
 
 export class PreparedBatchWarningResponseDto {
@@ -94,17 +80,17 @@ export class PreparedBatchResponseDto {
   @ApiProperty({ type: PreparedBatchIngredientResponseDto, isArray: true })
   ingredients!: PreparedBatchIngredientResponseDto[];
 
-  @ApiProperty({ type: PreparedBatchNutrientResponseDto, isArray: true })
-  totalNutrients!: PreparedBatchNutrientResponseDto[];
+  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  totalNutrients!: Record<string, number>;
 
   @ApiPropertyOptional({ nullable: true, example: 1650 })
   finalCookedWeight!: number | null;
 
-  @ApiProperty({ type: PreparedBatchNutrientResponseDto, isArray: true })
-  nutrientsPerGram!: PreparedBatchNutrientResponseDto[];
+  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  nutrientsPerGram!: Record<string, number>;
 
-  @ApiProperty({ type: PreparedBatchNutrientResponseDto, isArray: true })
-  nutrientsPer100Grams!: PreparedBatchNutrientResponseDto[];
+  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  nutrientsPer100Grams!: Record<string, number>;
 
   @ApiProperty({ type: PreparedBatchWarningResponseDto, isArray: true })
   warnings!: PreparedBatchWarningResponseDto[];

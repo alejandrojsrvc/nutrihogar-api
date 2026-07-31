@@ -59,9 +59,9 @@ export function toPreparedBatchResponse(
       confidenceLevel: ingredient.confidenceLevel ?? null,
       baseQuantity: ingredient.baseQuantity?.toDecimalPlaces(2).toNumber() ?? null,
       baseUnit: ingredient.baseUnit,
-      nutrients: ingredient.nutrients.map(toNutrientResponse),
+      nutrients: toNutrientMap(ingredient.nutrients),
     })),
-    totalNutrients: batch.totalNutrients.map(toNutrientResponse),
+    totalNutrients: toNutrientMap(batch.totalNutrients),
     finalCookedWeight: batch.finalCookedWeight?.toDecimalPlaces(2).toNumber() ?? null,
     nutrientsPerGram: nutrientsToResponse(batch.nutrientsPerGram),
     nutrientsPer100Grams: nutrientsToResponse(batch.nutrientsPer100Grams),
@@ -109,18 +109,15 @@ export function rethrowPreparedBatchHttpError(error: unknown): never {
   throw error;
 }
 
-function toNutrientResponse(nutrient: {
-  code: string;
-  name: string;
-  unit: string;
-  amount: { toDecimalPlaces: (places: number) => { toNumber: () => number } };
-}) {
-  return {
-    code: nutrient.code,
-    name: nutrient.name,
-    unit: nutrient.unit,
-    amount: nutrient.amount.toDecimalPlaces(4).toNumber(),
-  };
+function toNutrientMap(
+  nutrients: Array<{
+    code: string;
+    amount: { toDecimalPlaces: (places: number) => { toNumber: () => number } };
+  }>,
+) {
+  return Object.fromEntries(
+    nutrients.map((nutrient) => [nutrient.code, nutrient.amount.toDecimalPlaces(4).toNumber()]),
+  );
 }
 
 function nutrientsToResponse(
@@ -129,11 +126,8 @@ function nutrientsToResponse(
     { toDecimalPlaces: (places: number) => { toNumber: () => number } }
   > | null,
 ) {
-  if (!nutrients) return [];
-  return Object.entries(nutrients).map(([code, amount]) => ({
-    code,
-    name: code,
-    unit: code === 'ENERGY_KCAL' ? 'kcal' : 'g',
-    amount: amount.toDecimalPlaces(6).toNumber(),
-  }));
+  if (!nutrients) return {};
+  return Object.fromEntries(
+    Object.entries(nutrients).map(([code, amount]) => [code, amount.toDecimalPlaces(6).toNumber()]),
+  );
 }

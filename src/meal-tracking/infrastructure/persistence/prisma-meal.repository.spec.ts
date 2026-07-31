@@ -77,6 +77,47 @@ describe('PrismaMealRepository', () => {
 
     await expect(repository.create(input)).rejects.toBe(failure);
   });
+
+  it('replaces meal items and snapshots inside a transaction', async () => {
+    const findFirst = jest.fn().mockResolvedValue({ id: 'meal-id' });
+    const update: jest.MockedFunction<(input: unknown) => Promise<typeof mealRecord>> = jest
+      .fn()
+      .mockResolvedValue(mealRecord);
+    const transaction = jest.fn((callback: (client: unknown) => unknown) =>
+      callback({ meal: { findFirst, update } }),
+    );
+    const repository = new PrismaMealRepository({
+      $transaction: transaction,
+    } as unknown as PrismaService);
+
+    await repository.replace({ ...input, mealId: 'meal-id', notes: 'editada' });
+
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { id: 'meal-id', status: 'CONFIRMED' },
+      select: { id: true },
+    });
+    expect(update.mock.calls[0]?.[0]).toMatchObject({
+      where: { id: 'meal-id' },
+      data: {
+        notes: 'editada',
+        items: { deleteMany: {} },
+      },
+    });
+  });
+
+  it('cancels only a confirmed meal', async () => {
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const repository = new PrismaMealRepository({
+      meal: { updateMany },
+    } as unknown as PrismaService);
+    const deletedAt = new Date('2026-07-30T12:00:00.000Z');
+
+    await expect(repository.cancel({ mealId: 'meal-id', deletedAt })).resolves.toBe(true);
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'meal-id', status: 'CONFIRMED' },
+      data: { status: 'CANCELLED', deletedAt },
+    });
+  });
 });
 
 const input: CreateMealInput = {

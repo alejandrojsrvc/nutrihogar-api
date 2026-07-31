@@ -86,4 +86,6 @@ export interface MealRepository {
 
 export interface MealUnitOfWork {
   create(input: CreateMealInput): Promise<MealView>;
+  replace(input: ReplaceMealInput): Promise<MealView | null>;
+  cancel(input: CancelMealInput): Promise<boolean>;
 }

@@ -30,6 +30,7 @@ export function toUtcMealDateRange(range: LocalMealDateRange, timezone: string):
 function localDateStartAsUtc(date: string, timezone: string): Date {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new InvalidMealDateRangeError();
   const [year, month, day] = date.split('-').map(Number);
+  ensureCalendarDate(year, month, day);
   const utcGuess = Date.UTC(year, month - 1, day);
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
@@ -58,6 +59,18 @@ function localDateStartAsUtc(date: string, timezone: string): Date {
 
 function addOneDay(date: string): string {
   const [year, month, day] = date.split('-').map(Number);
+  ensureCalendarDate(year, month, day);
   const next = new Date(Date.UTC(year, month - 1, day + 1));
   return next.toISOString().slice(0, 10);
+}
+
+function ensureCalendarDate(year: number, month: number, day: number): void {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth() !== month - 1 ||
+    candidate.getUTCDate() !== day
+  ) {
+    throw new InvalidMealDateRangeError();
+  }
 }

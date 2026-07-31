@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { FoodNotAvailableError } from '../../../nutrition/application/errors/food-not-available.error';
 import {
   FoodServingNotFoundError,
@@ -6,7 +11,12 @@ import {
   IncompleteServingEquivalenceError,
   InvalidFoodQuantityError,
 } from '../../../nutrition/domain/errors/nutrition-engine.errors';
-import { EmptyMealError, InvalidMealDateError } from '../../domain/errors/meal.errors';
+import {
+  CancelledMealEditError,
+  EmptyMealError,
+  InvalidMealDateError,
+  MealAlreadyCancelledError,
+} from '../../domain/errors/meal.errors';
 import {
   MealAccessDeniedError,
   MealAdministrativeAccessDeniedError,
@@ -69,6 +79,9 @@ export function rethrowMealHttpError(error: unknown): never {
     error instanceof InvalidMealDateRangeError
   ) {
     throw new BadRequestException(error.message);
+  }
+  if (error instanceof MealAlreadyCancelledError || error instanceof CancelledMealEditError) {
+    throw new ConflictException(error.message);
   }
   if (
     error instanceof MealAccessDeniedError ||

@@ -23,7 +23,11 @@ describe('RegisterMealUseCase', () => {
       list: jest.fn(),
     };
     create = jest.fn().mockResolvedValue(meal);
-    unitOfWork = { create };
+    unitOfWork = {
+      create,
+      replace: jest.fn(),
+      cancel: jest.fn(),
+    };
     calculate = jest.fn().mockResolvedValue(calculation);
     nutritionEngine = {
       calculate,

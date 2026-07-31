@@ -7,6 +7,8 @@ import {
   MealRepository,
   MealUnitOfWork,
   CreateMealInput,
+  ReplaceMealInput,
+  CancelMealInput,
 } from '../../application/ports/meal-repository.port';
 import { MealView } from '../../domain/models/meal.models';
 import { PrismaMealMapper } from './prisma-meal.mapper';
@@ -102,6 +104,41 @@ export class PrismaMealRepository implements MealRepository, MealUnitOfWork {
     );
 
     return PrismaMealMapper.toView(meal);
+  }
+
+  async replace(input: ReplaceMealInput): Promise<MealView | null> {
+    const meal = await this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.meal.findFirst({
+        where: { id: input.mealId, status: MealStatus.CONFIRMED },
+        select: { id: true },
+      });
+      if (!current) return null;
+
+      return transaction.meal.update({
+        where: { id: input.mealId },
+        data: {
+          mealType: input.mealType,
+          consumedAt: input.consumedAt,
+          notes: input.notes,
+          items: {
+            deleteMany: {},
+            create: input.items.map(toItemCreateData),
+          },
+        },
+        include: mealInclude,
+      });
+    });
+
+    return meal ? PrismaMealMapper.toView(meal) : null;
+  }
+
+  async cancel(input: CancelMealInput): Promise<boolean> {
+    const result = await this.prisma.meal.updateMany({
+      where: { id: input.mealId, status: MealStatus.CONFIRMED },
+      data: { status: MealStatus.CANCELLED, deletedAt: input.deletedAt },
+    });
+
+    return result.count > 0;
   }
 }
 

@@ -1,10 +1,26 @@
-import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
@@ -22,10 +38,19 @@ import {
   LIST_MEALS_USE_CASE,
   ListMealsUseCase,
 } from '../../application/use-cases/list-meals.use-case';
+import {
+  CANCEL_MEAL_USE_CASE,
+  CancelMealUseCase,
+} from '../../application/use-cases/cancel-meal.use-case';
+import {
+  UPDATE_MEAL_USE_CASE,
+  UpdateMealUseCase,
+} from '../../application/use-cases/update-meal.use-case';
 import { CreateMealRequestDto } from './dto/create-meal-request.dto';
 import { ListMealsQueryDto } from './dto/list-meals-query.dto';
 import { MealListResponseDto } from './dto/meal-list-response.dto';
 import { MealResponseDto } from './dto/meal-response.dto';
+import { UpdateMealRequestDto } from './dto/update-meal-request.dto';
 import { rethrowMealHttpError, toMealResponse } from './meal-http.mapper';
 
 @ApiTags('meals')
@@ -41,6 +66,10 @@ export class MealsController {
     private readonly getMeal: GetMealUseCase,
     @Inject(LIST_MEALS_USE_CASE)
     private readonly listMeals: ListMealsUseCase,
+    @Inject(UPDATE_MEAL_USE_CASE)
+    private readonly updateMeal: UpdateMealUseCase,
+    @Inject(CANCEL_MEAL_USE_CASE)
+    private readonly cancelMeal: CancelMealUseCase,
   ) {}
 
   @Post('households/:householdId/meals')
@@ -81,7 +110,7 @@ export class MealsController {
   @Get('households/:householdId/meals')
   @ApiOperation({ summary: 'Consulta las comidas del hogar' })
   @ApiParam({ name: 'householdId', format: 'uuid' })
-  @ApiCreatedResponse({ type: MealListResponseDto })
+  @ApiOkResponse({ type: MealListResponseDto })
   @ApiForbiddenResponse({ description: 'El usuario no pertenece al hogar o no es administrador.' })
   @ApiBadRequestResponse({ description: 'Los filtros de consulta son inválidos.' })
   async list(
@@ -116,7 +145,7 @@ export class MealsController {
   @Get('meals/:mealId')
   @ApiOperation({ summary: 'Obtiene el detalle de una comida' })
   @ApiParam({ name: 'mealId', format: 'uuid' })
-  @ApiCreatedResponse({ type: MealResponseDto })
+  @ApiOkResponse({ type: MealResponseDto })
   @ApiForbiddenResponse({ description: 'El usuario no puede acceder a la comida.' })
   @ApiNotFoundResponse({ description: 'La comida no existe.' })
   async get(
@@ -125,6 +154,60 @@ export class MealsController {
   ): Promise<MealResponseDto> {
     try {
       return toMealResponse(await this.getMeal.execute(user.id, mealId));
+    } catch (error) {
+      rethrowMealHttpError(error);
+    }
+  }
+
+  @Patch('meals/:mealId')
+  @ApiOperation({ summary: 'Edita una comida y recalcula sus snapshots' })
+  @ApiParam({ name: 'mealId', format: 'uuid' })
+  @ApiOkResponse({ type: MealResponseDto })
+  @ApiBadRequestResponse({ description: 'Los datos de la comida son inválidos.' })
+  @ApiConflictResponse({ description: 'La comida está cancelada.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede editar la comida.' })
+  @ApiNotFoundResponse({ description: 'La comida o sus alimentos no existen.' })
+  async update(
+    @Param('mealId') mealId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: UpdateMealRequestDto,
+  ): Promise<MealResponseDto> {
+    try {
+      const meal = await this.updateMeal.execute({
+        actorId: user.id,
+        mealId,
+        mealType: body.mealType,
+        consumedAt: body.consumedAt ? new Date(body.consumedAt) : undefined,
+        notes: body.notes,
+        items: body.items?.map((item) => ({
+          foodId: item.foodId,
+          servingId: item.servingId,
+          quantity: item.quantity,
+          unit: item.unit,
+          measurementMethod: item.measurementMethod,
+        })),
+      });
+
+      return toMealResponse(meal);
+    } catch (error) {
+      rethrowMealHttpError(error);
+    }
+  }
+
+  @Delete('meals/:mealId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Cancela lógicamente una comida' })
+  @ApiParam({ name: 'mealId', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'La comida fue cancelada.' })
+  @ApiConflictResponse({ description: 'La comida ya estaba cancelada.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede cancelar la comida.' })
+  @ApiNotFoundResponse({ description: 'La comida no existe.' })
+  async delete(
+    @Param('mealId') mealId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<void> {
+    try {
+      await this.cancelMeal.execute(user.id, mealId);
     } catch (error) {
       rethrowMealHttpError(error);
     }

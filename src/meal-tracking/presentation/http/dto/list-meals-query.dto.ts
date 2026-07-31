@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import type { TransformFnParams } from 'class-transformer';
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsUUID, Matches, Max, Min } from 'class-validator';
 import { MealTypeDto } from './create-meal-request.dto';
 
@@ -39,7 +40,13 @@ export class ListMealsQueryDto {
 
   @ApiPropertyOptional({ default: false })
   @IsOptional()
-  @Transform(({ value }) => value === true || value === 'true')
+  @Transform(({ value }: TransformFnParams) => normalizeBoolean(value))
   @IsBoolean()
   includeCancelled = false;
+}
+
+function normalizeBoolean(value: unknown): unknown {
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  return value;
 }

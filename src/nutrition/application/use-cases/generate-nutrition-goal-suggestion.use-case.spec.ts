@@ -34,6 +34,7 @@ describe('GenerateNutritionGoalSuggestionUseCase', () => {
     unitOfWork = {
       createSuggestion: jest.fn().mockResolvedValue(suggestion),
       confirmSuggestion: jest.fn(),
+      rejectSuggestion: jest.fn(),
       expireSuggestion: jest.fn(),
     };
     const clock: Clock = { now: () => now };

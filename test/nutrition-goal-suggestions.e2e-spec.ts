@@ -36,6 +36,7 @@ describe('Nutrition goal suggestions HTTP API (e2e)', () => {
   const unitOfWork: jest.Mocked<NutritionGoalUnitOfWork> = {
     createSuggestion: jest.fn(),
     confirmSuggestion: jest.fn(),
+    rejectSuggestion: jest.fn(),
     expireSuggestion: jest.fn(),
   };
 

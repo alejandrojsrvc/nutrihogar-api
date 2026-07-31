@@ -4,6 +4,7 @@ import { PrismaService } from '../../../database/prisma.service';
 import {
   CreateNutritionGoalSuggestionInput,
   ConfirmNutritionGoalSuggestionInput,
+  RejectNutritionGoalSuggestionInput,
   NutritionGoalUnitOfWork,
 } from '../../application/ports/nutrition-goal-repository.port';
 import {
@@ -77,6 +78,19 @@ export class PrismaNutritionGoalUnitOfWork implements NutritionGoalUnitOfWork {
     });
 
     return goal ? PrismaNutritionGoalMapper.goalToView(goal) : null;
+  }
+
+  async rejectSuggestion(input: RejectNutritionGoalSuggestionInput): Promise<boolean> {
+    const result = await this.prisma.nutritionGoalSuggestion.updateMany({
+      where: {
+        id: input.suggestionId,
+        status: NutritionGoalSuggestionStatus.PENDING,
+        expiresAt: { gt: input.rejectedAt },
+      },
+      data: { status: NutritionGoalSuggestionStatus.REJECTED },
+    });
+
+    return result.count > 0;
   }
 
   async expireSuggestion(suggestionId: string): Promise<void> {

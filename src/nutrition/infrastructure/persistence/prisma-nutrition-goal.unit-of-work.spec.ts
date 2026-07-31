@@ -102,6 +102,26 @@ describe('PrismaNutritionGoalUnitOfWork', () => {
       },
     });
   });
+
+  it('rejects only a pending and non-expired suggestion', async () => {
+    const reject = jest.fn().mockResolvedValue({ count: 1 });
+    const unitOfWork = new PrismaNutritionGoalUnitOfWork({
+      nutritionGoalSuggestion: { updateMany: reject },
+    } as unknown as PrismaService);
+
+    await expect(
+      unitOfWork.rejectSuggestion({ suggestionId: 'suggestion-id', rejectedAt: now }),
+    ).resolves.toBe(true);
+
+    expect(reject).toHaveBeenCalledWith({
+      where: {
+        id: 'suggestion-id',
+        status: 'PENDING',
+        expiresAt: { gt: now },
+      },
+      data: { status: 'REJECTED' },
+    });
+  });
 });
 
 const now = new Date('2026-07-30T12:00:00.000Z');
@@ -118,7 +138,7 @@ const suggestionRecord: NutritionGoalSuggestion = {
   id: 'suggestion-id',
   adultProfileId: 'profile-id',
   calculationMethod: 'MIFFLIN_ST_JEOR',
-  calculationInput: { weightKg: 80 },
+  calculationInput: { weightKg: 80, primaryGoal: 'FAT_LOSS' },
   bmr: new Prisma.Decimal(1800),
   tdee: new Prisma.Decimal(2500),
   suggestedCalories: new Prisma.Decimal(2200),

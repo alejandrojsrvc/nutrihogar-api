@@ -32,6 +32,7 @@ describe('Nutrition goal use cases', () => {
     unitOfWork = {
       createSuggestion: jest.fn().mockResolvedValue(suggestion),
       confirmSuggestion: jest.fn().mockResolvedValue(goal),
+      rejectSuggestion: jest.fn().mockResolvedValue(true),
       expireSuggestion: jest.fn().mockResolvedValue(undefined),
     };
     clock = { now: () => now };
@@ -114,7 +115,6 @@ describe('Nutrition goal use cases', () => {
     const result = await useCase.execute({
       actorId: 'user-id',
       suggestionId: 'suggestion-id',
-      goalType: 'FAT_LOSS',
       dailyCalories: 2100,
     });
 
@@ -138,7 +138,6 @@ describe('Nutrition goal use cases', () => {
       useCase.execute({
         actorId: 'user-id',
         suggestionId: 'suggestion-id',
-        goalType: 'FAT_LOSS',
       }),
     ).rejects.toBeInstanceOf(NutritionGoalSuggestionExpiredError);
 
@@ -157,7 +156,6 @@ describe('Nutrition goal use cases', () => {
       useCase.execute({
         actorId: 'user-id',
         suggestionId: 'suggestion-id',
-        goalType: 'FAT_LOSS',
       }),
     ).rejects.toBeInstanceOf(NutritionGoalSuggestionAlreadyHandledError);
   });
@@ -178,7 +176,7 @@ const suggestion: NutritionGoalSuggestionView = {
   id: 'suggestion-id',
   adultProfileId: 'profile-id',
   calculationMethod: 'MIFFLIN_ST_JEOR',
-  calculationInput: { weightKg: 80 },
+  calculationInput: { weightKg: 80, primaryGoal: 'FAT_LOSS' },
   bmr: new Decimal('1800.25'),
   tdee: new Decimal('2500.75'),
   values,

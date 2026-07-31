@@ -8,6 +8,7 @@ import { HouseholdsModule } from './households/households.module';
 import { IdentityModule } from './identity/identity.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { MealTrackingModule } from './meal-tracking/meal-tracking.module';
+import { RecipesModule } from './recipes/recipes.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MealTrackingModule } from './meal-tracking/meal-tracking.module';
     HouseholdsModule,
     NutritionModule,
     MealTrackingModule,
+    RecipesModule,
   ],
 })
 export class AppModule {}

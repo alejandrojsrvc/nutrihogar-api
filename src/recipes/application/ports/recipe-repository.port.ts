@@ -7,4 +7,18 @@ export interface RecipeRepository {
   findByIdForHousehold(id: string, householdId: string): Promise<Recipe | null>;
   save(recipe: Recipe): Promise<void>;
   existsByName(householdId: string, name: string, excludeId?: string): Promise<boolean>;
+  listByHousehold(householdId: string, criteria: RecipeListCriteria): Promise<RecipeListResult>;
+}
+
+export interface RecipeListCriteria {
+  query?: string;
+  page: number;
+  limit: number;
+}
+
+export interface RecipeListResult {
+  items: Recipe[];
+  page: number;
+  limit: number;
+  total: number;
 }

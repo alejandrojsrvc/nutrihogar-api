@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
-import { RecipeRepository } from '../../application/ports/recipe-repository.port';
+import {
+  RecipeListCriteria,
+  RecipeListResult,
+  RecipeRepository,
+} from '../../application/ports/recipe-repository.port';
 import { Recipe } from '../../domain/entities/recipe';
 import { PrismaRecipeMapper, recipeInclude } from './prisma-recipe.mapper';
 
@@ -32,6 +36,34 @@ export class PrismaRecipeRepository implements RecipeRepository {
       select: { id: true },
     });
     return record !== null;
+  }
+
+  async listByHousehold(
+    householdId: string,
+    criteria: RecipeListCriteria,
+  ): Promise<RecipeListResult> {
+    const where: Prisma.RecipeWhereInput = {
+      householdId,
+      status: 'ACTIVE',
+      ...(criteria.query ? { name: { contains: criteria.query, mode: 'insensitive' } } : {}),
+    };
+    const [records, total] = await Promise.all([
+      this.prisma.recipe.findMany({
+        where,
+        include: recipeInclude,
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        skip: (criteria.page - 1) * criteria.limit,
+        take: criteria.limit,
+      }),
+      this.prisma.recipe.count({ where }),
+    ]);
+
+    return {
+      items: records.map((record) => PrismaRecipeMapper.toDomain(record)),
+      page: criteria.page,
+      limit: criteria.limit,
+      total,
+    };
   }
 
   async save(recipe: Recipe): Promise<void> {

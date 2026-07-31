@@ -121,6 +121,40 @@ export class Recipe {
     this.touch();
   }
 
+  changeDetails(input: {
+    category?: string | null;
+    defaultServings?: number;
+    estimatedPreparationMinutes?: number | null;
+    tags?: string[];
+  }): void {
+    this.ensureActive();
+    if (input.category !== undefined) this.props.category = normalizeOptionalText(input.category);
+    if (input.defaultServings !== undefined)
+      this.props.defaultServings = positiveInteger(input.defaultServings);
+    if (input.estimatedPreparationMinutes !== undefined) {
+      this.props.estimatedPreparationMinutes =
+        input.estimatedPreparationMinutes === null
+          ? null
+          : positiveInteger(input.estimatedPreparationMinutes);
+    }
+    if (input.tags !== undefined) this.props.tags = normalizeTags(input.tags);
+    this.touch();
+  }
+
+  replaceIngredients(ingredients: RecipeIngredientProps[]): void {
+    this.ensureActive();
+    const normalized = normalizeIngredients(ingredients);
+    if (normalized.length === 0) throw new RecipeIngredientsRequiredError();
+    this.props.ingredients = normalized;
+    this.touch();
+  }
+
+  replaceInstructions(instructions: RecipeInstructionProps[]): void {
+    this.ensureActive();
+    this.props.instructions = normalizeInstructions(instructions);
+    this.touch();
+  }
+
   addIngredient(input: Omit<RecipeIngredientProps, 'id'> & { id?: string }): void {
     this.ensureActive();
     const ingredient = validateIngredient({ ...input, id: input.id ?? crypto.randomUUID() });

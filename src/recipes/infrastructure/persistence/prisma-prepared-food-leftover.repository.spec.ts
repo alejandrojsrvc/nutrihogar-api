@@ -106,6 +106,21 @@ describe('PrismaPreparedFoodLeftoverRepository', () => {
     expect(result?.availableWeight.equals(750)).toBe(true);
     expect(result?.nutrientDensitySnapshot[0]?.amountPerGram.equals('0.393939')).toBe(true);
   });
+
+  it('lists every leftover for a batch regardless of status', async () => {
+    const findMany = jest.fn().mockResolvedValue([createRecord('DISCARDED')]);
+    const repository = new PrismaPreparedFoodLeftoverRepository({
+      preparedFoodLeftover: { findMany },
+    } as unknown as PrismaService);
+
+    const result = await repository.listByPreparedBatchId('batch-id');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.status).toBe('DISCARDED');
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { preparedBatchId: 'batch-id' } }),
+    );
+  });
 });
 
 interface LeftoverCreateInput {
@@ -117,6 +132,31 @@ interface LeftoverCreateInput {
 }
 
 const now = new Date('2026-07-31T12:00:00.000Z');
+
+function createRecord(status: 'AVAILABLE' | 'CONSUMED' | 'DISCARDED' | 'EXPIRED') {
+  return {
+    id: 'leftover-id',
+    preparedBatchId: 'batch-id',
+    householdId: 'household-id',
+    availableWeight: new Prisma.Decimal(750),
+    storedAt: now,
+    storageLocation: 'REFRIGERATOR',
+    notes: null,
+    status,
+    createdAt: now,
+    updatedAt: now,
+    nutrientSnapshots: [
+      {
+        id: 'snapshot-id',
+        preparedFoodLeftoverId: 'leftover-id',
+        nutrientCode: 'ENERGY_KCAL',
+        nutrientName: 'Energy',
+        unit: 'kcal',
+        amountPerGram: new Prisma.Decimal('0.393939'),
+      },
+    ],
+  };
+}
 
 function createLeftover(weight: number) {
   return PreparedFoodLeftover.create({

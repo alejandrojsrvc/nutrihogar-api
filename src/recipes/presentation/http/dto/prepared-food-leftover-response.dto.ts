@@ -13,7 +13,7 @@ export class PreparedFoodLeftoverResponseDto {
   @ApiProperty({ example: 750 })
   availableWeight!: number;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   nutrientDensitySnapshot!: Record<string, number>;
 
   @ApiProperty({ format: 'date-time' })

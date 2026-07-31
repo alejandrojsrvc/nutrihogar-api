@@ -37,6 +37,7 @@ import { PreparedBatchResponseDto } from './dto/prepared-batch-response.dto';
 export function toPreparedBatchResponse(
   batch: PreparedBatch,
   warnings: PreparedBatchNutritionWarning[] = [],
+  preservePrecision = false,
 ): PreparedBatchResponseDto {
   return {
     id: batch.id,
@@ -49,7 +50,7 @@ export function toPreparedBatchResponse(
       id: ingredient.id,
       foodId: ingredient.foodId,
       servingId: ingredient.servingId,
-      quantity: ingredient.quantity.toDecimalPlaces(2).toNumber(),
+      quantity: toResponseNumber(ingredient.quantity, preservePrecision, 2),
       unit: ingredient.unit,
       position: ingredient.position,
       notes: ingredient.notes,
@@ -57,14 +58,18 @@ export function toPreparedBatchResponse(
       brandSnapshot: ingredient.brandSnapshot,
       preparationStateSnapshot: ingredient.preparationStateSnapshot,
       confidenceLevel: ingredient.confidenceLevel ?? null,
-      baseQuantity: ingredient.baseQuantity?.toDecimalPlaces(2).toNumber() ?? null,
+      baseQuantity: ingredient.baseQuantity
+        ? toResponseNumber(ingredient.baseQuantity, preservePrecision, 2)
+        : null,
       baseUnit: ingredient.baseUnit,
       nutrients: toNutrientMap(ingredient.nutrients),
     })),
-    totalNutrients: toNutrientMap(batch.totalNutrients),
-    finalCookedWeight: batch.finalCookedWeight?.toDecimalPlaces(2).toNumber() ?? null,
-    nutrientsPerGram: nutrientsToResponse(batch.nutrientsPerGram),
-    nutrientsPer100Grams: nutrientsToResponse(batch.nutrientsPer100Grams),
+    totalNutrients: toNutrientMap(batch.totalNutrients, preservePrecision),
+    finalCookedWeight: batch.finalCookedWeight
+      ? toResponseNumber(batch.finalCookedWeight, preservePrecision, 2)
+      : null,
+    nutrientsPerGram: nutrientsToResponse(batch.nutrientsPerGram, preservePrecision),
+    nutrientsPer100Grams: nutrientsToResponse(batch.nutrientsPer100Grams, preservePrecision),
     warnings,
     createdAt: batch.createdAt,
     updatedAt: batch.updatedAt,
@@ -114,9 +119,13 @@ function toNutrientMap(
     code: string;
     amount: { toDecimalPlaces: (places: number) => { toNumber: () => number } };
   }>,
+  preservePrecision: boolean,
 ) {
   return Object.fromEntries(
-    nutrients.map((nutrient) => [nutrient.code, nutrient.amount.toDecimalPlaces(4).toNumber()]),
+    nutrients.map((nutrient) => [
+      nutrient.code,
+      toResponseNumber(nutrient.amount, preservePrecision, 4),
+    ]),
   );
 }
 
@@ -125,9 +134,24 @@ function nutrientsToResponse(
     string,
     { toDecimalPlaces: (places: number) => { toNumber: () => number } }
   > | null,
+  preservePrecision: boolean,
 ) {
   if (!nutrients) return {};
   return Object.fromEntries(
-    Object.entries(nutrients).map(([code, amount]) => [code, amount.toDecimalPlaces(6).toNumber()]),
+    Object.entries(nutrients).map(([code, amount]) => [
+      code,
+      toResponseNumber(amount, preservePrecision, 6),
+    ]),
   );
+}
+
+function toResponseNumber(
+  amount: {
+    toNumber: () => number;
+    toDecimalPlaces: (places: number) => { toNumber: () => number };
+  },
+  preservePrecision: boolean,
+  places: number,
+): number {
+  return preservePrecision ? amount.toNumber() : amount.toDecimalPlaces(places).toNumber();
 }

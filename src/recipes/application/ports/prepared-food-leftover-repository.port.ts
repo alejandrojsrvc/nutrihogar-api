@@ -10,6 +10,7 @@ export interface PreparedFoodLeftoverListCriteria {
 
 export interface PreparedFoodLeftoverRepository {
   findById(id: string): Promise<PreparedFoodLeftover | null>;
+  listByPreparedBatchId(batchId: string): Promise<PreparedFoodLeftover[]>;
   list(criteria: PreparedFoodLeftoverListCriteria): Promise<PreparedFoodLeftover[]>;
   save(leftover: PreparedFoodLeftover): Promise<void>;
   updateStatus(leftover: PreparedFoodLeftover): Promise<void>;

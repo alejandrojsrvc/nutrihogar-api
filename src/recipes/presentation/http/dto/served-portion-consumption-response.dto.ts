@@ -22,6 +22,6 @@ export class ConfirmServedPortionConsumptionResponseDto {
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   mealId!: string | null;
 
-  @ApiProperty({ type: Object, additionalProperties: { type: 'number' } })
+  @ApiProperty({ type: 'object', additionalProperties: { type: 'number' } })
   nutrients!: Record<string, number>;
 }

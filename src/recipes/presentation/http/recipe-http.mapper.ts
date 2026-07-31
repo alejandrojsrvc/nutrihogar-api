@@ -28,6 +28,8 @@ import {
 } from '../../application/errors/recipe-application.errors';
 import { Recipe } from '../../domain/entities/recipe';
 import { RecipeListResponseDto, RecipeResponseDto } from './dto/recipe-response.dto';
+import { RecipeNutritionResponseDto } from './dto/recipe-nutrition-response.dto';
+import { RecipeNutritionResult } from '../../application/models/recipe-nutrition.models';
 
 export function toRecipeResponse(recipe: Recipe): RecipeResponseDto {
   const props = recipe.toProps();
@@ -64,6 +66,33 @@ export function toRecipeListResponse(result: {
     limit: result.limit,
     total: result.total,
   };
+}
+
+export function toRecipeNutritionResponse(
+  result: RecipeNutritionResult,
+): RecipeNutritionResponseDto {
+  return {
+    recipeId: result.recipeId,
+    servings: result.servings,
+    ingredients: result.ingredients.map((ingredient) => ({
+      ingredientId: ingredient.ingredientId,
+      foodId: ingredient.foodId,
+      baseQuantity: ingredient.baseQuantity.toDecimalPlaces(2).toNumber(),
+      baseUnit: ingredient.baseUnit,
+      nutrients: presentNutrients(ingredient.nutrients),
+    })),
+    totalNutrients: presentNutrients(result.totalNutrients),
+    perServingNutrients: presentNutrients(result.perServingNutrients),
+    warnings: result.warnings,
+  };
+}
+
+function presentNutrients(
+  nutrients: Record<string, { toDecimalPlaces: (places: number) => { toNumber: () => number } }>,
+) {
+  return Object.fromEntries(
+    Object.entries(nutrients).map(([code, amount]) => [code, amount.toDecimalPlaces(2).toNumber()]),
+  );
 }
 
 export function rethrowRecipeHttpError(error: unknown): never {

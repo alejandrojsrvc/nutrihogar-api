@@ -8,6 +8,7 @@ import { configureApplication } from '../src/configure-application';
 import { CurrentUser } from '../src/identity/application/models/current-user';
 import { GET_CURRENT_USER_USE_CASE } from '../src/identity/application/use-cases/get-current-user.use-case';
 import { ARCHIVE_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/archive-recipe.use-case';
+import { CALCULATE_RECIPE_NUTRITION_USE_CASE } from '../src/recipes/application/use-cases/calculate-recipe-nutrition.use-case';
 import { CREATE_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/create-recipe.use-case';
 import { GET_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/get-recipe.use-case';
 import { LIST_RECIPES_USE_CASE } from '../src/recipes/application/use-cases/list-recipes.use-case';
@@ -22,6 +23,7 @@ describe('Recipes HTTP API (e2e)', () => {
   const getRecipe = { execute: jest.fn() };
   const listRecipes = { execute: jest.fn() };
   const archiveRecipe = { execute: jest.fn() };
+  const calculateRecipeNutrition = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
@@ -37,6 +39,8 @@ describe('Recipes HTTP API (e2e)', () => {
       .useValue(listRecipes)
       .overrideProvider(ARCHIVE_RECIPE_USE_CASE)
       .useValue(archiveRecipe)
+      .overrideProvider(CALCULATE_RECIPE_NUTRITION_USE_CASE)
+      .useValue(calculateRecipeNutrition)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -55,6 +59,7 @@ describe('Recipes HTTP API (e2e)', () => {
       .mockReset()
       .mockResolvedValue({ items: [recipe], page: 1, limit: 20, total: 1 });
     archiveRecipe.execute.mockReset().mockResolvedValue(undefined);
+    calculateRecipeNutrition.execute.mockReset().mockResolvedValue(recipeNutrition);
   });
 
   it('creates, lists, updates and archives recipes', async () => {
@@ -86,6 +91,15 @@ describe('Recipes HTTP API (e2e)', () => {
       .set('Authorization', 'Bearer valid-token')
       .expect(200)
       .expect((response) => expect(response.body).toHaveProperty('name', 'Arroz con pollo'));
+
+    await request(app.getHttpServer())
+      .get('/api/recipes/recipe-id/nutrition')
+      .set('Authorization', 'Bearer valid-token')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toHaveProperty('totalNutrients.ENERGY_KCAL', 800);
+        expect(response.body).toHaveProperty('perServingNutrients.ENERGY_KCAL', 200);
+      });
 
     await request(app.getHttpServer())
       .patch('/api/recipes/recipe-id')
@@ -134,3 +148,20 @@ const recipe = Recipe.create({
   createdAt: new Date('2026-07-30T12:00:00.000Z'),
   updatedAt: new Date('2026-07-30T12:00:00.000Z'),
 });
+
+const recipeNutrition = {
+  recipeId: 'recipe-id',
+  servings: 4,
+  ingredients: [
+    {
+      ingredientId: 'ingredient-id',
+      foodId: 'food-id',
+      baseQuantity: { toDecimalPlaces: () => ({ toNumber: () => 600 }) },
+      baseUnit: 'GRAM' as const,
+      nutrients: { ENERGY_KCAL: { toDecimalPlaces: () => ({ toNumber: () => 800 }) } },
+    },
+  ],
+  totalNutrients: { ENERGY_KCAL: { toDecimalPlaces: () => ({ toNumber: () => 800 }) } },
+  perServingNutrients: { ENERGY_KCAL: { toDecimalPlaces: () => ({ toNumber: () => 200 }) } },
+  warnings: [],
+};

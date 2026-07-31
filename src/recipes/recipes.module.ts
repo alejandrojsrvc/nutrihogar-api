@@ -8,6 +8,10 @@ import {
   ArchiveRecipeUseCase,
 } from './application/use-cases/archive-recipe.use-case';
 import {
+  CALCULATE_RECIPE_NUTRITION_USE_CASE,
+  CalculateRecipeNutritionUseCase,
+} from './application/use-cases/calculate-recipe-nutrition.use-case';
+import {
   CREATE_RECIPE_USE_CASE,
   CreateRecipeUseCase,
 } from './application/use-cases/create-recipe.use-case';
@@ -73,6 +77,15 @@ import {
       inject: [HOUSEHOLD_REPOSITORY, RECIPE_REPOSITORY],
       useFactory: (households: HouseholdRepository, recipes: RecipeRepository) =>
         new ArchiveRecipeUseCase(households, recipes),
+    },
+    {
+      provide: CALCULATE_RECIPE_NUTRITION_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, RECIPE_REPOSITORY, NUTRITION_ENGINE_SERVICE],
+      useFactory: (
+        households: HouseholdRepository,
+        recipes: RecipeRepository,
+        nutritionEngine: NutritionEngineService,
+      ) => new CalculateRecipeNutritionUseCase(households, recipes, nutritionEngine),
     },
   ],
 })

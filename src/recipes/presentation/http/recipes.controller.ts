@@ -34,6 +34,10 @@ import {
   ArchiveRecipeUseCase,
 } from '../../application/use-cases/archive-recipe.use-case';
 import {
+  CALCULATE_RECIPE_NUTRITION_USE_CASE,
+  CalculateRecipeNutritionUseCase,
+} from '../../application/use-cases/calculate-recipe-nutrition.use-case';
+import {
   CREATE_RECIPE_USE_CASE,
   CreateRecipeUseCase,
 } from '../../application/use-cases/create-recipe.use-case';
@@ -52,9 +56,11 @@ import {
 import { CreateRecipeRequestDto, UpdateRecipeRequestDto } from './dto/recipe-request.dto';
 import { RecipeQueryDto } from './dto/recipe-query.dto';
 import { RecipeListResponseDto, RecipeResponseDto } from './dto/recipe-response.dto';
+import { RecipeNutritionResponseDto } from './dto/recipe-nutrition-response.dto';
 import {
   rethrowRecipeHttpError,
   toRecipeListResponse,
+  toRecipeNutritionResponse,
   toRecipeResponse,
 } from './recipe-http.mapper';
 
@@ -70,6 +76,8 @@ export class RecipesController {
     @Inject(GET_RECIPE_USE_CASE) private readonly getRecipe: GetRecipeUseCase,
     @Inject(LIST_RECIPES_USE_CASE) private readonly listRecipes: ListRecipesUseCase,
     @Inject(ARCHIVE_RECIPE_USE_CASE) private readonly archiveRecipe: ArchiveRecipeUseCase,
+    @Inject(CALCULATE_RECIPE_NUTRITION_USE_CASE)
+    private readonly calculateRecipeNutrition: CalculateRecipeNutritionUseCase,
   ) {}
 
   @Post('households/:householdId/recipes')
@@ -133,6 +141,25 @@ export class RecipesController {
   ): Promise<RecipeResponseDto> {
     try {
       return toRecipeResponse(await this.getRecipe.execute(user.id, recipeId));
+    } catch (error) {
+      rethrowRecipeHttpError(error);
+    }
+  }
+
+  @Get('recipes/:recipeId/nutrition')
+  @ApiOperation({ summary: 'Calcula los nutrientes estimados de una receta' })
+  @ApiParam({ name: 'recipeId', format: 'uuid' })
+  @ApiOkResponse({ type: RecipeNutritionResponseDto })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder a la receta.' })
+  @ApiNotFoundResponse({ description: 'La receta o un alimento no existe.' })
+  async nutrition(
+    @Param('recipeId') recipeId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ): Promise<RecipeNutritionResponseDto> {
+    try {
+      return toRecipeNutritionResponse(
+        await this.calculateRecipeNutrition.execute(user.id, recipeId),
+      );
     } catch (error) {
       rethrowRecipeHttpError(error);
     }

@@ -193,5 +193,6 @@ import { HouseholdsController } from './presentation/http/households.controller'
         new CancelHouseholdInvitationUseCase(households, invitations),
     },
   ],
+  exports: [HOUSEHOLD_REPOSITORY, ADULT_PROFILE_REPOSITORY],
 })
 export class HouseholdsModule {}

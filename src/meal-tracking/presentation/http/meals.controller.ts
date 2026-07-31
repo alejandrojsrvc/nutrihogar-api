@@ -33,6 +33,10 @@ import {
   REGISTER_MEAL_USE_CASE,
   RegisterMealUseCase,
 } from '../../application/use-cases/register-meal.use-case';
+import {
+  DUPLICATE_MEAL_USE_CASE,
+  DuplicateMealUseCase,
+} from '../../application/use-cases/duplicate-meal.use-case';
 import { GET_MEAL_USE_CASE, GetMealUseCase } from '../../application/use-cases/get-meal.use-case';
 import {
   LIST_MEALS_USE_CASE,
@@ -50,6 +54,7 @@ import { CreateMealRequestDto } from './dto/create-meal-request.dto';
 import { ListMealsQueryDto } from './dto/list-meals-query.dto';
 import { MealListResponseDto } from './dto/meal-list-response.dto';
 import { MealResponseDto } from './dto/meal-response.dto';
+import { DuplicateMealRequestDto } from './dto/duplicate-meal-request.dto';
 import { UpdateMealRequestDto } from './dto/update-meal-request.dto';
 import { rethrowMealHttpError, toMealResponse } from './meal-http.mapper';
 
@@ -62,6 +67,8 @@ export class MealsController {
   constructor(
     @Inject(REGISTER_MEAL_USE_CASE)
     private readonly registerMeal: RegisterMealUseCase,
+    @Inject(DUPLICATE_MEAL_USE_CASE)
+    private readonly duplicateMeal: DuplicateMealUseCase,
     @Inject(GET_MEAL_USE_CASE)
     private readonly getMeal: GetMealUseCase,
     @Inject(LIST_MEALS_USE_CASE)
@@ -99,6 +106,34 @@ export class MealsController {
           unit: item.unit,
           measurementMethod: item.measurementMethod,
         })),
+      });
+
+      return toMealResponse(meal);
+    } catch (error) {
+      rethrowMealHttpError(error);
+    }
+  }
+
+  @Post('meals/:mealId/duplicate')
+  @ApiOperation({ summary: 'Duplica una comida recalculando sus snapshots' })
+  @ApiParam({ name: 'mealId', format: 'uuid' })
+  @ApiCreatedResponse({ type: MealResponseDto })
+  @ApiBadRequestResponse({ description: 'La fecha o los datos de duplicación son inválidos.' })
+  @ApiConflictResponse({ description: 'No se puede duplicar una comida cancelada.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede acceder a la comida.' })
+  @ApiNotFoundResponse({ description: 'La comida, perfil o alimento no existe.' })
+  async duplicate(
+    @Param('mealId') mealId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: DuplicateMealRequestDto,
+  ): Promise<MealResponseDto> {
+    try {
+      const meal = await this.duplicateMeal.execute({
+        actorId: user.id,
+        mealId,
+        adultProfileId: body.adultProfileId,
+        mealType: body.mealType,
+        consumedAt: new Date(body.consumedAt),
       });
 
       return toMealResponse(meal);

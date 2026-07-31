@@ -40,6 +40,13 @@ export class PreparedBatchCancelledError extends Error {
   }
 }
 
+export class PreparedBatchNotFinalizedError extends Error {
+  constructor() {
+    super('Only finalized prepared batches can receive served portions.');
+    this.name = PreparedBatchNotFinalizedError.name;
+  }
+}
+
 export class PreparedBatchSnapshotMismatchError extends Error {
   constructor() {
     super('The nutrition snapshots do not match the prepared batch ingredients.');

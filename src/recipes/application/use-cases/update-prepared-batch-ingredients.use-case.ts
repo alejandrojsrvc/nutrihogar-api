@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import Decimal from 'decimal.js';
 import { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import { NutritionEngineService } from '../../../nutrition/application/nutrition-engine.service';
 import { InvalidPreparedBatchIngredientError } from '../../domain/errors/prepared-batch.errors';
@@ -52,7 +53,7 @@ function toDomainIngredient(ingredient: PreparedBatchIngredientCommand) {
   return {
     id: ingredient.id ?? crypto.randomUUID(),
     foodId: ingredient.foodId,
-    quantity: ingredient.quantity,
+    quantity: new Decimal(ingredient.quantity),
     unit: ingredient.unit,
     servingId: ingredient.servingId ?? null,
     position: ingredient.position,

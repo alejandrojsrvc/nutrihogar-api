@@ -1,43 +1,23 @@
 ---
 name: nutrihogar-github-issue
-description: Use when implementing or continuing any GitHub issue in alejandrojsrvc/nutrihogar-api. Loads the repository workflow, architecture rules, validation limits, and pull request requirements from AGENTS.md.
+description: Use when implementing or continuing one or more GitHub issues in alejandrojsrvc/nutrihogar-api. Applies the repository-only workflow, targeted validation, per-issue commits, and PR closure rules.
 ---
 
-# NutriHogar API Issue Workflow
+# NutriHogar API Issues
 
-Use this skill for every GitHub issue implemented in this repository.
+Work only in this repository and follow `AGENTS.md`; do not inspect or modify the web repository.
 
-## Required Instructions
+## Workflow
 
-Read `AGENTS.md` completely before running Git commands, planning, or editing files. Treat it as mandatory repository policy.
+1. Fetch every requested issue as readable Markdown with `gh issue view <number> --repo alejandrojsrvc/nutrihogar-api` and confirm it is open. Do not request JSON or create temporary files.
+2. Inspect Git once and preserve unrelated changes.
+3. Run `git fetch origin main`, then create one branch for the whole request directly from `origin/main`. Do not switch to or pull local `main`.
+4. Read affected code and tests. Read architecture, sprint, or PDR only when needed to resolve ambiguity.
+5. Present at most five plan points and implement only the requested scope.
+6. Create or update meaningful unit and integration tests for acceptance criteria, observable behavior, errors, and invariants. Never add trivial tests or weaken existing coverage.
+7. After all changes, run lint and targeted tests once. Run integration or e2e only when they terminate in process and require no external service.
+8. Create one conventional commit for the whole request, then push once.
+9. Open one PR against `main` with a section per issue, actual local validation, pending GitHub checks, and `Closes #N` for every fully completed issue.
+10. Return the PR URL without waiting for CI. Never merge or close issues manually.
 
-The required flow is:
-
-1. Fetch the complete issue using `gh issue view`.
-2. Inspect Git state and preserve unrelated changes.
-3. Update local `main` with `git pull --ff-only origin main`.
-4. Create an issue branch from updated `main`.
-5. Read `doc/arquitecture.md`, affected code, tests, and relevant product documents.
-6. Present a short plan mapped to acceptance criteria.
-7. Implement only the issue scope and explicit dependencies.
-8. Add or update tests and OpenAPI documentation as required.
-9. Run only lint and tests. Never run build, application servers, Docker, migrations, seeds, deployments, or shared database operations.
-10. Review the complete diff, commit only issue files, and push the branch.
-11. Open a pull request against `main` with actual validation results and manual test instructions.
-12. Stop after opening the PR. Never merge it or close the issue manually unless the user explicitly overrides this rule.
-
-## Backend Architecture
-
-Enforce the dependency rules in `doc/arquitecture.md`:
-
-- Presentation calls application use cases.
-- Domain and application remain independent from NestJS, Prisma, Supabase, HTTP, and external providers.
-- Prisma is a persistence adapter, not the domain model.
-- Business rules do not belong in controllers or repositories.
-- HTTP DTOs, commands, results, domain models, and persistence models remain separate.
-- Use explicit ports, adapters, mappers, and `UnitOfWork` only where the current issue needs them.
-- Do not create speculative abstractions or implement future issues.
-
-## Final Delivery
-
-Return the PR URL, changed areas, lint and test results, commands the user must run for build/runtime verification, numbered manual test steps, and any residual risks. State explicitly that build and application startup were not executed.
+Do not invent commands. Only use scripts confirmed in `package.json`. Never run build, servers, Docker, migrations, seeds, deployments, shared databases, destructive Git commands, or force push.

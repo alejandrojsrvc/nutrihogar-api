@@ -34,6 +34,7 @@ export class RegisterPreparedFoodLeftoverUseCase {
     if (batch.status !== 'FINALIZED' || !batch.finalCookedWeight) {
       throw new PreparedBatchNotFinalizedError();
     }
+    const finalCookedWeight = batch.finalCookedWeight;
     ensureStoredAt(command.storedAt, this.clock.now());
 
     const leftover = PreparedFoodLeftover.create({
@@ -45,7 +46,7 @@ export class RegisterPreparedFoodLeftoverUseCase {
         code: nutrient.code,
         name: nutrient.name,
         unit: nutrient.unit,
-        amountPerGram: nutrient.amount.div(batch.finalCookedWeight),
+        amountPerGram: nutrient.amount.div(finalCookedWeight),
       })),
       storedAt: command.storedAt,
       storageLocation: command.storageLocation,

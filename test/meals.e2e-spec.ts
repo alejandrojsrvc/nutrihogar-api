@@ -9,6 +9,7 @@ import { configureApplication } from '../src/configure-application';
 import { CurrentUser } from '../src/identity/application/models/current-user';
 import { GET_CURRENT_USER_USE_CASE } from '../src/identity/application/use-cases/get-current-user.use-case';
 import { CANCEL_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/cancel-meal.use-case';
+import { DUPLICATE_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/duplicate-meal.use-case';
 import { GET_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/get-meal.use-case';
 import { LIST_MEALS_USE_CASE } from '../src/meal-tracking/application/use-cases/list-meals.use-case';
 import { REGISTER_MEAL_USE_CASE } from '../src/meal-tracking/application/use-cases/register-meal.use-case';
@@ -22,6 +23,7 @@ describe('Meals HTTP API (e2e)', () => {
   const getMeal = { execute: jest.fn() };
   const updateMeal = { execute: jest.fn() };
   const cancelMeal = { execute: jest.fn() };
+  const duplicateMeal = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -39,6 +41,8 @@ describe('Meals HTTP API (e2e)', () => {
       .useValue(updateMeal)
       .overrideProvider(CANCEL_MEAL_USE_CASE)
       .useValue(cancelMeal)
+      .overrideProvider(DUPLICATE_MEAL_USE_CASE)
+      .useValue(duplicateMeal)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -59,6 +63,9 @@ describe('Meals HTTP API (e2e)', () => {
     getMeal.execute.mockReset().mockResolvedValue(meal);
     updateMeal.execute.mockReset().mockResolvedValue(meal);
     cancelMeal.execute.mockReset().mockResolvedValue(undefined);
+    duplicateMeal.execute
+      .mockReset()
+      .mockResolvedValue({ ...meal, id: 'duplicated-meal-id', source: 'DUPLICATED' });
   });
 
   it('registers a manual meal', async () => {
@@ -109,6 +116,23 @@ describe('Meals HTTP API (e2e)', () => {
           }),
         ),
       );
+  });
+
+  it('duplicates a meal with a new destination', async () => {
+    await request(app.getHttpServer())
+      .post('/api/meals/meal-id/duplicate')
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        adultProfileId: '00000000-0000-4000-8000-000000000001',
+        mealType: 'DINNER',
+        consumedAt: '2026-07-30T13:00:00-03:00',
+      })
+      .expect(201)
+      .expect((response) => expect(response.body).toHaveProperty('id', 'duplicated-meal-id'));
+
+    expect(duplicateMeal.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ mealId: 'meal-id', mealType: 'DINNER' }),
+    );
   });
 
   it('updates and cancels a meal', async () => {

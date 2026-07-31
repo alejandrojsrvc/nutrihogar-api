@@ -11,6 +11,10 @@ import {
   REGISTER_MEAL_USE_CASE,
   RegisterMealUseCase,
 } from './application/use-cases/register-meal.use-case';
+import {
+  DUPLICATE_MEAL_USE_CASE,
+  DuplicateMealUseCase,
+} from './application/use-cases/duplicate-meal.use-case';
 import { GET_MEAL_USE_CASE, GetMealUseCase } from './application/use-cases/get-meal.use-case';
 import { LIST_MEALS_USE_CASE, ListMealsUseCase } from './application/use-cases/list-meals.use-case';
 import {
@@ -44,6 +48,16 @@ import {
         nutritionEngine: NutritionEngineService,
         clock: Clock,
       ) => new RegisterMealUseCase(meals, unitOfWork, nutritionEngine, clock),
+    },
+    {
+      provide: DUPLICATE_MEAL_USE_CASE,
+      inject: [MEAL_REPOSITORY, MEAL_UNIT_OF_WORK, NUTRITION_ENGINE_SERVICE, CLOCK],
+      useFactory: (
+        meals: MealRepository,
+        unitOfWork: MealUnitOfWork,
+        nutritionEngine: NutritionEngineService,
+        clock: Clock,
+      ) => new DuplicateMealUseCase(meals, unitOfWork, nutritionEngine, clock),
     },
     {
       provide: GET_MEAL_USE_CASE,

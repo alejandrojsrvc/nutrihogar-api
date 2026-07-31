@@ -18,10 +18,17 @@ import {
 import {
   PREPARED_BATCH_AVAILABILITY_REPOSITORY,
   SERVED_PORTION_REPOSITORY,
+  SERVED_PORTION_CONSUMPTION_UNIT_OF_WORK,
   SERVED_PORTION_UNIT_OF_WORK,
   PreparedBatchAvailabilityRepository,
+  ServedPortionRepository,
+  ServedPortionConsumptionUnitOfWork,
   ServedPortionUnitOfWork,
 } from './application/ports/served-portion-repository.port';
+import {
+  PREPARED_FOOD_LEFTOVER_REPOSITORY,
+  PreparedFoodLeftoverRepository,
+} from './application/ports/prepared-food-leftover-repository.port';
 import {
   CANCEL_PREPARED_BATCH_USE_CASE,
   CancelPreparedBatchUseCase,
@@ -51,6 +58,26 @@ import {
   ServePreparedBatchPortionsUseCase,
 } from './application/use-cases/serve-prepared-batch-portions.use-case';
 import {
+  CONFIRM_SERVED_PORTION_CONSUMPTION_USE_CASE,
+  ConfirmServedPortionConsumptionUseCase,
+} from './application/use-cases/confirm-served-portion-consumption.use-case';
+import {
+  REGISTER_PREPARED_FOOD_LEFTOVER_USE_CASE,
+  RegisterPreparedFoodLeftoverUseCase,
+} from './application/use-cases/register-prepared-food-leftover.use-case';
+import {
+  GET_PREPARED_FOOD_LEFTOVER_USE_CASE,
+  GetPreparedFoodLeftoverUseCase,
+} from './application/use-cases/get-prepared-food-leftover.use-case';
+import {
+  LIST_PREPARED_FOOD_LEFTOVERS_USE_CASE,
+  ListPreparedFoodLeftoversUseCase,
+} from './application/use-cases/list-prepared-food-leftovers.use-case';
+import {
+  UPDATE_PREPARED_FOOD_LEFTOVER_STATUS_USE_CASE,
+  UpdatePreparedFoodLeftoverStatusUseCase,
+} from './application/use-cases/update-prepared-food-leftover-status.use-case';
+import {
   CREATE_RECIPE_USE_CASE,
   CreateRecipeUseCase,
 } from './application/use-cases/create-recipe.use-case';
@@ -66,9 +93,11 @@ import {
 import { PrismaRecipeRepository } from './infrastructure/persistence/prisma-recipe.repository';
 import { PrismaPreparedBatchRepository } from './infrastructure/persistence/prisma-prepared-batch.repository';
 import { PrismaServedPortionRepository } from './infrastructure/persistence/prisma-served-portion.repository';
+import { PrismaPreparedFoodLeftoverRepository } from './infrastructure/persistence/prisma-prepared-food-leftover.repository';
 import { RecipesController } from './presentation/http/recipes.controller';
 import { PreparedBatchesController } from './presentation/http/prepared-batches.controller';
 import { ServedPortionsController } from './presentation/http/served-portions.controller';
+import { PreparedFoodLeftoversController } from './presentation/http/prepared-food-leftovers.controller';
 import { CLOCK, Clock } from '../nutrition/application/ports/clock.port';
 import {
   NUTRITION_ENGINE_SERVICE,
@@ -85,13 +114,23 @@ import {
 
 @Module({
   imports: [HouseholdsModule, IdentityModule, NutritionModule],
-  controllers: [RecipesController, PreparedBatchesController, ServedPortionsController],
+  controllers: [
+    RecipesController,
+    PreparedBatchesController,
+    ServedPortionsController,
+    PreparedFoodLeftoversController,
+  ],
   providers: [
     { provide: RECIPE_REPOSITORY, useClass: PrismaRecipeRepository },
     { provide: PREPARED_BATCH_REPOSITORY, useClass: PrismaPreparedBatchRepository },
     { provide: SERVED_PORTION_REPOSITORY, useClass: PrismaServedPortionRepository },
     { provide: PREPARED_BATCH_AVAILABILITY_REPOSITORY, useExisting: SERVED_PORTION_REPOSITORY },
     { provide: SERVED_PORTION_UNIT_OF_WORK, useExisting: SERVED_PORTION_REPOSITORY },
+    { provide: SERVED_PORTION_CONSUMPTION_UNIT_OF_WORK, useExisting: SERVED_PORTION_REPOSITORY },
+    {
+      provide: PREPARED_FOOD_LEFTOVER_REPOSITORY,
+      useClass: PrismaPreparedFoodLeftoverRepository,
+    },
     {
       provide: CREATE_RECIPE_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY, RECIPE_REPOSITORY, NUTRITION_ENGINE_SERVICE, CLOCK],
@@ -224,6 +263,66 @@ import {
           adultProfiles,
           clock,
         ),
+    },
+    {
+      provide: CONFIRM_SERVED_PORTION_CONSUMPTION_USE_CASE,
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        PREPARED_BATCH_REPOSITORY,
+        SERVED_PORTION_REPOSITORY,
+        SERVED_PORTION_CONSUMPTION_UNIT_OF_WORK,
+        CLOCK,
+      ],
+      useFactory: (
+        households: HouseholdRepository,
+        batches: PreparedBatchRepository,
+        portions: ServedPortionRepository,
+        transaction: ServedPortionConsumptionUnitOfWork,
+        clock: Clock,
+      ) =>
+        new ConfirmServedPortionConsumptionUseCase(
+          households,
+          batches,
+          portions,
+          transaction,
+          clock,
+        ),
+    },
+    {
+      provide: REGISTER_PREPARED_FOOD_LEFTOVER_USE_CASE,
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        PREPARED_BATCH_REPOSITORY,
+        PREPARED_FOOD_LEFTOVER_REPOSITORY,
+        CLOCK,
+      ],
+      useFactory: (
+        households: HouseholdRepository,
+        batches: PreparedBatchRepository,
+        leftovers: PreparedFoodLeftoverRepository,
+        clock: Clock,
+      ) => new RegisterPreparedFoodLeftoverUseCase(households, batches, leftovers, clock),
+    },
+    {
+      provide: GET_PREPARED_FOOD_LEFTOVER_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, PREPARED_FOOD_LEFTOVER_REPOSITORY],
+      useFactory: (households: HouseholdRepository, leftovers: PreparedFoodLeftoverRepository) =>
+        new GetPreparedFoodLeftoverUseCase(households, leftovers),
+    },
+    {
+      provide: LIST_PREPARED_FOOD_LEFTOVERS_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, PREPARED_FOOD_LEFTOVER_REPOSITORY],
+      useFactory: (households: HouseholdRepository, leftovers: PreparedFoodLeftoverRepository) =>
+        new ListPreparedFoodLeftoversUseCase(households, leftovers),
+    },
+    {
+      provide: UPDATE_PREPARED_FOOD_LEFTOVER_STATUS_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, PREPARED_FOOD_LEFTOVER_REPOSITORY, CLOCK],
+      useFactory: (
+        households: HouseholdRepository,
+        leftovers: PreparedFoodLeftoverRepository,
+        clock: Clock,
+      ) => new UpdatePreparedFoodLeftoverStatusUseCase(households, leftovers, clock),
     },
   ],
 })

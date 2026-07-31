@@ -5,17 +5,28 @@ import { PrismaService } from '../../../database/prisma.service';
 import {
   PreparedBatchAvailability,
   PreparedBatchAvailabilityRepository,
+  PreparedBatchMealInput,
   ServedPortionRepository,
+  ServedPortionConsumptionUnitOfWork,
   ServedPortionUnitOfWork,
 } from '../../application/ports/served-portion-repository.port';
 import { PreparedBatchNotFinalizedError } from '../../domain/errors/prepared-batch.errors';
-import { PortionAvailabilityExceededError } from '../../domain/errors/served-portion.errors';
+import {
+  PortionAvailabilityExceededError,
+  ServedPortionAlreadyConsumedError,
+  ServedPortionCancelledError,
+} from '../../domain/errors/served-portion.errors';
+import { ServedPortionNotFoundError } from '../../application/errors/served-portion-consumption.errors';
 import { ServedPortion } from '../../domain/entities/served-portion';
 import { PrismaServedPortionMapper, servedPortionInclude } from './prisma-served-portion.mapper';
 
 @Injectable()
 export class PrismaServedPortionRepository
-  implements ServedPortionRepository, PreparedBatchAvailabilityRepository, ServedPortionUnitOfWork
+  implements
+    ServedPortionRepository,
+    PreparedBatchAvailabilityRepository,
+    ServedPortionUnitOfWork,
+    ServedPortionConsumptionUnitOfWork
 {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -80,62 +91,66 @@ export class PrismaServedPortionRepository
 
   async save(portion: ServedPortion): Promise<void> {
     const data = PrismaServedPortionMapper.toPersistence(portion);
+    await this.prisma.$transaction((transaction) => persistPortion(transaction, data));
+  }
+
+  async confirmConsumption(
+    portion: ServedPortion,
+    meal: PreparedBatchMealInput | null,
+  ): Promise<void> {
+    const data = PrismaServedPortionMapper.toPersistence(portion);
     await this.prisma.$transaction(async (transaction) => {
-      const existing = await transaction.servedPortion.findUnique({
+      await transaction.$queryRaw<{ id: string }[]>(
+        Prisma.sql`SELECT "id" FROM "served_portions" WHERE "id" = ${data.id} FOR UPDATE`,
+      );
+      const current = await transaction.servedPortion.findUnique({
         where: { id: data.id },
-        select: { id: true },
+        select: { status: true },
       });
-      const portionData = toPortionData(data);
-      const nutrients = {
-        create: data.nutrients.map((nutrient) => ({
-          nutrientCode: nutrient.code,
-          nutrientName: nutrient.name,
-          unit: nutrient.unit,
-          amount: nutrient.amount,
-        })),
-      };
+      if (!current) throw new ServedPortionNotFoundError();
+      if (current?.status === 'CONSUMED') throw new ServedPortionAlreadyConsumedError();
+      if (current?.status === 'CANCELLED') throw new ServedPortionCancelledError();
 
-      if (!existing) {
-        await transaction.servedPortion.create({
+      if (meal) {
+        await transaction.meal.create({
           data: {
-            ...portionData,
-            ...(data.remainder
-              ? {
-                  remainder: {
-                    create: {
-                      id: data.remainder.id,
-                      weight: data.remainder.weight,
-                      disposition: data.remainder.disposition,
-                      createdAt: data.remainder.createdAt,
-                    },
-                  },
-                }
-              : {}),
-            nutrientSnapshots: nutrients,
-          },
-        });
-        return;
-      }
-
-      await transaction.servedPortion.update({
-        where: { id: data.id },
-        data: {
-          ...portionData,
-          nutrientSnapshots: { deleteMany: {}, ...nutrients },
-        },
-      });
-      await transaction.portionRemainder.deleteMany({ where: { servedPortionId: data.id } });
-      if (data.remainder) {
-        await transaction.portionRemainder.create({
-          data: {
-            id: data.remainder.id,
-            servedPortionId: data.id,
-            weight: data.remainder.weight,
-            disposition: data.remainder.disposition,
-            createdAt: data.remainder.createdAt,
+            id: meal.id,
+            householdId: meal.householdId,
+            adultProfileId: meal.adultProfileId,
+            mealType: meal.mealType,
+            consumedAt: meal.consumedAt,
+            status: 'CONFIRMED',
+            source: 'PREPARED_BATCH',
+            notes: null,
+            createdById: meal.createdById,
+            items: {
+              create: {
+                foodId: null,
+                foodServingId: null,
+                nameSnapshot: meal.item.nameSnapshot,
+                brandSnapshot: null,
+                preparationStateSnapshot: 'READY_TO_EAT',
+                quantity: meal.item.quantity.toString(),
+                unit: 'GRAM',
+                baseQuantity: meal.item.quantity.toString(),
+                baseUnit: 'GRAM',
+                measurementMethod: 'WEIGHED',
+                confidenceLevel: 'VERIFIED',
+                nutrientSnapshots: {
+                  create: meal.item.nutrients.map((nutrient) => ({
+                    nutrientCode: nutrient.code,
+                    nutrientName: nutrient.name,
+                    unit: nutrient.unit,
+                    amount: nutrient.amount.toString(),
+                  })),
+                },
+              },
+            },
           },
         });
       }
+
+      await persistPortion(transaction, data);
     });
   }
 
@@ -169,6 +184,67 @@ export class PrismaServedPortionRepository
           toPortionData(PrismaServedPortionMapper.toPersistence(portion)),
         ),
       });
+    });
+  }
+}
+
+async function persistPortion(
+  transaction: Prisma.TransactionClient,
+  data: ReturnType<typeof PrismaServedPortionMapper.toPersistence>,
+): Promise<void> {
+  const existing = await transaction.servedPortion.findUnique({
+    where: { id: data.id },
+    select: { id: true },
+  });
+  const portionData = toPortionData(data);
+  const nutrients = {
+    create: data.nutrients.map((nutrient) => ({
+      nutrientCode: nutrient.code,
+      nutrientName: nutrient.name,
+      unit: nutrient.unit,
+      amount: nutrient.amount,
+    })),
+  };
+
+  if (!existing) {
+    await transaction.servedPortion.create({
+      data: {
+        ...portionData,
+        ...(data.remainder
+          ? {
+              remainder: {
+                create: {
+                  id: data.remainder.id,
+                  weight: data.remainder.weight,
+                  disposition: data.remainder.disposition,
+                  createdAt: data.remainder.createdAt,
+                },
+              },
+            }
+          : {}),
+        nutrientSnapshots: nutrients,
+      },
+    });
+    return;
+  }
+
+  await transaction.servedPortion.update({
+    where: { id: data.id },
+    data: {
+      ...portionData,
+      nutrientSnapshots: { deleteMany: {}, ...nutrients },
+    },
+  });
+  await transaction.portionRemainder.deleteMany({ where: { servedPortionId: data.id } });
+  if (data.remainder) {
+    await transaction.portionRemainder.create({
+      data: {
+        id: data.remainder.id,
+        servedPortionId: data.id,
+        weight: data.remainder.weight,
+        disposition: data.remainder.disposition,
+        createdAt: data.remainder.createdAt,
+      },
     });
   }
 }

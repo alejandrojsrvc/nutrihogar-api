@@ -1,7 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { ServedPortion } from '../../domain/entities/served-portion';
+import { PreparedBatchMealInput } from '../../application/ports/served-portion-repository.port';
 import { PrismaServedPortionRepository } from './prisma-served-portion.repository';
+
+const now = new Date('2026-07-31T12:00:00.000Z');
 
 describe('PrismaServedPortionRepository', () => {
   it('creates portions in one transaction and locks the prepared batch for availability', async () => {
@@ -46,7 +49,56 @@ describe('PrismaServedPortionRepository', () => {
     expect(result?.remainder?.weight.equals(40)).toBe(true);
     expect(result?.nutritionSnapshot[0]?.amount.equals(700)).toBe(true);
   });
+
+  it('persists the generated meal and consumed portion in one transaction', async () => {
+    const mealCreate: jest.MockedFunction<(input: MealCreateInput) => Promise<void>> = jest
+      .fn()
+      .mockResolvedValue(undefined);
+    const servedPortionFindUnique = jest
+      .fn()
+      .mockResolvedValueOnce({ status: 'SERVED' })
+      .mockResolvedValueOnce({ id: 'portion-id' });
+    const servedPortionUpdate = jest.fn().mockResolvedValue(undefined);
+    const transaction = jest.fn((callback: (client: unknown) => unknown) =>
+      callback({
+        $queryRaw: jest.fn().mockResolvedValue([{ id: 'portion-id' }]),
+        servedPortion: {
+          findUnique: servedPortionFindUnique,
+          update: servedPortionUpdate,
+        },
+        portionRemainder: { deleteMany: jest.fn() },
+        meal: { create: mealCreate },
+      }),
+    );
+    const repository = new PrismaServedPortionRepository({
+      $transaction: transaction,
+    } as unknown as PrismaService);
+    const portion = createPortion(520);
+    portion.confirmConsumption(
+      [{ code: 'ENERGY_KCAL', name: 'Energy', unit: 'kcal', amount: new Prisma.Decimal(200) }],
+      now,
+      'meal-id',
+    );
+
+    await repository.confirmConsumption(portion, createMealInput());
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    const input = mealCreate.mock.calls[0]?.[0];
+    expect(input?.data.id).toBe('meal-id');
+    expect(input?.data.source).toBe('PREPARED_BATCH');
+    expect(input?.data.items.create.quantity).toBe('480');
+    expect(input?.data.items.create.unit).toBe('GRAM');
+    expect(servedPortionUpdate).toHaveBeenCalledTimes(1);
+  });
 });
+
+interface MealCreateInput {
+  data: {
+    id: string;
+    source: string;
+    items: { create: { quantity: string; unit: string } };
+  };
+}
 
 function createPortion(weight: number) {
   return ServedPortion.create({
@@ -59,6 +111,24 @@ function createPortion(weight: number) {
     createdAt: new Date('2026-07-31T12:00:00.000Z'),
     updatedAt: new Date('2026-07-31T12:00:00.000Z'),
   });
+}
+
+function createMealInput(): PreparedBatchMealInput {
+  return {
+    id: 'meal-id',
+    householdId: 'household-id',
+    adultProfileId: 'profile-id',
+    mealType: 'LUNCH',
+    consumedAt: now,
+    createdById: 'user-id',
+    item: {
+      nameSnapshot: 'Arroz con pollo',
+      quantity: new Prisma.Decimal(480),
+      nutrients: [
+        { code: 'ENERGY_KCAL', name: 'Energy', unit: 'kcal', amount: new Prisma.Decimal(200) },
+      ],
+    },
+  };
 }
 
 const record = {

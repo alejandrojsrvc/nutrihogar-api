@@ -14,8 +14,14 @@ import { FINALIZE_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use
 import { GET_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/get-prepared-batch.use-case';
 import { START_PREPARED_BATCH_USE_CASE } from '../src/recipes/application/use-cases/start-prepared-batch.use-case';
 import { SERVE_PREPARED_BATCH_PORTIONS_USE_CASE } from '../src/recipes/application/use-cases/serve-prepared-batch-portions.use-case';
+import { CONFIRM_SERVED_PORTION_CONSUMPTION_USE_CASE } from '../src/recipes/application/use-cases/confirm-served-portion-consumption.use-case';
+import { REGISTER_PREPARED_FOOD_LEFTOVER_USE_CASE } from '../src/recipes/application/use-cases/register-prepared-food-leftover.use-case';
+import { LIST_PREPARED_FOOD_LEFTOVERS_USE_CASE } from '../src/recipes/application/use-cases/list-prepared-food-leftovers.use-case';
+import { GET_PREPARED_FOOD_LEFTOVER_USE_CASE } from '../src/recipes/application/use-cases/get-prepared-food-leftover.use-case';
+import { UPDATE_PREPARED_FOOD_LEFTOVER_STATUS_USE_CASE } from '../src/recipes/application/use-cases/update-prepared-food-leftover-status.use-case';
 import { UPDATE_PREPARED_BATCH_INGREDIENTS_USE_CASE } from '../src/recipes/application/use-cases/update-prepared-batch-ingredients.use-case';
 import { PreparedBatch } from '../src/recipes/domain/entities/prepared-batch';
+import { PreparedFoodLeftover } from '../src/recipes/domain/entities/prepared-food-leftover';
 
 describe('PreparedBatch HTTP API (e2e)', () => {
   let app: INestApplication<App>;
@@ -27,6 +33,11 @@ describe('PreparedBatch HTTP API (e2e)', () => {
   const confirmIngredients = { execute: jest.fn() };
   const finalizePreparedBatch = { execute: jest.fn() };
   const servePortions = { execute: jest.fn() };
+  const confirmConsumption = { execute: jest.fn() };
+  const registerLeftover = { execute: jest.fn() };
+  const listLeftovers = { execute: jest.fn() };
+  const getLeftover = { execute: jest.fn() };
+  const updateLeftoverStatus = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
@@ -46,6 +57,16 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       .useValue(finalizePreparedBatch)
       .overrideProvider(SERVE_PREPARED_BATCH_PORTIONS_USE_CASE)
       .useValue(servePortions)
+      .overrideProvider(CONFIRM_SERVED_PORTION_CONSUMPTION_USE_CASE)
+      .useValue(confirmConsumption)
+      .overrideProvider(REGISTER_PREPARED_FOOD_LEFTOVER_USE_CASE)
+      .useValue(registerLeftover)
+      .overrideProvider(LIST_PREPARED_FOOD_LEFTOVERS_USE_CASE)
+      .useValue(listLeftovers)
+      .overrideProvider(GET_PREPARED_FOOD_LEFTOVER_USE_CASE)
+      .useValue(getLeftover)
+      .overrideProvider(UPDATE_PREPARED_FOOD_LEFTOVER_STATUS_USE_CASE)
+      .useValue(updateLeftoverStatus)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -77,6 +98,20 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       ],
       availableWeight: new Decimal(1130),
     });
+    confirmConsumption.execute.mockReset().mockResolvedValue({
+      portionId: 'portion-id',
+      adultProfileId: adultProfileIdPath,
+      servedWeight: new Decimal(520),
+      consumedWeight: new Decimal(480),
+      remainderWeight: new Decimal(40),
+      remainderDisposition: 'SAVED',
+      mealId: 'meal-id',
+      nutrients: [{ code: 'ENERGY_KCAL', name: 'Energy', unit: 'kcal', amount: new Decimal(189) }],
+    });
+    registerLeftover.execute.mockReset().mockResolvedValue(preparedLeftover);
+    listLeftovers.execute.mockReset().mockResolvedValue([preparedLeftover]);
+    getLeftover.execute.mockReset().mockResolvedValue(preparedLeftover);
+    updateLeftoverStatus.execute.mockReset().mockResolvedValue(discardedLeftover);
   });
 
   it('starts, edits, confirms, finalizes, reads and cancels a prepared batch', async () => {
@@ -143,6 +178,54 @@ describe('PreparedBatch HTTP API (e2e)', () => {
       });
 
     await request(app.getHttpServer())
+      .post('/api/served-portions/00000000-0000-4000-8000-000000000030/confirm-consumption')
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        remainderWeight: 40,
+        remainderDisposition: 'SAVED',
+        mealType: 'LUNCH',
+        consumedAt: '2026-07-31T12:40:00.000Z',
+      })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toHaveProperty('consumedWeight', 480);
+        expect(response.body).toHaveProperty('mealId', 'meal-id');
+      });
+
+    await request(app.getHttpServer())
+      .post(`/api/prepared-batches/${batchIdPath}/leftovers`)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        weight: 750,
+        storedAt: '2026-07-31T12:45:00.000Z',
+        storageLocation: 'REFRIGERATOR',
+      })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toHaveProperty('status', 'AVAILABLE');
+        expect(response.body).toHaveProperty('availableWeight', 750);
+      });
+
+    await request(app.getHttpServer())
+      .get(`/api/households/${householdIdPath}/prepared-leftovers`)
+      .set('Authorization', 'Bearer valid-token')
+      .expect(200)
+      .expect((response) => expect(response.body).toHaveLength(1));
+
+    await request(app.getHttpServer())
+      .get('/api/prepared-leftovers/00000000-0000-4000-8000-000000000040')
+      .set('Authorization', 'Bearer valid-token')
+      .expect(200)
+      .expect((response) => expect(response.body).toHaveProperty('preparedBatchId', 'batch-id'));
+
+    await request(app.getHttpServer())
+      .patch('/api/prepared-leftovers/00000000-0000-4000-8000-000000000040/status')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ status: 'DISCARDED' })
+      .expect(200)
+      .expect((response) => expect(response.body).toHaveProperty('status', 'DISCARDED'));
+
+    await request(app.getHttpServer())
       .delete(`/api/prepared-batches/${batchIdPath}`)
       .set('Authorization', 'Bearer valid-token')
       .expect(204);
@@ -161,6 +244,7 @@ const currentUser: CurrentUser = {
 const recipeIdPath = '00000000-0000-4000-8000-000000000010';
 const batchIdPath = '00000000-0000-4000-8000-000000000011';
 const adultProfileIdPath = '00000000-0000-4000-8000-000000000020';
+const householdIdPath = '00000000-0000-4000-8000-000000000001';
 
 const batch = createBatch();
 const confirmedBatch = createBatch();
@@ -198,6 +282,29 @@ finalizedBatch.confirmIngredients(
   new Date('2026-07-31T12:00:00.000Z'),
 );
 finalizedBatch.finalize(1650, new Date('2026-07-31T12:00:00.000Z'));
+
+const preparedLeftover = PreparedFoodLeftover.create({
+  id: '00000000-0000-4000-8000-000000000040',
+  preparedBatchId: 'batch-id',
+  householdId: 'household-id',
+  availableWeight: 750,
+  nutrientDensitySnapshot: [
+    {
+      code: 'ENERGY_KCAL',
+      name: 'Energy',
+      unit: 'kcal',
+      amountPerGram: new Decimal(650).div(1650),
+    },
+  ],
+  storedAt: new Date('2026-07-31T12:45:00.000Z'),
+  createdAt: new Date('2026-07-31T12:45:00.000Z'),
+  updatedAt: new Date('2026-07-31T12:45:00.000Z'),
+});
+const discardedLeftover = PreparedFoodLeftover.reconstitute({
+  ...preparedLeftover.toProps(),
+  status: 'DISCARDED',
+  updatedAt: new Date('2026-07-31T12:50:00.000Z'),
+});
 
 function createBatch() {
   return PreparedBatch.start({

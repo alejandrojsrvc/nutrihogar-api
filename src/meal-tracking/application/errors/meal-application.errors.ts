@@ -25,3 +25,10 @@ export class MealAdministrativeAccessDeniedError extends Error {
     this.name = MealAdministrativeAccessDeniedError.name;
   }
 }
+
+export class InvalidMealDateRangeError extends Error {
+  constructor() {
+    super('The meal date range is invalid.');
+    this.name = InvalidMealDateRangeError.name;
+  }
+}

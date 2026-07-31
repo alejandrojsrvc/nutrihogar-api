@@ -30,10 +30,10 @@ export class PrismaMealRepository implements MealRepository, MealUnitOfWork {
         status: HouseholdMembershipStatus.ACTIVE,
         household: { deletedAt: null },
       },
-      select: { role: true },
+      select: { role: true, household: { select: { timezone: true } } },
     });
 
-    return membership ? { role: membership.role } : null;
+    return membership ? { role: membership.role, timezone: membership.household.timezone } : null;
   }
 
   async hasActiveProfile(adultProfileId: string, householdId: string): Promise<boolean> {

@@ -14,6 +14,7 @@ export type MealHouseholdRole = 'ADMIN' | 'MEMBER';
 
 export interface MealHouseholdAccess {
   role: MealHouseholdRole;
+  timezone: string;
 }
 
 export interface MealNutrientSnapshotInput {

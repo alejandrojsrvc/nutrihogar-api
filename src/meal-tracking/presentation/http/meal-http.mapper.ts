@@ -9,6 +9,9 @@ import {
 import { EmptyMealError, InvalidMealDateError } from '../../domain/errors/meal.errors';
 import {
   MealAccessDeniedError,
+  MealAdministrativeAccessDeniedError,
+  InvalidMealDateRangeError,
+  MealNotFoundError,
   MealProfileNotFoundError,
 } from '../../application/errors/meal-application.errors';
 import { MealView } from '../../domain/models/meal.models';
@@ -62,12 +65,22 @@ export function rethrowMealHttpError(error: unknown): never {
     error instanceof InvalidFoodQuantityError ||
     error instanceof FoodUnitMismatchError ||
     error instanceof FoodServingNotFoundError ||
-    error instanceof IncompleteServingEquivalenceError
+    error instanceof IncompleteServingEquivalenceError ||
+    error instanceof InvalidMealDateRangeError
   ) {
     throw new BadRequestException(error.message);
   }
-  if (error instanceof MealAccessDeniedError) throw new ForbiddenException(error.message);
-  if (error instanceof MealProfileNotFoundError || error instanceof FoodNotAvailableError) {
+  if (
+    error instanceof MealAccessDeniedError ||
+    error instanceof MealAdministrativeAccessDeniedError
+  ) {
+    throw new ForbiddenException(error.message);
+  }
+  if (
+    error instanceof MealProfileNotFoundError ||
+    error instanceof MealNotFoundError ||
+    error instanceof FoodNotAvailableError
+  ) {
     throw new NotFoundException(error.message);
   }
 

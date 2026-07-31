@@ -15,7 +15,9 @@ describe('RegisterMealUseCase', () => {
 
   beforeEach(() => {
     meals = {
-      findHouseholdAccess: jest.fn().mockResolvedValue({ role: 'MEMBER' }),
+      findHouseholdAccess: jest
+        .fn()
+        .mockResolvedValue({ role: 'MEMBER', timezone: 'America/Argentina/Buenos_Aires' }),
       hasActiveProfile: jest.fn().mockResolvedValue(true),
       findById: jest.fn(),
       list: jest.fn(),

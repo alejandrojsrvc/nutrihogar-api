@@ -11,6 +11,8 @@ import {
   REGISTER_MEAL_USE_CASE,
   RegisterMealUseCase,
 } from './application/use-cases/register-meal.use-case';
+import { GET_MEAL_USE_CASE, GetMealUseCase } from './application/use-cases/get-meal.use-case';
+import { LIST_MEALS_USE_CASE, ListMealsUseCase } from './application/use-cases/list-meals.use-case';
 import { MealsController } from './presentation/http/meals.controller';
 import { PrismaMealRepository } from './infrastructure/persistence/prisma-meal.repository';
 import { CLOCK, Clock } from '../nutrition/application/ports/clock.port';
@@ -34,6 +36,16 @@ import {
         nutritionEngine: NutritionEngineService,
         clock: Clock,
       ) => new RegisterMealUseCase(meals, unitOfWork, nutritionEngine, clock),
+    },
+    {
+      provide: GET_MEAL_USE_CASE,
+      inject: [MEAL_REPOSITORY],
+      useFactory: (meals: MealRepository) => new GetMealUseCase(meals),
+    },
+    {
+      provide: LIST_MEALS_USE_CASE,
+      inject: [MEAL_REPOSITORY],
+      useFactory: (meals: MealRepository) => new ListMealsUseCase(meals),
     },
   ],
 })

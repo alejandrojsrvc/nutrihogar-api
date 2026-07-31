@@ -6,13 +6,17 @@ import { PrismaMealRepository } from './prisma-meal.repository';
 
 describe('PrismaMealRepository', () => {
   it('checks active household membership before allowing meal access', async () => {
-    const findFirst = jest.fn().mockResolvedValue({ role: 'MEMBER' });
+    const findFirst = jest.fn().mockResolvedValue({
+      role: 'MEMBER',
+      household: { timezone: 'America/Argentina/Buenos_Aires' },
+    });
     const repository = new PrismaMealRepository({
       householdMembership: { findFirst },
     } as unknown as PrismaService);
 
     await expect(repository.findHouseholdAccess('user-id', 'household-id')).resolves.toEqual({
       role: 'MEMBER',
+      timezone: 'America/Argentina/Buenos_Aires',
     });
     expect(findFirst).toHaveBeenCalledWith({
       where: {
@@ -21,7 +25,7 @@ describe('PrismaMealRepository', () => {
         status: 'ACTIVE',
         household: { deletedAt: null },
       },
-      select: { role: true },
+      select: { role: true, household: { select: { timezone: true } } },
     });
   });
 

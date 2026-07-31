@@ -41,10 +41,12 @@ export class GenerateNutritionGoalSuggestionUseCase {
 
     const profile = await this.profiles.findActiveById(command.adultProfileId);
     if (!profile) throw new NutritionGoalProfileNotFoundError();
-    if (profile.weightKg == null || profile.weightKg <= 0) {
+    const weightKg = profile.weightKg;
+    const heightCm = profile.heightCm;
+    if (weightKg == null || weightKg <= 0) {
       throw new IncompleteNutritionGoalProfileError('weightKg');
     }
-    if (profile.heightCm == null || profile.heightCm <= 0) {
+    if (heightCm == null || heightCm <= 0) {
       throw new IncompleteNutritionGoalProfileError('heightCm');
     }
 
@@ -55,15 +57,15 @@ export class GenerateNutritionGoalSuggestionUseCase {
     const calculation = this.calculator.calculate({
       age,
       biologicalSex: profile.biologicalSex,
-      weightKg: profile.weightKg,
-      heightCm: profile.heightCm,
+      weightKg,
+      heightCm,
       activityLevel: profile.activityLevel,
       primaryGoal: profile.primaryGoal,
     });
     const suggestion = await this.unitOfWork.createSuggestion({
       adultProfileId: profile.id,
       calculationMethod: NUTRITION_GOAL_CALCULATION_METHOD,
-      calculationInput: createSnapshot(profile, age, calculation),
+      calculationInput: createSnapshot({ ...profile, weightKg, heightCm }, age, calculation),
       bmr: calculation.bmr,
       tdee: calculation.tdee,
       values: {

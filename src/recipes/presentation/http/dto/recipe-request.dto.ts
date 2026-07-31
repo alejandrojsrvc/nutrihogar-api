@@ -15,7 +15,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { RecipeIngredientUnit } from '../../../domain/models/recipe.models';
+import type { RecipeIngredientUnit } from '../../../domain/models/recipe.models';
 
 export class RecipeIngredientRequestDto {
   @ApiPropertyOptional({ format: 'uuid' })

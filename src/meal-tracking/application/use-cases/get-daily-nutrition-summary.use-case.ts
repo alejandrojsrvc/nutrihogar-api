@@ -104,12 +104,13 @@ function toSummaryValues(goal: NutritionGoalView): NutritionSummaryValues {
 }
 
 function fromNutrientAmounts(amounts: Record<string, Decimal>): NutritionSummaryValues {
-  return Object.fromEntries(
-    Object.entries(nutrientKeys).map(([property, code]) => [
-      property,
-      amounts[code]?.toNumber() ?? 0,
-    ]),
-  ) as NutritionSummaryValues;
+  return {
+    dailyCalories: amounts[nutrientKeys.dailyCalories]?.toNumber() ?? 0,
+    proteinGrams: amounts[nutrientKeys.proteinGrams]?.toNumber() ?? 0,
+    carbohydrateGrams: amounts[nutrientKeys.carbohydrateGrams]?.toNumber() ?? 0,
+    fatGrams: amounts[nutrientKeys.fatGrams]?.toNumber() ?? 0,
+    fiberGrams: amounts[nutrientKeys.fiberGrams]?.toNumber() ?? 0,
+  };
 }
 
 function subtract(goal: NutritionSummaryValues, consumed: NutritionSummaryValues) {

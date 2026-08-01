@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { InventoryModule } from '../inventory/inventory.module';
 import { HouseholdsModule } from '../households/households.module';
+import { IdentityModule } from '../identity/identity.module';
 import { ShoppingListController } from './presentation/http/shopping-list.controller';
 import { PrismaShoppingListRepository } from './infrastructure/persistence/prisma-shopping-list.repository';
 import {
@@ -25,7 +26,7 @@ import {
 } from '../inventory/application/ports/inventory-repository.port';
 
 @Module({
-  imports: [HouseholdsModule, InventoryModule],
+  imports: [IdentityModule, HouseholdsModule, InventoryModule],
   controllers: [ShoppingListController],
   providers: [
     PrismaShoppingListRepository,

@@ -4,6 +4,7 @@ import { FoodCatalogModule } from '../food-catalog/food-catalog.module';
 import { HouseholdsModule } from '../households/households.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ShoppingListModule } from '../shopping-list/shopping-list.module';
+import { IdentityModule } from '../identity/identity.module';
 import {
   HOUSEHOLD_REPOSITORY,
   HouseholdRepository,
@@ -46,6 +47,7 @@ import { PurchaseController } from './presentation/http/purchase.controller';
     DatabaseModule,
     HouseholdsModule,
     FoodCatalogModule,
+    IdentityModule,
     InventoryModule,
     ShoppingListModule,
   ],

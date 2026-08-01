@@ -167,6 +167,7 @@ export class WeeklyPlan {
     this.requireMeal(mealId).confirmParticipantQuantity(
       participantId,
       quantity,
+      unit,
       actorId,
       confirmedAt,
     );

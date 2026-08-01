@@ -18,3 +18,10 @@ export class CustomMeasurementNotFoundError extends Error {
     this.name = CustomMeasurementNotFoundError.name;
   }
 }
+
+export class InvalidDigestiveSymptomStateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = InvalidDigestiveSymptomStateError.name;
+  }
+}

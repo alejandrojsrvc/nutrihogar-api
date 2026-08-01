@@ -1,0 +1,15 @@
+CREATE TYPE "ShoppingListSource" AS ENUM ('MANUAL', 'BELOW_MINIMUM', 'DEPLETED', 'MEAL_PLAN');
+CREATE TYPE "ShoppingListItemStatus" AS ENUM ('PENDING', 'PURCHASED', 'REMOVED');
+CREATE TABLE "shopping_lists" ("id" UUID NOT NULL, "household_id" UUID NOT NULL, "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "shopping_lists_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "shopping_list_items" ("id" UUID NOT NULL, "shopping_list_id" UUID NOT NULL, "food_id" UUID, "name" VARCHAR(150) NOT NULL, "normalized_name" VARCHAR(150) NOT NULL, "quantity" DECIMAL(30,12) NOT NULL, "unit" VARCHAR(50) NOT NULL, "source" "ShoppingListSource" NOT NULL, "source_reference_id" UUID, "status" "ShoppingListItemStatus" NOT NULL DEFAULT 'PENDING', "actor_id" UUID NOT NULL, "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP, "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP, "purchased_at" TIMESTAMPTZ(6), "purchased_by_id" UUID, "removed_at" TIMESTAMPTZ(6), "removed_by_id" UUID, CONSTRAINT "shopping_list_items_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "shopping_lists_household_id_key" ON "shopping_lists"("household_id");
+CREATE INDEX "shopping_list_items_list_status_idx" ON "shopping_list_items"("shopping_list_id", "status");
+CREATE INDEX "shopping_list_items_list_food_status_idx" ON "shopping_list_items"("shopping_list_id", "food_id", "status");
+CREATE INDEX "shopping_list_items_manual_compatibility_idx" ON "shopping_list_items"("shopping_list_id", "normalized_name", "unit", "status");
+CREATE INDEX "shopping_list_items_source_idx" ON "shopping_list_items"("source", "source_reference_id");
+ALTER TABLE "shopping_lists" ADD CONSTRAINT "shopping_lists_household_id_fkey" FOREIGN KEY ("household_id") REFERENCES "households"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "shopping_list_items" ADD CONSTRAINT "shopping_list_items_list_fkey" FOREIGN KEY ("shopping_list_id") REFERENCES "shopping_lists"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "shopping_list_items" ADD CONSTRAINT "shopping_list_items_food_fkey" FOREIGN KEY ("food_id") REFERENCES "foods"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "shopping_list_items" ADD CONSTRAINT "shopping_list_items_actor_fkey" FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "shopping_list_items" ADD CONSTRAINT "shopping_list_items_purchased_by_fkey" FOREIGN KEY ("purchased_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "shopping_list_items" ADD CONSTRAINT "shopping_list_items_removed_by_fkey" FOREIGN KEY ("removed_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

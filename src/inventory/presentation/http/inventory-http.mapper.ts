@@ -34,10 +34,18 @@ import {
   InventoryItemResponseDto,
   InventoryMovementListResponseDto,
   InventoryMovementResponseDto,
+  InventorySyncOperationResponseDto,
+  InventorySyncResponseDto,
 } from './dto/inventory-response.dto';
+import { InventoryItemProps } from '../../domain/models/inventory.models';
+import { InventorySyncOperationResult } from '../../application/ports/inventory-repository.port';
 
 export function toInventoryItemResponse(item: InventoryItem): InventoryItemResponseDto {
   const props = item.toProps();
+  return toInventoryItemPropsResponse(props);
+}
+
+function toInventoryItemPropsResponse(props: InventoryItemProps): InventoryItemResponseDto {
   return {
     id: props.id,
     householdId: props.householdId,
@@ -54,6 +62,30 @@ export function toInventoryItemResponse(item: InventoryItem): InventoryItemRespo
     version: props.version,
     createdAt: props.createdAt,
     updatedAt: props.updatedAt,
+  };
+}
+
+function toSyncOperationResponse(
+  result: InventorySyncOperationResult,
+): InventorySyncOperationResponseDto {
+  return {
+    operationId: result.operationId,
+    status: result.status,
+    reason: result.reason,
+    resultingVersion: result.resultingVersion,
+    snapshot: result.snapshot ? toInventoryItemPropsResponse(result.snapshot) : null,
+  };
+}
+
+export function toInventorySyncResponse(result: {
+  processed: InventorySyncOperationResult[];
+  conflicts: InventorySyncOperationResult[];
+  snapshot: InventoryItemProps | null;
+}): InventorySyncResponseDto {
+  return {
+    processed: result.processed.map(toSyncOperationResponse),
+    conflicts: result.conflicts.map(toSyncOperationResponse),
+    snapshot: result.snapshot ? toInventoryItemPropsResponse(result.snapshot) : null,
   };
 }
 

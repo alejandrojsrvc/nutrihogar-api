@@ -127,3 +127,21 @@ export class InventoryMovementListResponseDto {
   @ApiProperty()
   total!: number;
 }
+
+export class InventorySyncOperationResponseDto {
+  @ApiProperty() operationId!: string;
+  @ApiProperty({ enum: ['APPLIED', 'CONFLICT'] }) status!: 'APPLIED' | 'CONFLICT';
+  @ApiPropertyOptional({ nullable: true }) reason!: string | null;
+  @ApiPropertyOptional({ nullable: true }) resultingVersion!: number | null;
+  @ApiPropertyOptional({ type: InventoryItemResponseDto, nullable: true })
+  snapshot!: InventoryItemResponseDto | null;
+}
+
+export class InventorySyncResponseDto {
+  @ApiProperty({ type: InventorySyncOperationResponseDto, isArray: true })
+  processed!: InventorySyncOperationResponseDto[];
+  @ApiProperty({ type: InventorySyncOperationResponseDto, isArray: true })
+  conflicts!: InventorySyncOperationResponseDto[];
+  @ApiPropertyOptional({ type: InventoryItemResponseDto, nullable: true })
+  snapshot!: InventoryItemResponseDto | null;
+}

@@ -33,6 +33,15 @@ La salida ya presenta el cuerpo Markdown de la issue. No convertirla a JSON ni g
 
 La issue define objetivo, alcance, criterios, pruebas y exclusiones. No ampliar el alcance.
 
+## Busqueda de codigo
+
+- Buscar siempre en el repositorio local mediante Glob y Grep.
+- No usar `gh api search/code` para explorar codigo.
+- GitHub se usa para leer issues y gestionar PRs, no para buscar implementaciones.
+- Realizar como maximo dos busquedas dirigidas antes de leer los archivos relacionados.
+- No consultar `git log`, `git show`, `git blame` ni commits anteriores salvo que la issue describa una regresion, cite un commit o requiera contexto historico.
+- Si una capacidad no existe localmente, informar la dependencia en lugar de seguir buscando remotamente.
+
 ## Flujo rapido
 
 ### Inicio

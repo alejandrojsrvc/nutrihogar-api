@@ -3,6 +3,11 @@ import Decimal from 'decimal.js';
 import { ensureHouseholdMemberAccess } from '../../../households/application/adult-profile-use-cases/ensure-household-member-access';
 import { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import { InventoryItemRepository } from '../../../inventory/application/ports/inventory-repository.port';
+import type { WeeklyPlanRepository } from '../../../meal-planning/application/ports/weekly-plan-repository.port';
+import {
+  requireAccess,
+  requirePlan,
+} from '../../../meal-planning/application/use-cases/weekly-plan.use-cases';
 import { ShoppingList } from '../../domain/entities/shopping-list';
 import { ShoppingListItem } from '../../domain/entities/shopping-list-item';
 import { ShoppingListSource } from '../../domain/models/shopping-list.models';
@@ -178,5 +183,76 @@ export class GenerateInventoryShoppingListItemsUseCase {
     }
     await this.lists.save(list);
     return list;
+  }
+}
+
+export class AddMissingIngredientsToShoppingListUseCase {
+  constructor(
+    private readonly households: HouseholdRepository,
+    private readonly lists: ShoppingListRepository,
+    private readonly plans: WeeklyPlanRepository,
+    private readonly compare: {
+      execute(
+        actorId: string,
+        planId: string,
+      ): Promise<{
+        items: Array<{
+          foodId: string;
+          name: string;
+          unit: string;
+          missing: string;
+          status: string;
+        }>;
+      }>;
+    },
+  ) {}
+
+  async execute(input: {
+    actorId: string;
+    planId: string;
+    items: Array<{ foodId: string; name?: string; unit: string; quantity?: Decimal.Value }>;
+  }): Promise<ShoppingList> {
+    const plan = await requirePlan(this.plans, input.planId);
+    await requireAccess(this.households, input.actorId, plan.householdId);
+    const comparison = await this.compare.execute(input.actorId, input.planId);
+    const selected = new Map(comparison.items.map((item) => [`${item.foodId}|${item.unit}`, item]));
+    const list =
+      (await this.lists.findByHousehold(plan.householdId)) ??
+      ShoppingList.create({
+        id: crypto.randomUUID(),
+        householdId: plan.householdId,
+        createdAt: new Date(),
+      });
+    for (const requested of input.items) {
+      const item = selected.get(`${requested.foodId}|${requested.unit}`);
+      if (!item || item.status === 'COMPLETE' || item.status === 'NOT_NEEDED') continue;
+      if (list.findPendingBySource('MEAL_PLAN', input.planId, requested.foodId, requested.unit))
+        continue;
+      list.addItem({
+        id: crypto.randomUUID(),
+        shoppingListId: list.id,
+        foodId: requested.foodId,
+        name: requested.name ?? item.name,
+        quantity: requested.quantity ?? item.missing,
+        unit: requested.unit,
+        source: 'MEAL_PLAN',
+        sourceReferenceId: input.planId,
+        actorId: input.actorId,
+        occurredAt: new Date(),
+      });
+    }
+    await this.lists.save(list);
+    return list;
+  }
+
+  async get(actorId: string, planId: string): Promise<ShoppingListItem[]> {
+    const plan = await requirePlan(this.plans, planId);
+    await requireAccess(this.households, actorId, plan.householdId);
+    const list = await this.lists.findByHousehold(plan.householdId);
+    return (
+      list?.items.filter(
+        (item) => item.source === 'MEAL_PLAN' && item.toProps().sourceReferenceId === planId,
+      ) ?? []
+    );
   }
 }

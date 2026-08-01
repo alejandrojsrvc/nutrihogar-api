@@ -164,14 +164,17 @@ export class PlannedMeal {
     participantId: string,
     quantity: Decimal.Value,
     unit: string,
-    occurredAt: Date,
+    actorId: string | Date,
+    occurredAt?: Date,
   ): void {
     this.ensureEditable();
     const participant = this.participantEntities.find((item) => item.id === participantId);
     if (!participant)
       throw new InvalidMealPlanningError('Participant is not assigned to this meal.');
-    participant.confirmQuantity(quantity, unit, occurredAt);
-    this.props.updatedAt = new Date(occurredAt);
+    const confirmedAt = occurredAt ?? (actorId instanceof Date ? actorId : new Date());
+    const confirmedBy = actorId instanceof Date ? 'legacy' : actorId;
+    participant.confirmQuantity(quantity, unit, confirmedBy, confirmedAt);
+    this.props.updatedAt = new Date(confirmedAt);
   }
 
   markPrepared(occurredAt = new Date()): void {
@@ -232,6 +235,9 @@ export interface PlannedMealParticipantPropsView {
   suggestedUnit: string | null;
   confirmedQuantity: Decimal | null;
   confirmedUnit: string | null;
+  confirmedById?: string | null;
+  confirmedAt?: Date | null;
+  confirmationSnapshot?: Record<string, unknown> | null;
   nutritionTargetSnapshot: Record<string, unknown> | null;
   notes: string | null;
   createdAt: Date;

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InventoryModule } from '../inventory/inventory.module';
+import { MealPlanningModule } from '../meal-planning/meal-planning.module';
 import { HouseholdsModule } from '../households/households.module';
 import { IdentityModule } from '../identity/identity.module';
 import { ShoppingListController } from './presentation/http/shopping-list.controller';
@@ -15,6 +16,7 @@ import {
   MarkShoppingListItemPurchasedUseCase,
   RemoveShoppingListItemUseCase,
   UpdateShoppingListItemUseCase,
+  AddMissingIngredientsToShoppingListUseCase,
 } from './application/use-cases/shopping-list.use-cases';
 import {
   HOUSEHOLD_REPOSITORY,
@@ -24,9 +26,17 @@ import {
   INVENTORY_ITEM_REPOSITORY,
   InventoryItemRepository,
 } from '../inventory/application/ports/inventory-repository.port';
+import {
+  WEEKLY_PLAN_REPOSITORY,
+  WeeklyPlanRepository,
+} from '../meal-planning/application/ports/weekly-plan-repository.port';
+import {
+  COMPARE_PLAN_WITH_INVENTORY_QUERY,
+  ComparePlanWithInventoryQuery,
+} from '../meal-planning/application/use-cases/weekly-analysis.use-cases';
 
 @Module({
-  imports: [IdentityModule, HouseholdsModule, InventoryModule],
+  imports: [IdentityModule, HouseholdsModule, InventoryModule, MealPlanningModule],
   controllers: [ShoppingListController],
   providers: [
     PrismaShoppingListRepository,
@@ -66,6 +76,21 @@ import {
       inject: [HOUSEHOLD_REPOSITORY, SHOPPING_LIST_REPOSITORY, INVENTORY_ITEM_REPOSITORY],
       useFactory: (h: HouseholdRepository, l: ShoppingListRepository, i: InventoryItemRepository) =>
         new GenerateInventoryShoppingListItemsUseCase(h, l, i),
+    },
+    {
+      provide: 'ADD_MISSING_INGREDIENTS_TO_SHOPPING_LIST_USE_CASE',
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        SHOPPING_LIST_REPOSITORY,
+        WEEKLY_PLAN_REPOSITORY,
+        COMPARE_PLAN_WITH_INVENTORY_QUERY,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        l: ShoppingListRepository,
+        p: WeeklyPlanRepository,
+        c: ComparePlanWithInventoryQuery,
+      ) => new AddMissingIngredientsToShoppingListUseCase(h, l, p, c),
     },
   ],
   exports: [SHOPPING_LIST_REPOSITORY],

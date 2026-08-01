@@ -49,6 +49,20 @@ import {
   UpdatePlannedMealUseCase,
 } from '../../application/use-cases/planned-meal.use-cases';
 import {
+  ACCEPT_SUGGESTED_QUANTITIES_USE_CASE,
+  AcceptSuggestedQuantitiesUseCase,
+  GET_PLANNED_MEAL_QUANTITIES_QUERY,
+  GetPlannedMealQuantitiesQuery,
+  PROPOSE_MEAL_QUANTITIES_USE_CASE,
+  ProposeMealQuantitiesUseCase,
+} from '../../application/use-cases/meal-plan-quantity.use-cases';
+import {
+  CALCULATE_WEEKLY_REQUIREMENTS_QUERY,
+  CalculateWeeklyRequirementsQuery,
+  COMPARE_PLAN_WITH_INVENTORY_QUERY,
+  ComparePlanWithInventoryQuery,
+} from '../../application/use-cases/weekly-analysis.use-cases';
+import {
   CreateWeeklyPlanRequestDto,
   UpdateWeeklyPlanRequestDto,
   ListWeeklyPlansQueryDto,
@@ -88,6 +102,16 @@ export class MealPlanningController {
     private readonly removeParticipant: RemovePlannedMealParticipantUseCase,
     @Inject(UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE)
     private readonly updateParticipant: UpdatePlannedMealParticipantUseCase,
+    @Inject(PROPOSE_MEAL_QUANTITIES_USE_CASE)
+    private readonly proposeQuantities: ProposeMealQuantitiesUseCase,
+    @Inject(GET_PLANNED_MEAL_QUANTITIES_QUERY)
+    private readonly getQuantities: GetPlannedMealQuantitiesQuery,
+    @Inject(ACCEPT_SUGGESTED_QUANTITIES_USE_CASE)
+    private readonly acceptQuantities: AcceptSuggestedQuantitiesUseCase,
+    @Inject(CALCULATE_WEEKLY_REQUIREMENTS_QUERY)
+    private readonly requirements: CalculateWeeklyRequirementsQuery,
+    @Inject(COMPARE_PLAN_WITH_INVENTORY_QUERY)
+    private readonly inventoryComparison: ComparePlanWithInventoryQuery,
   ) {}
 
   @Post('households/:householdId/weekly-plans')
@@ -254,6 +278,54 @@ export class MealPlanningController {
   ): Promise<void> {
     try {
       await this.removeParticipant.execute({ actorId: user.id, participantId: id });
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
+  @Post('planned-meals/:plannedMealId/quantities/propose')
+  async propose(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.proposeQuantities.execute(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
+  @Get('planned-meals/:plannedMealId/quantities')
+  async quantities(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.getQuantities.execute(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
+  @Post('planned-meals/:plannedMealId/quantities/accept-suggestions')
+  async accept(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return toWeeklyPlanResponse(await this.acceptQuantities.execute(user.id, id));
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
+  @Get('weekly-plans/:weeklyPlanId/requirements')
+  async requirementsQuery(
+    @Param('weeklyPlanId') id: string,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return await this.requirements.execute(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
+  @Get('weekly-plans/:weeklyPlanId/inventory-comparison')
+  async compareInventory(@Param('weeklyPlanId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.inventoryComparison.execute(user.id, id);
     } catch (e) {
       rethrowMealPlanningHttpError(e);
     }

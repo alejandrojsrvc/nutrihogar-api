@@ -30,9 +30,11 @@ import {
   MarkShoppingListItemPurchasedUseCase,
   RemoveShoppingListItemUseCase,
   UpdateShoppingListItemUseCase,
+  AddMissingIngredientsToShoppingListUseCase,
 } from '../../application/use-cases/shopping-list.use-cases';
 import {
   AddShoppingListItemRequestDto,
+  AddMissingIngredientsRequestDto,
   ShoppingListResponseDto,
   UpdateShoppingListItemRequestDto,
 } from './dto/shopping-list.dto';
@@ -58,6 +60,8 @@ export class ShoppingListController {
     private readonly remove: RemoveShoppingListItemUseCase,
     @Inject('GENERATE_INVENTORY_SHOPPING_LIST_ITEMS_USE_CASE')
     private readonly generate: GenerateInventoryShoppingListItemsUseCase,
+    @Inject('ADD_MISSING_INGREDIENTS_TO_SHOPPING_LIST_USE_CASE')
+    private readonly addMissing: AddMissingIngredientsToShoppingListUseCase,
   ) {}
   @Get('households/:householdId/shopping-list')
   @ApiOperation({ summary: 'Consulta la lista compartida del hogar' })
@@ -127,6 +131,36 @@ export class ShoppingListController {
   ) {
     try {
       return toListResponse(await this.generate.execute(user.id, householdId));
+    } catch (e) {
+      rethrowShoppingListHttpError(e);
+    }
+  }
+
+  @Post('weekly-plans/:weeklyPlanId/shopping-list/items')
+  async addMissingItems(
+    @Param('weeklyPlanId', new ParseUUIDPipe()) weeklyPlanId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: AddMissingIngredientsRequestDto,
+  ) {
+    try {
+      const list = await this.addMissing.execute({
+        actorId: user.id,
+        planId: weeklyPlanId,
+        items: body.items,
+      });
+      return toListResponse(list);
+    } catch (e) {
+      rethrowShoppingListHttpError(e);
+    }
+  }
+
+  @Get('weekly-plans/:weeklyPlanId/shopping-list/items')
+  async getMealPlanItems(
+    @Param('weeklyPlanId', new ParseUUIDPipe()) weeklyPlanId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return (await this.addMissing.get(user.id, weeklyPlanId)).map(toItemResponse);
     } catch (e) {
       rethrowShoppingListHttpError(e);
     }

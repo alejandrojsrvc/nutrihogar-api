@@ -11,6 +11,9 @@ export interface PrismaPlannedMealParticipantRecord {
   suggestedUnit: string | null;
   confirmedQuantity: { toString(): string } | null;
   confirmedUnit: string | null;
+  confirmedById?: string | null;
+  confirmedAt?: Date | null;
+  confirmationSnapshot?: unknown;
   nutritionTargetSnapshot: unknown;
   notes: string | null;
   createdAt: Date;
@@ -26,6 +29,9 @@ export class PrismaPlannedMealParticipantMapper {
       suggestedUnit: record.suggestedUnit,
       confirmedQuantity: decimalOrNull(record.confirmedQuantity),
       confirmedUnit: record.confirmedUnit,
+      confirmedById: record.confirmedById,
+      confirmedAt: record.confirmedAt && new Date(record.confirmedAt),
+      confirmationSnapshot: objectSnapshot(record.confirmationSnapshot),
       nutritionTargetSnapshot: objectSnapshot(record.nutritionTargetSnapshot),
       notes: record.notes,
       createdAt: new Date(record.createdAt),
@@ -44,6 +50,9 @@ export class PrismaPlannedMealParticipantMapper {
     suggestedUnit: string | null;
     confirmedQuantity: string | null;
     confirmedUnit: string | null;
+    confirmedById: string | null;
+    confirmedAt: Date | null;
+    confirmationSnapshot: NutritionTargetSnapshot | null;
     nutritionTargetSnapshot: NutritionTargetSnapshot | null;
     notes: string | null;
     createdAt: Date;
@@ -57,6 +66,9 @@ export class PrismaPlannedMealParticipantMapper {
       suggestedUnit: props.suggestedUnit,
       confirmedQuantity: props.confirmedQuantity?.toString() ?? null,
       confirmedUnit: props.confirmedUnit,
+      confirmedById: props.confirmedById,
+      confirmedAt: props.confirmedAt ? new Date(props.confirmedAt) : null,
+      confirmationSnapshot: props.confirmationSnapshot,
       nutritionTargetSnapshot: props.nutritionTargetSnapshot,
       notes: props.notes,
       createdAt: new Date(props.createdAt),

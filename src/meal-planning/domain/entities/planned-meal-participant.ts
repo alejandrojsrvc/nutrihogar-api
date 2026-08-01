@@ -1,8 +1,5 @@
 import Decimal from 'decimal.js';
-import {
-  InvalidMealPlanningError,
-  MealPlanningTransitionError,
-} from '../errors/meal-planning.errors';
+import { InvalidMealPlanningError } from '../errors/meal-planning.errors';
 import type {
   PlannedMealParticipantProps,
   NutritionTargetSnapshot,
@@ -35,6 +32,9 @@ export class PlannedMealParticipant {
       suggestedUnit: suggested?.unit ?? null,
       confirmedQuantity: null,
       confirmedUnit: null,
+      confirmedById: null,
+      confirmedAt: null,
+      confirmationSnapshot: null,
       nutritionTargetSnapshot: cloneSnapshot(input.nutritionTargetSnapshot),
       notes: input.notes?.trim() || null,
       createdAt: new Date(input.occurredAt),
@@ -47,6 +47,9 @@ export class PlannedMealParticipant {
       ...props,
       suggestedQuantity: props.suggestedQuantity && new Decimal(props.suggestedQuantity),
       confirmedQuantity: props.confirmedQuantity && new Decimal(props.confirmedQuantity),
+      confirmedById: props.confirmedById ?? null,
+      confirmedAt: props.confirmedAt && new Date(props.confirmedAt),
+      confirmationSnapshot: cloneSnapshot(props.confirmationSnapshot),
       nutritionTargetSnapshot: cloneSnapshot(props.nutritionTargetSnapshot),
       createdAt: new Date(props.createdAt),
       updatedAt: new Date(props.updatedAt),
@@ -64,24 +67,37 @@ export class PlannedMealParticipant {
     notes?: string | null;
     suggestedQuantity?: Decimal.Value | null;
     suggestedUnit?: string | null;
+    nutritionTargetSnapshot?: NutritionTargetSnapshot | null;
     occurredAt: Date;
   }): void {
-    const suggested =
-      input.suggestedQuantity == null
-        ? null
-        : PlannedQuantity.from(input.suggestedQuantity, input.suggestedUnit ?? '');
-    this.props.suggestedQuantity = suggested?.toDecimal() ?? null;
-    this.props.suggestedUnit = suggested?.unit ?? null;
+    if (input.suggestedQuantity !== undefined || input.suggestedUnit !== undefined) {
+      const suggested =
+        input.suggestedQuantity == null
+          ? null
+          : PlannedQuantity.from(input.suggestedQuantity, input.suggestedUnit ?? '');
+      this.props.suggestedQuantity = suggested?.toDecimal() ?? null;
+      this.props.suggestedUnit = suggested?.unit ?? null;
+    }
+    if (input.nutritionTargetSnapshot !== undefined)
+      this.props.nutritionTargetSnapshot = cloneSnapshot(input.nutritionTargetSnapshot);
     if (input.notes !== undefined) this.props.notes = input.notes?.trim() || null;
     this.props.updatedAt = new Date(input.occurredAt);
   }
 
-  confirmQuantity(quantity: Decimal.Value, unit: string, occurredAt: Date): void {
-    if (this.props.confirmedQuantity)
-      throw new MealPlanningTransitionError('Participant quantity is already confirmed.');
+  confirmQuantity(quantity: Decimal.Value, unit: string, actorId: string, occurredAt: Date): void {
     const confirmed = PlannedQuantity.from(quantity, unit);
     this.props.confirmedQuantity = confirmed.toDecimal();
     this.props.confirmedUnit = confirmed.unit;
+    this.props.confirmedById = actorId;
+    this.props.confirmedAt = new Date(occurredAt);
+    this.props.confirmationSnapshot = {
+      quantity: confirmed.toDecimal().toString(),
+      unit: confirmed.unit,
+      actorId,
+      confirmedAt: occurredAt.toISOString(),
+      suggestedQuantity: this.props.suggestedQuantity?.toString() ?? null,
+      suggestedUnit: this.props.suggestedUnit,
+    };
     this.props.updatedAt = new Date(occurredAt);
   }
 
@@ -90,6 +106,9 @@ export class PlannedMealParticipant {
       ...this.props,
       suggestedQuantity: this.props.suggestedQuantity && new Decimal(this.props.suggestedQuantity),
       confirmedQuantity: this.props.confirmedQuantity && new Decimal(this.props.confirmedQuantity),
+      confirmedById: this.props.confirmedById,
+      confirmedAt: this.props.confirmedAt && new Date(this.props.confirmedAt),
+      confirmationSnapshot: cloneSnapshot(this.props.confirmationSnapshot),
       nutritionTargetSnapshot: cloneSnapshot(this.props.nutritionTargetSnapshot),
       createdAt: new Date(this.props.createdAt),
       updatedAt: new Date(this.props.updatedAt),

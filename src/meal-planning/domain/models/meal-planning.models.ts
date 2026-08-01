@@ -14,6 +14,9 @@ export interface PlannedMealParticipantProps {
   suggestedUnit: string | null;
   confirmedQuantity: Decimal | null;
   confirmedUnit: string | null;
+  confirmedById?: string | null;
+  confirmedAt?: Date | null;
+  confirmationSnapshot?: Record<string, unknown> | null;
   nutritionTargetSnapshot: NutritionTargetSnapshot | null;
   notes: string | null;
   createdAt: Date;

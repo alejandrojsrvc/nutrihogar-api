@@ -2,6 +2,16 @@ import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity/identity.module';
 import { HouseholdsModule } from '../households/households.module';
 import { RecipesModule } from '../recipes/recipes.module';
+import { NutritionModule } from '../nutrition/nutrition.module';
+import { InventoryModule } from '../inventory/inventory.module';
+import {
+  INVENTORY_ITEM_REPOSITORY,
+  InventoryItemRepository,
+} from '../inventory/application/ports/inventory-repository.port';
+import {
+  NUTRITION_GOAL_REPOSITORY,
+  NutritionGoalRepository,
+} from '../nutrition/application/ports/nutrition-goal-repository.port';
 import {
   ADULT_PROFILE_REPOSITORY,
   AdultProfileRepository,
@@ -35,7 +45,23 @@ import {
   UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE,
   UpdatePlannedMealParticipantUseCase,
   UpdatePlannedMealUseCase,
+  CONFIRM_PARTICIPANT_QUANTITY_USE_CASE,
+  ConfirmParticipantQuantityUseCase,
 } from './application/use-cases/planned-meal.use-cases';
+import {
+  ACCEPT_SUGGESTED_QUANTITIES_USE_CASE,
+  AcceptSuggestedQuantitiesUseCase,
+  GET_PLANNED_MEAL_QUANTITIES_QUERY,
+  GetPlannedMealQuantitiesQuery,
+  PROPOSE_MEAL_QUANTITIES_USE_CASE,
+  ProposeMealQuantitiesUseCase,
+} from './application/use-cases/meal-plan-quantity.use-cases';
+import {
+  CALCULATE_WEEKLY_REQUIREMENTS_QUERY,
+  CalculateWeeklyRequirementsQuery,
+  COMPARE_PLAN_WITH_INVENTORY_QUERY,
+  ComparePlanWithInventoryQuery,
+} from './application/use-cases/weekly-analysis.use-cases';
 import {
   ACTIVATE_WEEKLY_PLAN_USE_CASE,
   ActivateWeeklyPlanUseCase,
@@ -54,7 +80,7 @@ import {
 } from './application/use-cases/weekly-plan.use-cases';
 
 @Module({
-  imports: [IdentityModule, HouseholdsModule, RecipesModule],
+  imports: [IdentityModule, HouseholdsModule, RecipesModule, NutritionModule, InventoryModule],
   controllers: [MealPlanningController],
   providers: [
     { provide: WEEKLY_PLAN_REPOSITORY, useClass: PrismaWeeklyPlanRepository },
@@ -150,6 +176,56 @@ import {
       useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
         new UpdatePlannedMealParticipantUseCase({ households: h, plans: p, recipes: r }),
     },
+    {
+      provide: CONFIRM_PARTICIPANT_QUANTITY_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
+        new ConfirmParticipantQuantityUseCase({ households: h, plans: p, recipes: r }),
+    },
+    {
+      provide: PROPOSE_MEAL_QUANTITIES_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, NUTRITION_GOAL_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, g: NutritionGoalRepository) =>
+        new ProposeMealQuantitiesUseCase({ households: h, plans: p, goals: g }),
+    },
+    {
+      provide: GET_PLANNED_MEAL_QUANTITIES_QUERY,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, NUTRITION_GOAL_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, g: NutritionGoalRepository) =>
+        new GetPlannedMealQuantitiesQuery({ households: h, plans: p, goals: g }),
+    },
+    {
+      provide: ACCEPT_SUGGESTED_QUANTITIES_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, NUTRITION_GOAL_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, g: NutritionGoalRepository) =>
+        new AcceptSuggestedQuantitiesUseCase({ households: h, plans: p, goals: g }),
+    },
+    {
+      provide: CALCULATE_WEEKLY_REQUIREMENTS_QUERY,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
+        new CalculateWeeklyRequirementsQuery({ households: h, plans: p, recipes: r }),
+    },
+    {
+      provide: COMPARE_PLAN_WITH_INVENTORY_QUERY,
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        WEEKLY_PLAN_REPOSITORY,
+        RECIPE_REPOSITORY,
+        INVENTORY_ITEM_REPOSITORY,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        p: WeeklyPlanRepository,
+        r: RecipeRepository,
+        i: InventoryItemRepository,
+      ) => new ComparePlanWithInventoryQuery({ households: h, plans: p, recipes: r, inventory: i }),
+    },
+  ],
+  exports: [
+    WEEKLY_PLAN_REPOSITORY,
+    CALCULATE_WEEKLY_REQUIREMENTS_QUERY,
+    COMPARE_PLAN_WITH_INVENTORY_QUERY,
   ],
 })
 export class MealPlanningModule {}

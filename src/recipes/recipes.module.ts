@@ -124,6 +124,7 @@ import {
     ServedPortionsController,
     PreparedFoodLeftoversController,
   ],
+  exports: [PREPARED_BATCH_REPOSITORY, PREPARED_FOOD_LEFTOVER_REPOSITORY],
   providers: [
     { provide: RECIPE_REPOSITORY, useClass: PrismaRecipeRepository },
     { provide: PREPARED_BATCH_REPOSITORY, useClass: PrismaPreparedBatchRepository },

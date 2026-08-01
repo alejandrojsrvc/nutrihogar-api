@@ -9,6 +9,7 @@ import { IdentityModule } from './identity/identity.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { MealTrackingModule } from './meal-tracking/meal-tracking.module';
 import { RecipesModule } from './recipes/recipes.module';
+import { InventoryModule } from './inventory/inventory.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { RecipesModule } from './recipes/recipes.module';
     NutritionModule,
     MealTrackingModule,
     RecipesModule,
+    InventoryModule,
   ],
 })
 export class AppModule {}

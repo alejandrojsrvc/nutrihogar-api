@@ -106,5 +106,6 @@ import { DailyNutritionSummaryController } from './presentation/http/daily-nutri
         new GetDailyNutritionSummaryUseCase(summaries),
     },
   ],
+  exports: [MEAL_UNIT_OF_WORK],
 })
 export class MealTrackingModule {}

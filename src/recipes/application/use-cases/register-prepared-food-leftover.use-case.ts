@@ -31,7 +31,8 @@ export class RegisterPreparedFoodLeftoverUseCase {
     const batch = await this.batches.findById(command.batchId);
     if (!batch) throw new PreparedBatchNotFoundError();
     await ensureHouseholdAccess(this.households, command.actorId, batch.householdId);
-    if (batch.status !== 'FINALIZED' || !batch.finalCookedWeight) {
+    const finalCookedWeight = batch.finalCookedWeight;
+    if (batch.status !== 'FINALIZED' || !finalCookedWeight) {
       throw new PreparedBatchNotFinalizedError();
     }
     ensureStoredAt(command.storedAt, this.clock.now());
@@ -45,7 +46,7 @@ export class RegisterPreparedFoodLeftoverUseCase {
         code: nutrient.code,
         name: nutrient.name,
         unit: nutrient.unit,
-        amountPerGram: nutrient.amount.div(batch.finalCookedWeight),
+        amountPerGram: nutrient.amount.div(finalCookedWeight),
       })),
       storedAt: command.storedAt,
       storageLocation: command.storageLocation,

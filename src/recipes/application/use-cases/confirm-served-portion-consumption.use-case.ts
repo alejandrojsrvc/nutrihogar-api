@@ -108,13 +108,14 @@ function calculateConsumedNutrients(
   },
   consumedWeight: Decimal,
 ) {
-  if (!batch.finalCookedWeight) throw new PreparedBatchNotFinalizedError();
+  const finalCookedWeight = batch.finalCookedWeight;
+  if (!finalCookedWeight) throw new PreparedBatchNotFinalizedError();
 
   return batch.totalNutrients.map((nutrient) => ({
     code: nutrient.code,
     name: nutrient.name,
     unit: nutrient.unit,
-    amount: nutrient.amount.div(batch.finalCookedWeight).mul(consumedWeight),
+    amount: nutrient.amount.div(finalCookedWeight).mul(consumedWeight),
   }));
 }
 

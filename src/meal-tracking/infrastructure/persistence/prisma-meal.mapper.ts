@@ -2,7 +2,7 @@ import { Meal, MealItem, MealItemNutrientSnapshot } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { MealItemView, MealNutrientSnapshotView, MealView } from '../../domain/models/meal.models';
 
-type MealRecord = Meal & {
+export type MealRecord = Meal & {
   items: (MealItem & { nutrientSnapshots: MealItemNutrientSnapshot[] })[];
 };
 

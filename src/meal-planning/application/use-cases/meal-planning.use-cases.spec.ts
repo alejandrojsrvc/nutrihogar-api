@@ -1,6 +1,7 @@
 import { CreateWeeklyPlanUseCase } from './weekly-plan.use-cases';
 import { AddPlannedMealUseCase } from './planned-meal.use-cases';
 import { PlannedMealSource, PlannedMealType } from '../../domain/value-objects/planned-meal';
+import { WeeklyPlanStatus } from '../../domain/value-objects/weekly-plan-status';
 import type { HouseholdAccess } from '../../../households/application/models/household-access';
 import type { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import type { RecipeRepository } from '../../../recipes/application/ports/recipe-repository.port';
@@ -51,7 +52,9 @@ describe('meal planning use cases', () => {
       weekStart: '2026-08-03',
     });
     expect(created.currency).toBe('ARS');
-    plans.findByHouseholdAndWeek.mockResolvedValueOnce({ status: 'ACTIVE' });
+    plans.findByHouseholdAndWeek.mockResolvedValueOnce({
+      status: WeeklyPlanStatus.ACTIVE,
+    } as never);
     await expect(
       new CreateWeeklyPlanUseCase(households, plans).execute({
         actorId: 'user',

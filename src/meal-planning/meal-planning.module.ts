@@ -140,33 +140,15 @@ import {
     },
     {
       provide: REMOVE_PLANNED_MEAL_PARTICIPANT_USE_CASE,
-      inject: [
-        HOUSEHOLD_REPOSITORY,
-        WEEKLY_PLAN_REPOSITORY,
-        RECIPE_REPOSITORY,
-        ADULT_PROFILE_REPOSITORY,
-      ],
-      useFactory: (
-        h: HouseholdRepository,
-        p: WeeklyPlanRepository,
-        r: RecipeRepository,
-        a: AdultProfileRepository,
-      ) => new RemovePlannedMealParticipantUseCase({ households: h, plans: p, recipes: r }, a),
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
+        new RemovePlannedMealParticipantUseCase({ households: h, plans: p, recipes: r }),
     },
     {
       provide: UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE,
-      inject: [
-        HOUSEHOLD_REPOSITORY,
-        WEEKLY_PLAN_REPOSITORY,
-        RECIPE_REPOSITORY,
-        ADULT_PROFILE_REPOSITORY,
-      ],
-      useFactory: (
-        h: HouseholdRepository,
-        p: WeeklyPlanRepository,
-        r: RecipeRepository,
-        a: AdultProfileRepository,
-      ) => new UpdatePlannedMealParticipantUseCase({ households: h, plans: p, recipes: r }, a),
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
+        new UpdatePlannedMealParticipantUseCase({ households: h, plans: p, recipes: r }),
     },
   ],
 })

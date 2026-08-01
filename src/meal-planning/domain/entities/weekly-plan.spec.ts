@@ -5,6 +5,8 @@ import {
   MealPlanningTransitionError,
 } from '../errors/meal-planning.errors';
 import { PlannedMealSource, PlannedMealType } from '../value-objects/planned-meal';
+import { PlannedMealStatus } from '../value-objects/planned-meal-status';
+import { WeeklyPlanStatus } from '../value-objects/weekly-plan-status';
 
 describe('WeeklyPlan', () => {
   const now = new Date('2026-08-03T10:00:00.000Z');
@@ -65,7 +67,7 @@ describe('WeeklyPlan', () => {
       occurredAt: now,
     });
     weekly.activate();
-    expect(weekly.status).toBe('ACTIVE');
+    expect(weekly.status).toBe(WeeklyPlanStatus.ACTIVE);
   });
 
   it('rejects duplicate participants and preserves replacement history', () => {
@@ -107,8 +109,8 @@ describe('WeeklyPlan', () => {
     draft.addMeal(meal('meal-3'));
     const withConsumed = WeeklyPlan.reconstitute({
       ...draft.toProps(),
-      status: 'DRAFT',
-      meals: [{ ...draft.meals[0], status: 'CONSUMED' }],
+      status: WeeklyPlanStatus.DRAFT,
+      meals: [{ ...draft.meals[0], status: PlannedMealStatus.CONSUMED }],
       publishedAt: null,
     });
     expect(() => withConsumed.removeMeal('meal-3')).toThrow(MealPlanningTransitionError);

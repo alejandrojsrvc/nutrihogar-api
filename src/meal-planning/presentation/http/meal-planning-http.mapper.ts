@@ -19,6 +19,12 @@ import {
   WeeklyPlanConflictError,
   WeeklyPlanNotFoundError,
 } from '../../application/errors/meal-planning-application.errors';
+import {
+  PlanExecutionAccessError,
+  PlanExecutionConflictError,
+  PlanExecutionError,
+  PlanExecutionNotFoundError,
+} from '../../application/use-cases/plan-execution.use-cases';
 
 export type WeeklyPlanResponse = Omit<WeeklyPlanProps, 'weeklyBudget' | 'meals'> & {
   weeklyBudget: string | null;
@@ -71,6 +77,10 @@ export function toListResponse(result: {
   return { ...result, items: result.items.map((plan) => toWeeklyPlanResponse(plan)) };
 }
 export function rethrowMealPlanningHttpError(error: unknown): never {
+  if (error instanceof PlanExecutionAccessError) throw new ForbiddenException(error.message);
+  if (error instanceof PlanExecutionNotFoundError) throw new NotFoundException(error.message);
+  if (error instanceof PlanExecutionConflictError) throw new ConflictException(error.message);
+  if (error instanceof PlanExecutionError) throw new BadRequestException(error.message);
   if (error instanceof WeeklyPlanAccessDeniedError || error instanceof WeeklyPlanAdminRequiredError)
     throw new ForbiddenException(error.message);
   if (

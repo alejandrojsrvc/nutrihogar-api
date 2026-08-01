@@ -186,6 +186,29 @@ export class PlannedMeal {
   markConsumed(occurredAt = new Date()): void {
     this.transition(PlannedMealStatus.SERVED, PlannedMealStatus.CONSUMED, occurredAt);
   }
+  markConsumedFromPlan(occurredAt = new Date()): void {
+    if (
+      ![PlannedMealStatus.PLANNED, PlannedMealStatus.PREPARED, PlannedMealStatus.SERVED].includes(
+        this.props.status,
+      )
+    )
+      throw new MealPlanningTransitionError('Meal cannot be consumed in its current state.');
+    this.props.status = PlannedMealStatus.CONSUMED;
+    this.props.updatedAt = new Date(occurredAt);
+  }
+  linkPreparedBatch(batchId: string, occurredAt = new Date()): void {
+    if (this.props.status !== PlannedMealStatus.PLANNED)
+      throw new MealPlanningTransitionError('Only planned meals can start preparation.');
+    this.props.preparedBatchId = batchId;
+    this.props.status = PlannedMealStatus.PREPARED;
+    this.props.updatedAt = new Date(occurredAt);
+  }
+  linkConsumedMeal(mealId: string, occurredAt = new Date()): void {
+    if (this.props.mealId)
+      throw new MealPlanningTransitionError('Meal already has a consumption linked.');
+    this.props.mealId = mealId;
+    this.markConsumedFromPlan(occurredAt);
+  }
   markSkipped(occurredAt = new Date()): void {
     if (
       ![PlannedMealStatus.PLANNED, PlannedMealStatus.PREPARED, PlannedMealStatus.SERVED].includes(

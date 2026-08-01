@@ -4,6 +4,7 @@ import { HouseholdsModule } from '../households/households.module';
 import { RecipesModule } from '../recipes/recipes.module';
 import { NutritionModule } from '../nutrition/nutrition.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { MealTrackingModule } from '../meal-tracking/meal-tracking.module';
 import {
   INVENTORY_ITEM_REPOSITORY,
   InventoryItemRepository,
@@ -24,6 +25,26 @@ import {
   RECIPE_REPOSITORY,
   RecipeRepository,
 } from '../recipes/application/ports/recipe-repository.port';
+import {
+  PREPARED_BATCH_REPOSITORY,
+  PreparedBatchRepository,
+} from '../recipes/application/ports/prepared-batch-repository.port';
+import {
+  START_PREPARED_BATCH_USE_CASE,
+  StartPreparedBatchUseCase,
+} from '../recipes/application/use-cases/start-prepared-batch.use-case';
+import {
+  MEAL_REPOSITORY,
+  MealRepository,
+} from '../meal-tracking/application/ports/meal-repository.port';
+import {
+  CALCULATE_WEEKLY_ADHERENCE_USE_CASE,
+  CalculateWeeklyAdherenceUseCase,
+  LINK_CONSUMED_MEAL_TO_PLANNED_MEAL_USE_CASE,
+  LinkConsumedMealToPlannedMealUseCase,
+  START_PREPARATION_FROM_PLANNED_MEAL_USE_CASE,
+  StartPreparationFromPlannedMealUseCase,
+} from './application/use-cases/plan-execution.use-cases';
 import {
   WEEKLY_PLAN_REPOSITORY,
   WeeklyPlanRepository,
@@ -80,10 +101,44 @@ import {
 } from './application/use-cases/weekly-plan.use-cases';
 
 @Module({
-  imports: [IdentityModule, HouseholdsModule, RecipesModule, NutritionModule, InventoryModule],
+  imports: [
+    IdentityModule,
+    HouseholdsModule,
+    RecipesModule,
+    MealTrackingModule,
+    NutritionModule,
+    InventoryModule,
+  ],
   controllers: [MealPlanningController],
   providers: [
     { provide: WEEKLY_PLAN_REPOSITORY, useClass: PrismaWeeklyPlanRepository },
+    {
+      provide: START_PREPARATION_FROM_PLANNED_MEAL_USE_CASE,
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        WEEKLY_PLAN_REPOSITORY,
+        PREPARED_BATCH_REPOSITORY,
+        START_PREPARED_BATCH_USE_CASE,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        p: WeeklyPlanRepository,
+        b: PreparedBatchRepository,
+        s: StartPreparedBatchUseCase,
+      ) => new StartPreparationFromPlannedMealUseCase(h, p, b, s),
+    },
+    {
+      provide: LINK_CONSUMED_MEAL_TO_PLANNED_MEAL_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, MEAL_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, m: MealRepository) =>
+        new LinkConsumedMealToPlannedMealUseCase(h, p, m),
+    },
+    {
+      provide: CALCULATE_WEEKLY_ADHERENCE_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, MEAL_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, m: MealRepository) =>
+        new CalculateWeeklyAdherenceUseCase(h, p, m),
+    },
     {
       provide: CREATE_WEEKLY_PLAN_USE_CASE,
       inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY],

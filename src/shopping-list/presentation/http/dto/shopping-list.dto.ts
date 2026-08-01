@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 
 export class AddShoppingListItemRequestDto {
   @ApiPropertyOptional({ format: 'uuid' }) @IsOptional() @IsUUID() foodId?: string;
@@ -13,6 +13,17 @@ export class AddShoppingListItemRequestDto {
   @ApiPropertyOptional({ format: 'uuid' }) @IsOptional() @IsUUID() sourceReferenceId?: string;
 }
 export class UpdateShoppingListItemRequestDto extends PartialType(AddShoppingListItemRequestDto) {}
+export class AddMissingIngredientRequestDto {
+  @ApiProperty({ format: 'uuid' }) @IsUUID() foodId!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() name?: string;
+  @ApiProperty() @IsString() unit!: string;
+  @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @IsNumber() @Min(0) quantity?: number;
+}
+export class AddMissingIngredientsRequestDto {
+  @ApiProperty({ type: AddMissingIngredientRequestDto, isArray: true })
+  @IsArray()
+  items!: AddMissingIngredientRequestDto[];
+}
 export class ShoppingListItemResponseDto {
   id!: string;
   shoppingListId!: string;

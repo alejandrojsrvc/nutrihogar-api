@@ -266,6 +266,7 @@ model User {
   adultProfiles           AdultProfile[]
   foodsCreated            Food[]                @relation("FoodCreatedBy")
   nutritionGoalsConfirmed NutritionGoal[]       @relation("NutritionGoalConfirmedBy")
+  plannedMealParticipantsConfirmed PlannedMealParticipant[] @relation("PlannedMealParticipantConfirmedBy")
   mealsCreated            Meal[]                @relation("MealCreatedBy")
   recipesCreated          Recipe[]              @relation("RecipeCreatedBy")
   preparedBatchesCreated  PreparedBatch[]       @relation("PreparedBatchCreatedBy")
@@ -1047,16 +1048,21 @@ model PlannedMealParticipant {
   suggestedUnit            String?      @map("suggested_unit") @db.VarChar(50)
   confirmedQuantity        Decimal?     @map("confirmed_quantity") @db.Decimal(30, 12)
   confirmedUnit            String?      @map("confirmed_unit") @db.VarChar(50)
+  confirmedById            String?      @map("confirmed_by_id") @db.Uuid
+  confirmedAt              DateTime?    @map("confirmed_at") @db.Timestamptz(6)
+  confirmationSnapshot     Json?        @map("confirmation_snapshot")
   nutritionTargetSnapshot  Json?        @map("nutrition_target_snapshot")
   notes                    String?      @db.Text
   createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   plannedMeal              PlannedMeal  @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
   adultProfile             AdultProfile @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  confirmedBy              User?        @relation("PlannedMealParticipantConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
 
   @@unique([plannedMealId, adultProfileId])
   @@index([plannedMealId])
   @@index([adultProfileId])
+  @@index([confirmedById])
   @@map("planned_meal_participants")
 }
 

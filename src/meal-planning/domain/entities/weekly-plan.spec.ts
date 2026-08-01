@@ -49,6 +49,8 @@ describe('WeeklyPlan', () => {
     expect(
       weekly.meals[0].participants[0].confirmedQuantity?.equals(new Decimal('1.234567890123')),
     ).toBe(true);
+    expect(weekly.meals[0].participants[0].confirmedById).toBe('legacy');
+    expect(weekly.meals[0].participants[0].confirmedAt).toEqual(now);
   });
 
   it('validates recipe source and activation participants', () => {

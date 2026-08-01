@@ -47,4 +47,22 @@ describe('ShoppingList', () => {
       InvalidShoppingListItemTransitionError,
     );
   });
+  it('finds an existing meal-plan selection so repeated requests are idempotent', () => {
+    const shopping = list();
+    shopping.addItem({
+      id: 'meal-item',
+      shoppingListId: 'list',
+      foodId: 'food-1',
+      name: 'Rice',
+      quantity: 2,
+      unit: 'GRAM',
+      source: 'MEAL_PLAN',
+      sourceReferenceId: 'plan-1',
+      actorId: 'u1',
+      occurredAt: new Date(),
+    });
+    expect(shopping.findPendingBySource('MEAL_PLAN', 'plan-1', 'food-1', 'GRAM')?.id).toBe(
+      'meal-item',
+    );
+  });
 });

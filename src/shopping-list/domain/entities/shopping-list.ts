@@ -58,6 +58,22 @@ export class ShoppingList {
     return this.itemEntities.find((item) => item.id === id);
   }
 
+  findPendingBySource(
+    source: string,
+    sourceReferenceId: string,
+    foodId: string,
+    unit: string,
+  ): ShoppingListItem | undefined {
+    return this.itemEntities.find(
+      (item) =>
+        item.status === 'PENDING' &&
+        item.source === source &&
+        item.toProps().sourceReferenceId === sourceReferenceId &&
+        item.foodId === foodId &&
+        item.unit === unit,
+    );
+  }
+
   toProps(): ShoppingListProps {
     return {
       id: this.idValue,

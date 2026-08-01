@@ -160,11 +160,17 @@ export class WeeklyPlan {
     participantId: string,
     quantity: Decimal.Value,
     unit: string,
-    occurredAt = new Date(),
+    actorId: string | Date,
+    occurredAt?: Date,
   ): void {
-    this.ensureDraft();
-    this.requireMeal(mealId).confirmParticipantQuantity(participantId, quantity, unit, occurredAt);
-    this.touch(occurredAt);
+    const confirmedAt = occurredAt ?? (actorId instanceof Date ? actorId : new Date());
+    this.requireMeal(mealId).confirmParticipantQuantity(
+      participantId,
+      quantity,
+      actorId,
+      confirmedAt,
+    );
+    this.touch(confirmedAt);
   }
 
   updateParticipant(

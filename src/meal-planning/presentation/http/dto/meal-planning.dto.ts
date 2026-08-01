@@ -68,4 +68,10 @@ export class UpdateParticipantRequestDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) suggestedQuantity?: number | null;
   @ApiPropertyOptional() @IsOptional() @IsString() suggestedUnit?: string | null;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string | null;
+  @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @IsNumber() @Min(0) confirmedQuantity?:
+    number | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() confirmedUnit?: string | null;
+  @ApiPropertyOptional({ minimum: 0 }) @IsOptional() @IsNumber() @Min(0) servingQuantity?:
+    number | null;
+  @ApiPropertyOptional() @IsOptional() @IsString() servingUnit?: string | null;
 }

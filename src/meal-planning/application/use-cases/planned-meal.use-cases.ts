@@ -26,6 +26,7 @@ export const REMOVE_PLANNED_MEAL_PARTICIPANT_USE_CASE = Symbol(
 export const UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE = Symbol(
   'UpdatePlannedMealParticipantUseCase',
 );
+export const CONFIRM_PARTICIPANT_QUANTITY_USE_CASE = Symbol('ConfirmParticipantQuantityUseCase');
 
 type Dependencies = {
   households: HouseholdRepository;
@@ -163,6 +164,11 @@ export class UpdatePlannedMealParticipantUseCase {
       notes?: string | null;
       suggestedQuantity?: string | number | null;
       suggestedUnit?: string | null;
+      nutritionTargetSnapshot?: Record<string, unknown> | null;
+      confirmedQuantity?: string | number | null;
+      confirmedUnit?: string | null;
+      servingQuantity?: string | number | null;
+      servingUnit?: string | null;
     },
   ): Promise<WeeklyPlan> {
     const plan = input.planId
@@ -174,12 +180,58 @@ export class UpdatePlannedMealParticipantUseCase {
       ? findMeal(plan, input.mealId)
       : plan.meals.find((item) => item.participants.some((p) => p.id === input.participantId));
     if (!meal) throw new PlannedMealNotFoundError('Planned meal not found.');
+    const confirmationQuantity = input.confirmedQuantity ?? input.servingQuantity;
+    const confirmationUnit = input.confirmedUnit ?? input.servingUnit;
+    if (confirmationQuantity != null && confirmationUnit) {
+      plan.confirmParticipantQuantity(
+        meal.id,
+        input.participantId,
+        confirmationQuantity,
+        confirmationUnit,
+        input.actorId,
+      );
+    }
+    if (input.suggestedQuantity === undefined && input.notes === undefined) {
+      await this.d.plans.save(plan);
+      return plan;
+    }
     plan.updateParticipant(meal.id, input.participantId, {
       notes: input.notes,
       suggestedQuantity: input.suggestedQuantity,
       suggestedUnit: input.suggestedUnit,
+      nutritionTargetSnapshot: input.nutritionTargetSnapshot,
       occurredAt: new Date(),
     });
+    await this.d.plans.save(plan);
+    return plan;
+  }
+}
+
+export class ConfirmParticipantQuantityUseCase {
+  constructor(private readonly d: Dependencies) {}
+  async execute(
+    input: ActorInput & {
+      participantId: string;
+      quantity: string | number;
+      unit: string;
+    },
+  ): Promise<WeeklyPlan> {
+    const plan = await (input.planId
+      ? requirePlan(this.d.plans, input.planId)
+      : this.d.plans.findByParticipantId(input.participantId));
+    if (!plan) throw new PlannedMealNotFoundError('Participant not found.');
+    await requireAccess(this.d.households, input.actorId, plan.householdId);
+    const meal = plan.meals.find((item) =>
+      item.participants.some((p) => p.id === input.participantId),
+    );
+    if (!meal) throw new PlannedMealNotFoundError('Planned meal not found.');
+    plan.confirmParticipantQuantity(
+      meal.id,
+      input.participantId,
+      input.quantity,
+      input.unit,
+      input.actorId,
+    );
     await this.d.plans.save(plan);
     return plan;
   }

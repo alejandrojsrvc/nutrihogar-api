@@ -35,6 +35,26 @@ import {
   UpdateMeasurementConfigurationUseCase,
 } from '../../application/use-cases/health-tracking.use-cases';
 import {
+  CORRECT_DIGESTIVE_SYMPTOM_USE_CASE,
+  CorrectDigestiveSymptomUseCase,
+  GET_DIGESTIVE_SYMPTOM_QUERY,
+  GET_RECENT_MEALS_FOR_SYMPTOM_LINK_QUERY,
+  GetDigestiveSymptomQuery,
+  GetRecentMealsForSymptomLinkQuery,
+  LIST_DIGESTIVE_SYMPTOMS_QUERY,
+  ListDigestiveSymptomsQuery,
+  REGISTER_DIGESTIVE_SYMPTOM_USE_CASE,
+  RegisterDigestiveSymptomUseCase,
+  RESOLVE_DIGESTIVE_SYMPTOM_USE_CASE,
+  ResolveDigestiveSymptomUseCase,
+} from '../../application/use-cases/digestive-symptom.use-cases';
+import {
+  GET_BODY_PROGRESS_QUERY,
+  GET_DIGESTIVE_SYMPTOM_INSIGHTS_QUERY,
+  GetBodyProgressQuery,
+  GetDigestiveSymptomInsightsQuery,
+} from '../../application/use-cases/health-tracking-analysis.use-cases';
+import {
   BodyMeasurementBatchRequestDto,
   BodyMeasurementQueryDto,
   BodyMeasurementRequestDto,
@@ -43,11 +63,23 @@ import {
   HealthTrackingListResponseDto,
   HealthTrackingResponseDto,
   MeasurementConfigurationRequestDto,
+  DigestiveSymptomRequestDto,
+  DigestiveSymptomQueryDto,
+  DigestiveSymptomResponseDto,
+  DigestiveSymptomListResponseDto,
+  RecentMealsForSymptomQueryDto,
+  BodyProgressQueryDto,
+  DigestiveSymptomInsightsQueryDto,
+  BodyProgressResponseDto,
+  DigestiveSymptomInsightsResponseDto,
 } from './dto/health-tracking.dto';
 import {
   rethrowHealthTrackingHttpError,
   toConfigurationResponse,
   toHealthResponse,
+  toDigestiveSymptomResponse,
+  toBodyProgressResponse,
+  toDigestiveSymptomInsightsResponse,
 } from './health-tracking-http.mapper';
 
 @ApiTags('health-tracking')
@@ -73,6 +105,20 @@ export class HealthTrackingController {
     private readonly correctMeasurement: CorrectBodyMeasurementUseCase,
     @Inject(LIST_BODY_MEASUREMENTS_QUERY)
     private readonly listMeasurement: ListBodyMeasurementsQuery,
+    @Inject(REGISTER_DIGESTIVE_SYMPTOM_USE_CASE)
+    private readonly registerSymptom: RegisterDigestiveSymptomUseCase,
+    @Inject(RESOLVE_DIGESTIVE_SYMPTOM_USE_CASE)
+    private readonly resolveSymptom: ResolveDigestiveSymptomUseCase,
+    @Inject(CORRECT_DIGESTIVE_SYMPTOM_USE_CASE)
+    private readonly correctSymptom: CorrectDigestiveSymptomUseCase,
+    @Inject(GET_DIGESTIVE_SYMPTOM_QUERY) private readonly getSymptom: GetDigestiveSymptomQuery,
+    @Inject(LIST_DIGESTIVE_SYMPTOMS_QUERY)
+    private readonly listSymptoms: ListDigestiveSymptomsQuery,
+    @Inject(GET_RECENT_MEALS_FOR_SYMPTOM_LINK_QUERY)
+    private readonly recentMeals: GetRecentMealsForSymptomLinkQuery,
+    @Inject(GET_BODY_PROGRESS_QUERY) private readonly bodyProgress: GetBodyProgressQuery,
+    @Inject(GET_DIGESTIVE_SYMPTOM_INSIGHTS_QUERY)
+    private readonly symptomInsights: GetDigestiveSymptomInsightsQuery,
   ) {}
 
   @Post('adult-profiles/:adultProfileId/body-weight')
@@ -224,6 +270,131 @@ export class HealthTrackingController {
     try {
       return toHealthResponse(
         await this.correctMeasurement.execute({ actorId: user.id, entryId, ...body }),
+      );
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Post('adult-profiles/:adultProfileId/digestive-symptoms')
+  @ApiCreatedResponse({ type: DigestiveSymptomResponseDto })
+  async registerDigestiveSymptom(
+    @Param('adultProfileId') adultProfileId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: DigestiveSymptomRequestDto,
+  ) {
+    try {
+      return toDigestiveSymptomResponse(
+        await this.registerSymptom.execute({ actorId: user.id, adultProfileId, ...body }),
+      );
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Get('adult-profiles/:adultProfileId/digestive-symptoms')
+  @ApiOkResponse({ type: DigestiveSymptomListResponseDto })
+  async listDigestiveSymptoms(
+    @Param('adultProfileId') adultProfileId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Query() query: DigestiveSymptomQueryDto,
+  ) {
+    try {
+      const result = await this.listSymptoms.execute({
+        actorId: user.id,
+        adultProfileId,
+        ...query,
+      });
+      return { ...result, items: result.items.map(toDigestiveSymptomResponse) };
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Get('digestive-symptoms/:symptomId')
+  @ApiOkResponse({ type: DigestiveSymptomResponseDto })
+  async getDigestiveSymptom(
+    @Param('symptomId') symptomId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return toDigestiveSymptomResponse(await this.getSymptom.execute(user.id, symptomId));
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Post('digestive-symptoms/:symptomId/resolve')
+  @ApiOkResponse({ type: DigestiveSymptomResponseDto })
+  async resolveDigestiveSymptom(
+    @Param('symptomId') symptomId: string,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return toDigestiveSymptomResponse(await this.resolveSymptom.execute(user.id, symptomId));
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Post('digestive-symptoms/:symptomId/corrections')
+  @ApiCreatedResponse({ type: DigestiveSymptomResponseDto })
+  async correctDigestiveSymptom(
+    @Param('symptomId') symptomId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: DigestiveSymptomRequestDto,
+  ) {
+    try {
+      return toDigestiveSymptomResponse(
+        await this.correctSymptom.execute({ actorId: user.id, symptomId, ...body }),
+      );
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Get('adult-profiles/:adultProfileId/recent-meals-for-symptoms')
+  @ApiOkResponse()
+  async recentMealsForSymptoms(
+    @Param('adultProfileId') adultProfileId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Query() query: RecentMealsForSymptomQueryDto,
+  ) {
+    try {
+      return await this.recentMeals.execute({ actorId: user.id, adultProfileId, ...query });
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Get('adult-profiles/:adultProfileId/body-progress')
+  @ApiOperation({ summary: 'Calcula progreso corporal descriptivo' })
+  @ApiOkResponse({ type: BodyProgressResponseDto })
+  async getBodyProgress(
+    @Param('adultProfileId') adultProfileId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Query() query: BodyProgressQueryDto,
+  ) {
+    try {
+      return toBodyProgressResponse(
+        await this.bodyProgress.execute({ actorId: user.id, adultProfileId, ...query }),
+      );
+    } catch (e) {
+      rethrowHealthTrackingHttpError(e);
+    }
+  }
+
+  @Get('adult-profiles/:adultProfileId/digestive-symptom-insights')
+  @ApiOperation({ summary: 'Muestra patrones descriptivos de síntomas digestivos' })
+  @ApiOkResponse({ type: DigestiveSymptomInsightsResponseDto })
+  async getDigestiveSymptomInsights(
+    @Param('adultProfileId') adultProfileId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Query() query: DigestiveSymptomInsightsQueryDto,
+  ) {
+    try {
+      return toDigestiveSymptomInsightsResponse(
+        await this.symptomInsights.execute({ actorId: user.id, adultProfileId, ...query }),
       );
     } catch (e) {
       rethrowHealthTrackingHttpError(e);

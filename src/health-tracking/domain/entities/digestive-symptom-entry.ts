@@ -22,6 +22,7 @@ type CreateInput = {
   adultProfileId: string;
   type: DigestiveSymptomTypeValue;
   name?: string | null;
+  notes?: string | null;
   intensity: number;
   startAt: Date | string;
   endAt?: Date | string | null;
@@ -60,6 +61,7 @@ export class DigestiveSymptomEntry {
       adultProfileId: input.adultProfileId,
       type: type.value,
       name,
+      notes: input.notes?.trim() || null,
       intensity: input.intensity,
       startAt: occurredAt.startAt,
       endAt: occurredAt.endAt,
@@ -67,6 +69,19 @@ export class DigestiveSymptomEntry {
       correctedFromId,
       mealLinks: [],
       foodLinks: [],
+    });
+  }
+
+  static fromPersistence(input: DigestiveSymptomEntryProps): DigestiveSymptomEntry {
+    return new DigestiveSymptomEntry({
+      ...input,
+      startAt: new Date(input.startAt),
+      endAt: input.endAt ? new Date(input.endAt) : null,
+      mealLinks: input.mealLinks.map((link) => ({ ...link })),
+      foodLinks: input.foodLinks.map((link) => ({
+        ...link,
+        snapshot: link.snapshot ? { ...link.snapshot } : null,
+      })),
     });
   }
 

@@ -147,6 +147,30 @@ enum BodyMeasurementType {
   CUSTOM
 }
 
+enum DigestiveSymptomType {
+  GAS
+  BLOATING
+  ABDOMINAL_PAIN
+  HEARTBURN
+  NAUSEA
+  DIARRHEA
+  CONSTIPATION
+  OTHER
+}
+
+enum DigestiveSymptomStatus {
+  ACTIVE
+  RESOLVED
+  CORRECTED
+  CANCELLED
+}
+
+enum DigestiveSymptomFoodLinkSource {
+  MEAL_SELECTED
+  FOOD_FROM_MEAL
+  MANUAL_HYPOTHESIS
+}
+
 enum RecipeStatus {
   ACTIVE
   ARCHIVED
@@ -475,6 +499,7 @@ model AdultProfile {
   bodyWeightEntries        BodyWeightEntry[]
   bodyMeasurementEntries   BodyMeasurementEntry[]
   measurementConfiguration MeasurementConfiguration?
+  digestiveSymptomEntries  DigestiveSymptomEntry[]
 
   @@index([householdId, isActive])
   @@index([userId, isActive])
@@ -602,6 +627,7 @@ model Food {
   inventoryItems           InventoryItem[]
   purchaseItems            PurchaseItem[]
   shoppingListItems        ShoppingListItem[]
+  digestiveSymptomFoodLinks DigestiveSymptomFoodLink[]
 
   @@unique([source, sourceReference])
   @@index([householdId, isActive])
@@ -672,6 +698,8 @@ model Meal {
   createdBy      User         @relation("MealCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   items          MealItem[]
   plannedMeals   PlannedMeal[]
+  digestiveSymptomMealLinks DigestiveSymptomMealLink[]
+  digestiveSymptomFoodLinks DigestiveSymptomFoodLink[]
 
   @@index([householdId, consumedAt])
   @@index([adultProfileId, consumedAt])
@@ -705,6 +733,60 @@ model MealItem {
   @@index([foodId])
   @@index([foodServingId])
   @@map("meal_items")
+}
+
+model DigestiveSymptomEntry {
+  id             String                    @id @default(uuid()) @db.Uuid
+  adultProfileId String                    @map("adult_profile_id") @db.Uuid
+  type           DigestiveSymptomType
+  customTypeName String?                   @map("custom_type_name") @db.VarChar(150)
+  intensity      Int
+  startAt        DateTime                  @map("start_at") @db.Timestamptz(6)
+  endAt          DateTime?                 @map("end_at") @db.Timestamptz(6)
+  notes          String?                   @db.Text
+  status         DigestiveSymptomStatus    @default(ACTIVE)
+  correctedFromId String?                  @map("corrected_from_id") @db.Uuid
+  adultProfile   AdultProfile              @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  correctedFrom  DigestiveSymptomEntry?    @relation("DigestiveSymptomCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
+  corrections    DigestiveSymptomEntry[]   @relation("DigestiveSymptomCorrections")
+  mealLinks      DigestiveSymptomMealLink[]
+  foodLinks      DigestiveSymptomFoodLink[]
+
+  @@index([adultProfileId, type, startAt])
+  @@index([adultProfileId, intensity, startAt])
+  @@index([adultProfileId, status, startAt])
+  @@index([correctedFromId])
+  @@map("digestive_symptom_entries")
+}
+
+model DigestiveSymptomMealLink {
+  id         String                 @id @default(uuid()) @db.Uuid
+  symptomId  String                 @map("symptom_id") @db.Uuid
+  mealId     String                 @map("meal_id") @db.Uuid
+  symptom    DigestiveSymptomEntry  @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+  meal       Meal                   @relation(fields: [mealId], references: [id], onDelete: Restrict)
+
+  @@unique([symptomId, mealId])
+  @@index([mealId])
+  @@map("digestive_symptom_meal_links")
+}
+
+model DigestiveSymptomFoodLink {
+  id             String                         @id @default(uuid()) @db.Uuid
+  symptomId      String                         @map("symptom_id") @db.Uuid
+  foodId         String                         @map("food_id") @db.Uuid
+  mealId         String?                        @map("meal_id") @db.Uuid
+  source         DigestiveSymptomFoodLinkSource
+  foodNameSnapshot String?                      @map("food_name_snapshot") @db.VarChar(150)
+  snapshot       Json?
+  symptom        DigestiveSymptomEntry         @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+  food           Food                           @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  meal           Meal?                          @relation(fields: [mealId], references: [id], onDelete: Restrict)
+
+  @@unique([symptomId, foodId, mealId, source])
+  @@index([foodId])
+  @@index([mealId])
+  @@map("digestive_symptom_food_links")
 }
 
 model MealItemNutrientSnapshot {

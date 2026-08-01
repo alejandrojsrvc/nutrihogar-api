@@ -174,6 +174,20 @@ export class WeeklyPlan {
     this.touch(confirmedAt);
   }
 
+  prepareMeal(mealId: string, batchId: string, occurredAt = new Date()): void {
+    this.ensureActive();
+    const meal = this.requireMeal(mealId);
+    meal.linkPreparedBatch(batchId, occurredAt);
+    this.touch(occurredAt);
+  }
+
+  consumeMeal(mealId: string, consumedMealId: string, occurredAt = new Date()): void {
+    this.ensureActive();
+    const meal = this.requireMeal(mealId);
+    meal.linkConsumedMeal(consumedMealId, occurredAt);
+    this.touch(occurredAt);
+  }
+
   updateParticipant(
     mealId: string,
     participantId: string,
@@ -270,6 +284,10 @@ export class WeeklyPlan {
   private ensureDraft(): void {
     if (this.props.status !== WeeklyPlanStatus.DRAFT)
       throw new MealPlanningTransitionError('Only draft plans can be edited.');
+  }
+  private ensureActive(): void {
+    if (this.props.status !== WeeklyPlanStatus.ACTIVE)
+      throw new MealPlanningTransitionError('Only active plans can execute meals.');
   }
   private requireMeal(id: string): PlannedMeal {
     const meal = this.mealEntities.find((item) => item.id === id);

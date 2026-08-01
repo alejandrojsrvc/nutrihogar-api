@@ -71,7 +71,17 @@ import {
   ReplacePlannedMealRequestDto,
   AssignParticipantRequestDto,
   UpdateParticipantRequestDto,
+  LinkConsumedMealRequestDto,
+  AdherenceQueryDto,
 } from './dto/meal-planning.dto';
+import {
+  CALCULATE_WEEKLY_ADHERENCE_USE_CASE,
+  CalculateWeeklyAdherenceUseCase,
+  LINK_CONSUMED_MEAL_TO_PLANNED_MEAL_USE_CASE,
+  LinkConsumedMealToPlannedMealUseCase,
+  START_PREPARATION_FROM_PLANNED_MEAL_USE_CASE,
+  StartPreparationFromPlannedMealUseCase,
+} from '../../application/use-cases/plan-execution.use-cases';
 import {
   rethrowMealPlanningHttpError,
   toListResponse,
@@ -112,6 +122,12 @@ export class MealPlanningController {
     private readonly requirements: CalculateWeeklyRequirementsQuery,
     @Inject(COMPARE_PLAN_WITH_INVENTORY_QUERY)
     private readonly inventoryComparison: ComparePlanWithInventoryQuery,
+    @Inject(START_PREPARATION_FROM_PLANNED_MEAL_USE_CASE)
+    private readonly startPreparation: StartPreparationFromPlannedMealUseCase,
+    @Inject(LINK_CONSUMED_MEAL_TO_PLANNED_MEAL_USE_CASE)
+    private readonly linkConsumption: LinkConsumedMealToPlannedMealUseCase,
+    @Inject(CALCULATE_WEEKLY_ADHERENCE_USE_CASE)
+    private readonly adherence: CalculateWeeklyAdherenceUseCase,
   ) {}
 
   @Post('households/:householdId/weekly-plans')
@@ -326,6 +342,63 @@ export class MealPlanningController {
   async compareInventory(@Param('weeklyPlanId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.inventoryComparison.execute(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
+  @Post('planned-meals/:plannedMealId/preparation')
+  async prepare(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.startPreparation.execute(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+  @Get('planned-meals/:plannedMealId/preparation')
+  async preparation(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.startPreparation.get(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+  @Post('consumed-meals/:consumedMealId/link')
+  async link(
+    @Param('consumedMealId') mealId: string,
+    @Body() body: LinkConsumedMealRequestDto,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return await this.linkConsumption.execute(user.id, mealId, body.plannedMealId);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+  @Get('planned-meals/:plannedMealId/consumption')
+  async consumption(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.linkConsumption.get(user.id, id);
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+  @Get('weekly-plans/:weeklyPlanId/adherence')
+  async planAdherence(@Param('weeklyPlanId') id: string, @CurrentUser() user: CurrentUserModel) {
+    try {
+      return await this.adherence.execute(user.id, { weeklyPlanId: id });
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+  @Get('households/:householdId/adherence')
+  async householdAdherence(
+    @Param('householdId') householdId: string,
+    @Query() query: AdherenceQueryDto,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return await this.adherence.execute(user.id, { householdId, weekStart: query.weekStart });
     } catch (e) {
       rethrowMealPlanningHttpError(e);
     }

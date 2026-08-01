@@ -7,6 +7,7 @@ import {
   InventoryItemType,
   InventoryMovementType,
   InventoryUnit,
+  InventoryItemProps,
 } from '../../domain/models/inventory.models';
 
 export const INVENTORY_ITEM_REPOSITORY = Symbol('InventoryItemRepository');
@@ -15,6 +16,7 @@ export const PREPARATION_INVENTORY_UNIT_OF_WORK = Symbol('PreparationInventoryUn
 export const PREPARED_INVENTORY_CONSUMPTION_UNIT_OF_WORK = Symbol(
   'PreparedInventoryConsumptionUnitOfWork',
 );
+export const INVENTORY_SYNC_UNIT_OF_WORK = Symbol('InventorySyncUnitOfWork');
 
 export interface InventoryFilters {
   query?: string;
@@ -122,4 +124,31 @@ export interface InventoryMovementRepository {
     inventoryItemId: string,
     filters: MovementFilters,
   ): Promise<PaginatedInventoryMovements>;
+}
+
+export type InventorySyncStatus = 'APPLIED' | 'CONFLICT';
+
+export interface InventorySyncOperationResult {
+  operationId: string;
+  householdId: string;
+  inventoryItemId: string;
+  status: InventorySyncStatus;
+  reason: string | null;
+  resultingVersion: number | null;
+  snapshot: InventoryItemProps | null;
+  deviceId: string;
+  actorId: string;
+  createdAt: Date;
+}
+
+export interface InventorySyncTransaction {
+  findById(id: string): Promise<InventoryItem | null>;
+  save(item: InventoryItem): Promise<void>;
+  findOperation(operationId: string): Promise<InventorySyncOperationResult | null>;
+  recordOperation(result: InventorySyncOperationResult): Promise<void>;
+}
+
+export interface InventorySyncUnitOfWork {
+  execute<T>(work: (transaction: InventorySyncTransaction) => Promise<T>): Promise<T>;
+  findOperation(operationId: string): Promise<InventorySyncOperationResult | null>;
 }

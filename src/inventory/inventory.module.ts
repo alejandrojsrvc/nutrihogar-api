@@ -39,8 +39,10 @@ import {
 import {
   INVENTORY_ITEM_REPOSITORY,
   INVENTORY_MOVEMENT_REPOSITORY,
+  INVENTORY_SYNC_UNIT_OF_WORK,
   InventoryItemRepository,
   InventoryMovementRepository,
+  InventorySyncUnitOfWork,
   PREPARED_INVENTORY_CONSUMPTION_UNIT_OF_WORK,
   PreparedInventoryConsumptionUnitOfWork,
 } from './application/ports/inventory-repository.port';
@@ -90,6 +92,10 @@ import {
   ADD_PREPARED_LEFTOVER_TO_INVENTORY_USE_CASE,
 } from './application/use-cases/add-prepared-leftover-to-inventory.use-case';
 import {
+  SYNCHRONIZE_INVENTORY_OPERATIONS_USE_CASE,
+  SynchronizeInventoryOperationsUseCase,
+} from './application/use-cases/synchronize-inventory-operations.use-case';
+import {
   CONSUME_PREPARED_INVENTORY_ITEM_USE_CASE,
   ConsumePreparedInventoryItemUseCase,
 } from './application/use-cases/consume-prepared-inventory-item.use-case';
@@ -101,6 +107,7 @@ import {
     PrismaInventoryRepository,
     { provide: INVENTORY_ITEM_REPOSITORY, useExisting: PrismaInventoryRepository },
     { provide: INVENTORY_MOVEMENT_REPOSITORY, useExisting: PrismaInventoryRepository },
+    { provide: INVENTORY_SYNC_UNIT_OF_WORK, useExisting: PrismaInventoryRepository },
     { provide: PREPARATION_INVENTORY_UNIT_OF_WORK, useExisting: PrismaInventoryRepository },
     {
       provide: PREPARED_INVENTORY_CONSUMPTION_UNIT_OF_WORK,
@@ -229,6 +236,13 @@ import {
       useFactory: (households: HouseholdRepository, inventory: InventoryItemRepository) =>
         new RegisterInventoryExpirationUseCase(households, inventory),
     },
+    {
+      provide: SYNCHRONIZE_INVENTORY_OPERATIONS_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, INVENTORY_SYNC_UNIT_OF_WORK],
+      useFactory: (households: HouseholdRepository, sync: InventorySyncUnitOfWork) =>
+        new SynchronizeInventoryOperationsUseCase(households, sync),
+    },
   ],
+  exports: [INVENTORY_ITEM_REPOSITORY],
 })
 export class InventoryModule {}

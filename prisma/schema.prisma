@@ -186,6 +186,25 @@ enum InventoryMovementType {
   MANUAL_ENTRY
 }
 
+enum PurchaseStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum ShoppingListSource {
+  MANUAL
+  BELOW_MINIMUM
+  DEPLETED
+  MEAL_PLAN
+}
+
+enum ShoppingListItemStatus {
+  PENDING
+  PURCHASED
+  REMOVED
+}
+
 // Technical model for validating the local Prisma migration and seed flow.
 model TechnicalSeed {
   id        String   @id @default(uuid()) @db.Uuid
@@ -218,7 +237,12 @@ model User {
   preparedBatchesCreated  PreparedBatch[]       @relation("PreparedBatchCreatedBy")
   servedPortionsCreated   ServedPortion[]       @relation("ServedPortionCreatedBy")
   inventoryMovements      InventoryMovement[]   @relation("InventoryMovementActor")
+  inventorySyncOperations InventorySyncOperation[] @relation("InventorySyncOperationActor")
   preparationInventoryConsumptions PreparationInventoryConsumption[]
+  purchasesRegistered     Purchase[]            @relation("PurchaseRegisteredBy")
+  shoppingItemsCreated    ShoppingListItem[]    @relation("ShoppingListItemActor")
+  shoppingItemsPurchased  ShoppingListItem[]    @relation("ShoppingListItemPurchaser")
+  shoppingItemsRemoved    ShoppingListItem[]    @relation("ShoppingListItemRemover")
 
   @@map("users")
 }
@@ -243,7 +267,10 @@ model Household {
   preparedBatches PreparedBatch[]
   preparedFoodLeftovers PreparedFoodLeftover[]
   inventoryItems        InventoryItem[]
+  inventorySyncOperations InventorySyncOperation[]
   preparationInventoryConsumptions PreparationInventoryConsumption[]
+  purchases             Purchase[]
+  shoppingLists         ShoppingList[]
 
   @@index([createdById])
   @@index([deletedAt])
@@ -439,6 +466,8 @@ model Food {
   recipeIngredients        RecipeIngredient[]
   preparedBatchIngredients PreparedBatchIngredient[]
   inventoryItems           InventoryItem[]
+  purchaseItems            PurchaseItem[]
+  shoppingListItems        ShoppingListItem[]
 
   @@unique([source, sourceReference])
   @@index([householdId, isActive])
@@ -806,6 +835,8 @@ model InventoryItem {
   food                   Food?                   @relation(fields: [foodId], references: [id], onDelete: Restrict)
   preparedFoodLeftover   PreparedFoodLeftover?   @relation(fields: [preparedFoodLeftoverId], references: [id], onDelete: Restrict)
   movements              InventoryMovement[]
+  purchaseItems          PurchaseItem[]
+  inventorySyncOperations InventorySyncOperation[]
 
   @@index([householdId, status])
   @@index([householdId, itemType])
@@ -814,6 +845,90 @@ model InventoryItem {
   @@index([preparedFoodLeftoverId])
   @@unique([preparedFoodLeftoverId])
   @@map("inventory_items")
+}
+
+model Purchase {
+  id             String         @id @default(uuid()) @db.Uuid
+  householdId    String         @map("household_id") @db.Uuid
+  registeredById String         @map("registered_by_id") @db.Uuid
+  storeName      String         @map("store_name") @db.VarChar(150)
+  purchaseDate   DateTime       @map("purchase_date") @db.Timestamptz(6)
+  status         PurchaseStatus @default(DRAFT)
+  currency       String         @db.VarChar(3)
+  total          Decimal        @db.Decimal(12, 2)
+  idempotencyKey String?        @unique @map("idempotency_key") @db.VarChar(255)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household      Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  registeredBy   User           @relation("PurchaseRegisteredBy", fields: [registeredById], references: [id], onDelete: Restrict)
+  items          PurchaseItem[]
+
+  @@index([householdId, purchaseDate])
+  @@index([householdId, status, purchaseDate])
+  @@index([registeredById])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id                   String        @id @default(uuid()) @db.Uuid
+  purchaseId           String        @map("purchase_id") @db.Uuid
+  foodId               String?       @map("food_id") @db.Uuid
+  inventoryItemId      String?       @map("inventory_item_id") @db.Uuid
+  sourceShoppingItemId String?       @map("source_shopping_item_id") @db.Uuid
+  nameSnapshot         String        @map("name_snapshot") @db.VarChar(150)
+  unit                 String        @db.VarChar(50)
+  quantity             Decimal       @db.Decimal(30, 12)
+  purchase             Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  food                 Food?         @relation(fields: [foodId], references: [id], onDelete: SetNull)
+  inventoryItem        InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseId])
+  @@index([foodId])
+  @@index([inventoryItemId])
+  @@index([sourceShoppingItemId])
+  @@map("purchase_items")
+}
+
+model ShoppingList {
+  id          String              @id @default(uuid()) @db.Uuid
+  householdId String              @unique @map("household_id") @db.Uuid
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household   Household           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items       ShoppingListItem[]
+
+  @@map("shopping_lists")
+}
+
+model ShoppingListItem {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  shoppingListId     String                 @map("shopping_list_id") @db.Uuid
+  foodId             String?                @map("food_id") @db.Uuid
+  name               String                 @db.VarChar(150)
+  normalizedName     String                 @map("normalized_name") @db.VarChar(150)
+  quantity           Decimal                @db.Decimal(30, 12)
+  unit               String                 @db.VarChar(50)
+  source             ShoppingListSource
+  sourceReferenceId  String?                @map("source_reference_id") @db.Uuid
+  status             ShoppingListItemStatus @default(PENDING)
+  actorId            String                 @map("actor_id") @db.Uuid
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  purchasedAt        DateTime?              @map("purchased_at") @db.Timestamptz(6)
+  purchasedById      String?                @map("purchased_by_id") @db.Uuid
+  removedAt          DateTime?              @map("removed_at") @db.Timestamptz(6)
+  removedById        String?                @map("removed_by_id") @db.Uuid
+  shoppingList       ShoppingList           @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  food               Food?                  @relation(fields: [foodId], references: [id], onDelete: SetNull)
+  actor              User                   @relation("ShoppingListItemActor", fields: [actorId], references: [id], onDelete: Restrict)
+  purchasedBy        User?                  @relation("ShoppingListItemPurchaser", fields: [purchasedById], references: [id], onDelete: SetNull)
+  removedBy          User?                  @relation("ShoppingListItemRemover", fields: [removedById], references: [id], onDelete: SetNull)
+
+  @@index([shoppingListId, status])
+  @@index([shoppingListId, foodId, status])
+  @@index([shoppingListId, normalizedName, unit, status])
+  @@index([source, sourceReferenceId])
+  @@map("shopping_list_items")
 }
 
 model PreparationInventoryConsumption {
@@ -851,4 +966,31 @@ model InventoryMovement {
   @@index([itemId, type, occurredAt])
   @@index([actorId])
   @@map("inventory_movements")
+}
+
+enum InventorySyncOperationStatus {
+  APPLIED
+  CONFLICT
+}
+
+model InventorySyncOperation {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  operationId        String                     @unique @map("operation_id") @db.VarChar(255)
+  householdId        String                     @map("household_id") @db.Uuid
+  inventoryItemId    String?                    @map("inventory_item_id") @db.Uuid
+  actorId            String                     @map("actor_id") @db.Uuid
+  deviceId           String                     @map("device_id") @db.VarChar(255)
+  status             InventorySyncOperationStatus
+  reason             String?                    @db.Text
+  resultingVersion   Int?                       @map("resulting_version")
+  snapshot           Json?
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household          Household                  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  inventoryItem      InventoryItem?             @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  actor              User                       @relation("InventorySyncOperationActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([householdId, createdAt])
+  @@index([inventoryItemId, createdAt])
+  @@map("inventory_sync_operations")
 }

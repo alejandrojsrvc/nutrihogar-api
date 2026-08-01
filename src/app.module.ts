@@ -10,6 +10,8 @@ import { NutritionModule } from './nutrition/nutrition.module';
 import { MealTrackingModule } from './meal-tracking/meal-tracking.module';
 import { RecipesModule } from './recipes/recipes.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { ShoppingListModule } from './shopping-list/shopping-list.module';
+import { PurchasesModule } from './purchases/purchases.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { InventoryModule } from './inventory/inventory.module';
     MealTrackingModule,
     RecipesModule,
     InventoryModule,
+    ShoppingListModule,
+    PurchasesModule,
   ],
 })
 export class AppModule {}

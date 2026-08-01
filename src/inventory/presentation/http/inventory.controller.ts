@@ -75,6 +75,10 @@ import {
   SetInventoryMinimumUseCase,
 } from '../../application/use-cases/set-inventory-minimum.use-case';
 import {
+  SYNCHRONIZE_INVENTORY_OPERATIONS_USE_CASE,
+  SynchronizeInventoryOperationsUseCase,
+} from '../../application/use-cases/synchronize-inventory-operations.use-case';
+import {
   AdjustInventoryItemRequestDto,
   CreateManualInventoryItemRequestDto,
   ListInventoryItemsRequestDto,
@@ -83,18 +87,21 @@ import {
   UpdateInventoryItemRequestDto,
 } from './dto/inventory-request.dto';
 import { ConsumePreparedInventoryItemRequestDto } from './dto/consume-prepared-inventory-item.dto';
+import { InventorySyncRequestDto } from './dto/inventory-sync.dto';
 import { MealResponseDto } from '../../../meal-tracking/presentation/http/dto/meal-response.dto';
 import { toMealResponse } from '../../../meal-tracking/presentation/http/meal-http.mapper';
 import {
   InventoryItemListResponseDto,
   InventoryItemResponseDto,
   InventoryMovementListResponseDto,
+  InventorySyncResponseDto,
 } from './dto/inventory-response.dto';
 import {
   rethrowInventoryHttpError,
   toInventoryItemListResponse,
   toInventoryItemResponse,
   toInventoryMovementListResponse,
+  toInventorySyncResponse,
 } from './inventory-http.mapper';
 
 @ApiTags('inventory')
@@ -124,7 +131,41 @@ export class InventoryController {
     private readonly wasteItem: RegisterInventoryWasteUseCase,
     @Inject(REGISTER_INVENTORY_EXPIRATION_USE_CASE)
     private readonly expireItem: RegisterInventoryExpirationUseCase,
+    @Inject(SYNCHRONIZE_INVENTORY_OPERATIONS_USE_CASE)
+    private readonly synchronize: SynchronizeInventoryOperationsUseCase,
   ) {}
+
+  @Post('households/:householdId/inventory/sync')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sincroniza operaciones offline de inventario' })
+  @ApiParam({ name: 'householdId', format: 'uuid' })
+  @ApiOkResponse({ type: InventorySyncResponseDto })
+  @ApiBadRequestResponse({ description: 'La operacion de sincronizacion es invalida.' })
+  @ApiConflictResponse({
+    description: 'Los conflictos por operacion se devuelven en el cuerpo de la respuesta.',
+  })
+  @ApiForbiddenResponse({ description: 'El usuario no pertenece activamente al hogar.' })
+  async sync(
+    @Param('householdId', new ParseUUIDPipe()) householdId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: InventorySyncRequestDto,
+  ): Promise<InventorySyncResponseDto> {
+    try {
+      return toInventorySyncResponse(
+        await this.synchronize.execute({
+          actorId: user.id,
+          householdId,
+          deviceId: body.deviceId,
+          operations: body.operations.map((operation) => ({
+            ...operation,
+            occurredAt: new Date(operation.occurredAt),
+          })) as Parameters<SynchronizeInventoryOperationsUseCase['execute']>[0]['operations'],
+        }),
+      );
+    } catch (error) {
+      rethrowInventoryHttpError(error);
+    }
+  }
 
   @Get('households/:householdId/inventory')
   @ApiOperation({ summary: 'Lista el inventario de un hogar' })

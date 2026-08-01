@@ -17,6 +17,7 @@ import { CREATE_MANUAL_INVENTORY_ITEM_USE_CASE } from '../src/inventory/applicat
 import { REGISTER_INVENTORY_EXPIRATION_USE_CASE } from '../src/inventory/application/use-cases/register-inventory-expiration.use-case';
 import { REGISTER_INVENTORY_WASTE_USE_CASE } from '../src/inventory/application/use-cases/register-inventory-waste.use-case';
 import { SET_INVENTORY_MINIMUM_USE_CASE } from '../src/inventory/application/use-cases/set-inventory-minimum.use-case';
+import { SYNCHRONIZE_INVENTORY_OPERATIONS_USE_CASE } from '../src/inventory/application/use-cases/synchronize-inventory-operations.use-case';
 import { InventoryItem } from '../src/inventory/domain/entities/inventory-item';
 import {
   DuplicateInventorySourceError,
@@ -44,6 +45,7 @@ describe('Inventory HTTP API (e2e)', () => {
   const consumeItem = { execute: jest.fn() };
   const wasteItem = { execute: jest.fn() };
   const expireItem = { execute: jest.fn() };
+  const synchronize = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
@@ -69,6 +71,8 @@ describe('Inventory HTTP API (e2e)', () => {
       .useValue(wasteItem)
       .overrideProvider(REGISTER_INVENTORY_EXPIRATION_USE_CASE)
       .useValue(expireItem)
+      .overrideProvider(SYNCHRONIZE_INVENTORY_OPERATIONS_USE_CASE)
+      .useValue(synchronize)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -77,6 +81,21 @@ describe('Inventory HTTP API (e2e)', () => {
   });
 
   afterAll(async () => app.close());
+
+  it('posts an offline sync batch and returns processed and conflicts', async () => {
+    synchronize.execute.mockResolvedValue({ processed: [], conflicts: [], snapshot: null });
+    await request(app.getHttpServer())
+      .post(`/api/households/${householdId}/inventory/sync`)
+      .send({ deviceId: 'phone-1', operations: [] })
+      .expect(200)
+      .expect({ processed: [], conflicts: [], snapshot: null });
+    expect(synchronize.execute).toHaveBeenCalledWith({
+      actorId,
+      householdId,
+      deviceId: 'phone-1',
+      operations: [],
+    });
+  });
 
   beforeEach(() => {
     const item = inventoryItem();

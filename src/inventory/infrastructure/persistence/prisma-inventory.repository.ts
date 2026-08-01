@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-base-to-string, @typescript-eslint/unbound-method */
 
 import { Injectable } from '@nestjs/common';
 import crypto from 'node:crypto';
+import Decimal from 'decimal.js';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import {
@@ -16,6 +17,9 @@ import {
   PreparationInventoryUnitOfWork,
   PreparedInventoryConsumptionUnitOfWork,
   PreparedBatchInventoryDecision,
+  InventorySyncOperationResult,
+  InventorySyncTransaction,
+  InventorySyncUnitOfWork,
 } from '../../application/ports/inventory-repository.port';
 import { InventoryItem } from '../../domain/entities/inventory-item';
 import {
@@ -55,6 +59,23 @@ interface InventoryClient {
   inventoryItem: InventoryDelegate;
   inventoryMovement: MovementDelegate;
   meal: { create(args: unknown): Promise<MealRecord> };
+  inventorySyncOperation: {
+    findUnique(args: unknown): Promise<SyncOperationRecord | null>;
+    create(args: unknown): Promise<unknown>;
+  };
+}
+
+interface SyncOperationRecord {
+  operationId: string;
+  householdId: string;
+  inventoryItemId: string | null;
+  actorId: string;
+  status: 'APPLIED' | 'CONFLICT';
+  reason: string | null;
+  resultingVersion: number | null;
+  snapshot: unknown;
+  deviceId: string;
+  createdAt: Date;
 }
 
 @Injectable()
@@ -63,7 +84,8 @@ export class PrismaInventoryRepository
     InventoryItemRepository,
     InventoryMovementRepository,
     PreparationInventoryUnitOfWork,
-    PreparedInventoryConsumptionUnitOfWork
+    PreparedInventoryConsumptionUnitOfWork,
+    InventorySyncUnitOfWork
 {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -252,6 +274,50 @@ export class PrismaInventoryRepository
     }
   }
 
+  async findOperation(operationId: string): Promise<InventorySyncOperationResult | null> {
+    const record = await this.client(this.prisma).inventorySyncOperation.findUnique({
+      where: { operationId },
+    });
+    return record ? toSyncResult(record) : null;
+  }
+
+  async execute<T>(work: (transaction: InventorySyncTransaction) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction(async (transaction) =>
+      work({
+        findById: async (id) => {
+          const record = await this.client(transaction).inventoryItem.findUnique({
+            where: { id },
+            include: { movements },
+          });
+          return record ? PrismaInventoryItemMapper.toDomain(record) : null;
+        },
+        save: (item) => this.saveWithClient(transaction, item),
+        findOperation: async (operationId) => {
+          const record = await this.client(transaction).inventorySyncOperation.findUnique({
+            where: { operationId },
+          });
+          return record ? toSyncResult(record) : null;
+        },
+        recordOperation: async (result) => {
+          await this.client(transaction).inventorySyncOperation.create({
+            data: {
+              operationId: result.operationId,
+              householdId: result.householdId,
+              inventoryItemId: result.snapshot ? result.inventoryItemId : null,
+              actorId: result.actorId,
+              deviceId: result.deviceId,
+              status: result.status,
+              reason: result.reason,
+              resultingVersion: result.resultingVersion,
+              snapshot: result.snapshot ? serializeSnapshot(result.snapshot) : undefined,
+              createdAt: result.createdAt,
+            },
+          });
+        },
+      }),
+    );
+  }
+
   private async saveWithClient(transaction: unknown, item: InventoryItem): Promise<void> {
     const data = PrismaInventoryItemMapper.toPersistence(item);
     const client = this.client(transaction);
@@ -380,6 +446,46 @@ export class PrismaInventoryRepository
   private client(value: unknown): InventoryClient {
     return value as InventoryClient;
   }
+}
+
+function toSyncResult(record: SyncOperationRecord): InventorySyncOperationResult {
+  return {
+    operationId: record.operationId,
+    householdId: record.householdId,
+    inventoryItemId: record.inventoryItemId ?? '',
+    actorId: record.actorId,
+    status: record.status,
+    reason: record.reason,
+    resultingVersion: record.resultingVersion,
+    snapshot: record.snapshot ? deserializeSnapshot(record.snapshot) : null,
+    deviceId: record.deviceId,
+    createdAt: record.createdAt,
+  };
+}
+
+function deserializeSnapshot(
+  value: unknown,
+): NonNullable<InventorySyncOperationResult['snapshot']> {
+  const snapshot = value as Record<string, unknown>;
+  return {
+    ...snapshot,
+    currentQuantity: new Decimal(String(snapshot.currentQuantity)),
+    minimumQuantity:
+      snapshot.minimumQuantity === null || snapshot.minimumQuantity === undefined
+        ? null
+        : new Decimal(String(snapshot.minimumQuantity)),
+    createdAt: new Date(String(snapshot.createdAt)),
+    updatedAt: new Date(String(snapshot.updatedAt)),
+    expiresAt: snapshot.expiresAt ? new Date(String(snapshot.expiresAt)) : null,
+  } as NonNullable<InventorySyncOperationResult['snapshot']>;
+}
+
+function serializeSnapshot(snapshot: NonNullable<InventorySyncOperationResult['snapshot']>) {
+  return {
+    ...snapshot,
+    currentQuantity: snapshot.currentQuantity.toString(),
+    minimumQuantity: snapshot.minimumQuantity?.toString() ?? null,
+  };
 }
 
 function toMealItemCreateData(item: CreateMealInput['items'][number]) {

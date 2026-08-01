@@ -1,5 +1,8 @@
 import { MeasurementConfiguration } from './measurement-configuration';
-import { DuplicateCustomMeasurementError, InvalidHealthTrackingValueError } from '../errors/health-tracking.errors';
+import {
+  DuplicateCustomMeasurementError,
+  InvalidHealthTrackingValueError,
+} from '../errors/health-tracking.errors';
 
 describe('MeasurementConfiguration', () => {
   it('starts with standard measurements enabled in centimeters', () => {

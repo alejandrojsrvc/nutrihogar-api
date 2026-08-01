@@ -13,7 +13,7 @@ import {
 import { MealView } from '../../domain/models/meal.models';
 import { PrismaMealMapper } from './prisma-meal.mapper';
 
-const mealInclude = {
+export const mealInclude = {
   items: {
     include: { nutrientSnapshots: true },
     orderBy: { createdAt: 'asc' },
@@ -96,7 +96,7 @@ export class PrismaMealRepository implements MealRepository, MealUnitOfWork {
           consumedAt: input.consumedAt,
           notes: input.notes,
           createdById: input.createdById,
-          source: input.source,
+          source: input.source as unknown as 'MANUAL' | 'DUPLICATED' | 'PREPARED_BATCH',
           items: { create: input.items.map(toItemCreateData) },
         },
         include: mealInclude,

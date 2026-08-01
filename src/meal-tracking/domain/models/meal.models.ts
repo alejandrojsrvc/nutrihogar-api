@@ -2,7 +2,7 @@ import Decimal from 'decimal.js';
 
 export type MealType = 'BREAKFAST' | 'LUNCH' | 'SNACK' | 'DINNER' | 'EXTRA';
 export type MealStatus = 'CONFIRMED' | 'CANCELLED';
-export type MealSource = 'MANUAL' | 'DUPLICATED' | 'PREPARED_BATCH';
+export type MealSource = 'MANUAL' | 'DUPLICATED' | 'PREPARED_BATCH' | 'PREPARED_INVENTORY';
 export type MealMeasurementMethod = 'WEIGHED' | 'SERVING' | 'UNIT' | 'APPROXIMATED';
 export type MealConfidenceLevel = 'VERIFIED' | 'HIGH' | 'MEDIUM' | 'LOW' | 'USER_PROVIDED';
 

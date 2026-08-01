@@ -117,6 +117,36 @@ enum MealMeasurementMethod {
   APPROXIMATED
 }
 
+enum BodyWeightUnit {
+  KG
+  LB
+}
+
+enum BodyMeasurementUnit {
+  CM
+  IN
+}
+
+enum BodyMeasurementSource {
+  MANUAL
+  IMPORTED
+  DEVICE
+}
+
+enum BodyMeasurementType {
+  WAIST
+  HIPS
+  CHEST
+  ARM_LEFT
+  ARM_RIGHT
+  THIGH_LEFT
+  THIGH_RIGHT
+  NECK
+  CALF_LEFT
+  CALF_RIGHT
+  CUSTOM
+}
+
 enum RecipeStatus {
   ACTIVE
   ARCHIVED
@@ -314,6 +344,69 @@ model Household {
   @@map("households")
 }
 
+model BodyWeightEntry {
+  id              String              @id @default(uuid()) @db.Uuid
+  adultProfileId  String              @map("adult_profile_id") @db.Uuid
+  value           Decimal             @db.Decimal(18, 6)
+  unit            BodyWeightUnit
+  recordedAt      DateTime            @map("recorded_at") @db.Timestamptz(6)
+  source          BodyMeasurementSource
+  correctedFromId String?             @map("corrected_from_id") @db.Uuid
+  adultProfile    AdultProfile        @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  correctedFrom   BodyWeightEntry?    @relation("BodyWeightCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
+  corrections     BodyWeightEntry[]   @relation("BodyWeightCorrections")
+
+  @@index([adultProfileId, recordedAt])
+  @@index([adultProfileId, unit])
+  @@index([correctedFromId])
+  @@map("body_weight_entries")
+}
+
+model BodyMeasurementEntry {
+  id                    String                @id @default(uuid()) @db.Uuid
+  adultProfileId        String                @map("adult_profile_id") @db.Uuid
+  type                  BodyMeasurementType
+  customMeasurementName String?               @map("custom_measurement_name") @db.VarChar(100)
+  value                 Decimal               @db.Decimal(18, 6)
+  unit                  BodyMeasurementUnit
+  recordedAt            DateTime              @map("recorded_at") @db.Timestamptz(6)
+  source                BodyMeasurementSource
+  correctedFromId       String?               @map("corrected_from_id") @db.Uuid
+  adultProfile          AdultProfile          @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  correctedFrom         BodyMeasurementEntry? @relation("BodyMeasurementCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
+  corrections           BodyMeasurementEntry[] @relation("BodyMeasurementCorrections")
+
+  @@index([adultProfileId, recordedAt])
+  @@index([adultProfileId, type, recordedAt])
+  @@index([correctedFromId])
+  @@map("body_measurement_entries")
+}
+
+model MeasurementConfiguration {
+  id                 String                       @id @default(uuid()) @db.Uuid
+  adultProfileId     String                       @unique @map("adult_profile_id") @db.Uuid
+  enabledTypes       BodyMeasurementType[]        @map("enabled_types")
+  units              Json
+  adultProfile       AdultProfile                 @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  customMeasurements CustomMeasurementDefinition[]
+
+  @@map("measurement_configurations")
+}
+
+model CustomMeasurementDefinition {
+  id              String                 @id @default(uuid()) @db.Uuid
+  configurationId String                 @map("configuration_id") @db.Uuid
+  name            String                 @db.VarChar(100)
+  normalizedName  String                 @map("normalized_name") @db.VarChar(100)
+  unit            BodyMeasurementUnit
+  enabled         Boolean                @default(true)
+  configuration   MeasurementConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+
+  @@unique([configurationId, normalizedName])
+  @@index([configurationId, enabled])
+  @@map("custom_measurement_definitions")
+}
+
 model HouseholdMembership {
   id          String                    @id @default(uuid()) @db.Uuid
   householdId String                    @map("household_id") @db.Uuid
@@ -379,6 +472,9 @@ model AdultProfile {
   meals                    Meal[]
   servedPortions           ServedPortion[]
   plannedMealParticipants  PlannedMealParticipant[]
+  bodyWeightEntries        BodyWeightEntry[]
+  bodyMeasurementEntries   BodyMeasurementEntry[]
+  measurementConfiguration MeasurementConfiguration?
 
   @@index([householdId, isActive])
   @@index([userId, isActive])

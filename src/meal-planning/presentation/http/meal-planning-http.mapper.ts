@@ -41,7 +41,21 @@ type ParticipantResponse = Omit<
 > & {
   suggestedQuantity: string | null;
   confirmedQuantity: string | null;
+  status: string;
+  consumedMealId: string | null;
 };
+
+export function toParticipantResponse(
+  participant: PlannedMealParticipantProps,
+): ParticipantResponse {
+  return {
+    ...participant,
+    suggestedQuantity: participant.suggestedQuantity?.toString() ?? null,
+    confirmedQuantity: participant.confirmedQuantity?.toString() ?? null,
+    status: participant.status,
+    consumedMealId: participant.consumedMealId,
+  };
+}
 
 export interface WeeklyPlanListResponse {
   items: WeeklyPlanResponse[];
@@ -60,11 +74,7 @@ export function toWeeklyPlanResponse(plan: WeeklyPlanLike): WeeklyPlanResponse {
     meals: props.meals.map((meal): MealResponse => ({
       ...meal,
       nutritionSnapshot: meal.nutritionSnapshot,
-      participants: meal.participants.map((participant): ParticipantResponse => ({
-        ...participant,
-        suggestedQuantity: participant.suggestedQuantity?.toString() ?? null,
-        confirmedQuantity: participant.confirmedQuantity?.toString() ?? null,
-      })),
+      participants: meal.participants.map(toParticipantResponse),
     })),
   };
 }

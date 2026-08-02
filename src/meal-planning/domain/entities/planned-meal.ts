@@ -4,7 +4,10 @@ import {
   InvalidMealPlanningError,
   MealPlanningTransitionError,
 } from '../errors/meal-planning.errors';
-import type { PlannedMealProps } from '../models/meal-planning.models';
+import {
+  PlannedMealParticipantStatus,
+  type PlannedMealProps,
+} from '../models/meal-planning.models';
 import {
   PlannedMealSource,
   PlannedMealStatus,
@@ -156,8 +159,14 @@ export class PlannedMeal {
   updateParticipant(
     participantId: string,
     input: Parameters<typeof PlannedMealParticipant.prototype.update>[0],
+    allowPrepared = false,
   ): void {
-    this.ensureEditable();
+    if (allowPrepared) {
+      if (![PlannedMealStatus.PLANNED, PlannedMealStatus.PREPARED].includes(this.props.status))
+        throw new MealPlanningTransitionError('Only planned or prepared meals can be edited.');
+    } else {
+      this.ensureEditable();
+    }
     const participant = this.participantEntities.find((item) => item.id === participantId);
     if (!participant)
       throw new InvalidMealPlanningError('Participant is not assigned to this meal.');
@@ -207,6 +216,38 @@ export class PlannedMeal {
       throw new MealPlanningTransitionError('Meal cannot be consumed in its current state.');
     this.props.status = PlannedMealStatus.CONSUMED;
     this.props.updatedAt = new Date(occurredAt);
+  }
+  consumeParticipant(participantId: string, consumedMealId: string, occurredAt = new Date()): void {
+    const participant = this.participantEntities.find((item) => item.id === participantId);
+    if (!participant)
+      throw new InvalidMealPlanningError('Participant is not assigned to this meal.');
+    participant.consume(consumedMealId, occurredAt);
+    this.completeParticipantCycle(occurredAt);
+    this.props.updatedAt = new Date(occurredAt);
+  }
+  skipParticipant(participantId: string, occurredAt = new Date()): void {
+    const participant = this.participantEntities.find((item) => item.id === participantId);
+    if (!participant)
+      throw new InvalidMealPlanningError('Participant is not assigned to this meal.');
+    participant.skip(occurredAt);
+    this.completeParticipantCycle(occurredAt);
+    this.props.updatedAt = new Date(occurredAt);
+  }
+
+  private completeParticipantCycle(occurredAt: Date): void {
+    if (
+      !this.participantEntities.every(
+        (item) => item.toProps().status !== PlannedMealParticipantStatus.PLANNED,
+      )
+    )
+      return;
+    if (
+      this.participantEntities.some(
+        (item) => item.toProps().status === PlannedMealParticipantStatus.CONSUMED,
+      )
+    )
+      this.markConsumedFromPlan(occurredAt);
+    else this.markSkipped(occurredAt);
   }
   linkPreparedBatch(batchId: string, occurredAt = new Date()): void {
     if (this.props.status !== PlannedMealStatus.PLANNED)
@@ -274,6 +315,8 @@ export interface PlannedMealParticipantPropsView {
   confirmedAt?: Date | null;
   confirmationSnapshot?: Record<string, unknown> | null;
   nutritionTargetSnapshot: Record<string, unknown> | null;
+  status: PlannedMealParticipantStatus;
+  consumedMealId: string | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;

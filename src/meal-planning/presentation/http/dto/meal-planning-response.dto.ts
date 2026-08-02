@@ -1,4 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiExtraModels, ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
+import { PreparedBatchResponseDto } from '../../../../recipes/presentation/http/dto/prepared-batch-response.dto';
 
 export class PlannedMealParticipantResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -30,6 +31,12 @@ export class PlannedMealParticipantResponseDto {
 
   @ApiPropertyOptional({ type: 'object', additionalProperties: true, nullable: true })
   nutritionTargetSnapshot!: Record<string, unknown> | null;
+
+  @ApiProperty({ enum: ['PLANNED', 'CONSUMED', 'SKIPPED'] })
+  status!: string;
+
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  consumedMealId!: string | null;
 
   @ApiPropertyOptional({ type: String, nullable: true })
   notes!: string | null;
@@ -262,11 +269,26 @@ export class AdherenceNutritionResponseDto {
   proteinPercentage!: string;
 }
 
+export class AdherenceBreakdownEntryResponseDto {
+  @ApiProperty({ example: 3 })
+  planned!: number;
+
+  @ApiProperty({ example: 2 })
+  consumed!: number;
+}
+
+@ApiExtraModels(AdherenceBreakdownEntryResponseDto)
 export class AdherenceBreakdownResponseDto {
-  @ApiProperty({ type: 'object', additionalProperties: true })
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(AdherenceBreakdownEntryResponseDto) },
+  })
   byDay!: Record<string, { planned: number; consumed: number }>;
 
-  @ApiProperty({ type: 'object', additionalProperties: true })
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { $ref: getSchemaPath(AdherenceBreakdownEntryResponseDto) },
+  })
   byAdult!: Record<string, { planned: number; consumed: number }>;
 }
 
@@ -291,4 +313,12 @@ export class AdherenceResponseDto {
 
   @ApiProperty({ type: String, isArray: true })
   warnings!: string[];
+}
+
+export class MealPreparationResponseDto {
+  @ApiProperty({ type: PreparedBatchResponseDto })
+  batch!: PreparedBatchResponseDto;
+
+  @ApiProperty({ type: PlannedMealParticipantResponseDto, isArray: true })
+  participants!: PlannedMealParticipantResponseDto[];
 }

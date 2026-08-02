@@ -1,8 +1,9 @@
 import Decimal from 'decimal.js';
 import { InvalidMealPlanningError } from '../errors/meal-planning.errors';
-import type {
-  PlannedMealParticipantProps,
-  NutritionTargetSnapshot,
+import {
+  PlannedMealParticipantStatus,
+  type PlannedMealParticipantProps,
+  type NutritionTargetSnapshot,
 } from '../models/meal-planning.models';
 import { PlannedQuantity } from '../value-objects/planned-meal';
 import { PlannedMealParticipantId } from '../value-objects/identifiers';
@@ -36,6 +37,8 @@ export class PlannedMealParticipant {
       confirmedAt: null,
       confirmationSnapshot: null,
       nutritionTargetSnapshot: cloneSnapshot(input.nutritionTargetSnapshot),
+      status: PlannedMealParticipantStatus.PLANNED,
+      consumedMealId: null,
       notes: input.notes?.trim() || null,
       createdAt: new Date(input.occurredAt),
       updatedAt: new Date(input.occurredAt),
@@ -51,6 +54,8 @@ export class PlannedMealParticipant {
       confirmedAt: props.confirmedAt && new Date(props.confirmedAt),
       confirmationSnapshot: cloneSnapshot(props.confirmationSnapshot),
       nutritionTargetSnapshot: cloneSnapshot(props.nutritionTargetSnapshot),
+      status: props.status ?? PlannedMealParticipantStatus.PLANNED,
+      consumedMealId: props.consumedMealId ?? null,
       createdAt: new Date(props.createdAt),
       updatedAt: new Date(props.updatedAt),
     });
@@ -101,6 +106,21 @@ export class PlannedMealParticipant {
     this.props.updatedAt = new Date(occurredAt);
   }
 
+  consume(mealId: string, occurredAt: Date): void {
+    if (this.props.status !== PlannedMealParticipantStatus.PLANNED)
+      throw new InvalidMealPlanningError('Participant is already completed.');
+    this.props.status = PlannedMealParticipantStatus.CONSUMED;
+    this.props.consumedMealId = mealId;
+    this.props.updatedAt = new Date(occurredAt);
+  }
+
+  skip(occurredAt: Date): void {
+    if (this.props.status !== PlannedMealParticipantStatus.PLANNED)
+      throw new InvalidMealPlanningError('Participant is already completed.');
+    this.props.status = PlannedMealParticipantStatus.SKIPPED;
+    this.props.updatedAt = new Date(occurredAt);
+  }
+
   toProps(): PlannedMealParticipantProps {
     return {
       ...this.props,
@@ -110,6 +130,8 @@ export class PlannedMealParticipant {
       confirmedAt: this.props.confirmedAt && new Date(this.props.confirmedAt),
       confirmationSnapshot: cloneSnapshot(this.props.confirmationSnapshot),
       nutritionTargetSnapshot: cloneSnapshot(this.props.nutritionTargetSnapshot),
+      status: this.props.status,
+      consumedMealId: this.props.consumedMealId,
       createdAt: new Date(this.props.createdAt),
       updatedAt: new Date(this.props.updatedAt),
     };

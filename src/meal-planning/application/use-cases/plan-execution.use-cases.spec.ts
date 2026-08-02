@@ -93,9 +93,10 @@ describe('plan execution use cases', () => {
       'user',
       'meal',
       'planned',
+      'participant',
     );
     expect(plan.meals[0].status).toBe('CONSUMED');
-    expect(plan.meals[0].mealId).toBe('meal');
+    expect(plan.meals[0].participants[0].consumedMealId).toBe('meal');
   });
 
   it('calculates deterministic final-status and snapshot nutrition metrics', async () => {

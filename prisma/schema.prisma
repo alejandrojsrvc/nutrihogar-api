@@ -323,6 +323,12 @@ enum PlannedMealStatus {
   CANCELLED
 }
 
+enum PlannedMealParticipantStatus {
+  PLANNED
+  CONSUMED
+  SKIPPED
+}
+
 enum PlannedMealSource {
   RECIPE
   PREVIOUS_MEAL
@@ -857,6 +863,7 @@ model Meal {
   items                     MealItem[]
   plannedMeals              PlannedMeal[]              @relation("PlannedMealConsumedMeal")
   previousPlannedMeals      PlannedMeal[]              @relation("PlannedMealPreviousMeal")
+  plannedMealParticipantConsumptions PlannedMealParticipant[] @relation("PlannedMealParticipantConsumption")
   digestiveSymptomMealLinks DigestiveSymptomMealLink[]
   digestiveSymptomFoodLinks DigestiveSymptomFoodLink[]
 
@@ -1392,17 +1399,21 @@ model PlannedMealParticipant {
   confirmedAt             DateTime?    @map("confirmed_at") @db.Timestamptz(6)
   confirmationSnapshot    Json?        @map("confirmation_snapshot")
   nutritionTargetSnapshot Json?        @map("nutrition_target_snapshot")
+  status                  PlannedMealParticipantStatus @default(PLANNED)
+  consumedMealId          String?      @map("consumed_meal_id") @db.Uuid
   notes                   String?      @db.Text
   createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   plannedMeal             PlannedMeal  @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
   adultProfile            AdultProfile @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
   confirmedBy             User?        @relation("PlannedMealParticipantConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  consumedMeal            Meal?        @relation("PlannedMealParticipantConsumption", fields: [consumedMealId], references: [id], onDelete: SetNull)
 
   @@unique([plannedMealId, adultProfileId])
   @@index([plannedMealId])
   @@index([adultProfileId])
   @@index([confirmedById])
+  @@index([consumedMealId])
   @@map("planned_meal_participants")
 }
 

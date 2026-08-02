@@ -65,6 +65,8 @@ import {
   UPDATE_PLANNED_MEAL_USE_CASE,
   UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE,
   UpdatePlannedMealParticipantUseCase,
+  SKIP_PLANNED_MEAL_PARTICIPANT_USE_CASE,
+  SkipPlannedMealParticipantUseCase,
   UpdatePlannedMealUseCase,
   CONFIRM_PARTICIPANT_QUANTITY_USE_CASE,
   ConfirmParticipantQuantityUseCase,
@@ -236,6 +238,12 @@ import {
       inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
       useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
         new ConfirmParticipantQuantityUseCase({ households: h, plans: p, recipes: r }),
+    },
+    {
+      provide: SKIP_PLANNED_MEAL_PARTICIPANT_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY],
+      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository) =>
+        new SkipPlannedMealParticipantUseCase(h, p),
     },
     {
       provide: PROPOSE_MEAL_QUANTITIES_USE_CASE,

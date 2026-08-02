@@ -152,6 +152,7 @@ export class UpdateParticipantRequestDto {
 }
 export class LinkConsumedMealRequestDto {
   @ApiProperty({ format: 'uuid' }) @IsUUID() plannedMealId!: string;
+  @ApiProperty({ format: 'uuid' }) @IsUUID() participantId!: string;
 }
 export class AdherenceQueryDto {
   @ApiProperty({ example: '2026-08-03' }) @IsDateString() weekStart!: string;

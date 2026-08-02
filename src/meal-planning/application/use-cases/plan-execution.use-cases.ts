@@ -4,6 +4,7 @@ import type { HouseholdRepository } from '../../../households/application/ports/
 import { HouseholdId, WeeklyPlanId } from '../../domain/value-objects/identifiers';
 import { WeekStart } from '../../domain/value-objects/planning-date';
 import { PlannedMealSource, PlannedMealStatus } from '../../domain/value-objects/planned-meal';
+import { PlannedMealParticipantStatus } from '../../domain/models/meal-planning.models';
 import type { WeeklyPlanRepository } from '../ports/weekly-plan-repository.port';
 import type { PreparedBatchRepository } from '../../../recipes/application/ports/prepared-batch-repository.port';
 import type { StartPreparedBatchUseCase } from '../../../recipes/application/use-cases/start-prepared-batch.use-case';
@@ -52,7 +53,7 @@ export class StartPreparationFromPlannedMealUseCase {
     });
     plan.prepareMeal(plannedMealId, batch.id, new Date());
     await this.plans.save(plan);
-    return batch;
+    return { batch, participants: meal.participants };
   }
 
   async get(actorId: string, plannedMealId: string) {
@@ -61,7 +62,10 @@ export class StartPreparationFromPlannedMealUseCase {
     await requireAccess(this.households, actorId, plan.householdId);
     const batch = await this.batches.findByPlannedMealId(plannedMealId);
     if (!batch) throw new PlanExecutionNotFoundError('Preparation was not found.');
-    return batch;
+    return {
+      batch,
+      participants: plan.meals.find((item) => item.id === plannedMealId)?.participants ?? [],
+    };
   }
 }
 
@@ -72,7 +76,12 @@ export class LinkConsumedMealToPlannedMealUseCase {
     private readonly meals: MealRepository,
   ) {}
 
-  async execute(actorId: string, consumedMealId: string, plannedMealId: string) {
+  async execute(
+    actorId: string,
+    consumedMealId: string,
+    plannedMealId: string,
+    participantId: string,
+  ) {
     const consumed = await this.meals.findById(consumedMealId);
     if (!consumed) throw new PlanExecutionNotFoundError('Consumed meal was not found.');
     const plan = await this.plans.findByMealId(plannedMealId);
@@ -81,22 +90,25 @@ export class LinkConsumedMealToPlannedMealUseCase {
     if (consumed.householdId !== plan.householdId || consumed.status !== 'CONFIRMED')
       throw new PlanExecutionConflictError('Consumed meal is not compatible with the household.');
     const planned = plan.meals.find((item) => item.id === plannedMealId)!;
-    if (planned.mealId)
-      throw new PlanExecutionConflictError('Planned meal already has a consumption linked.');
-    if (
-      !planned.participants.some(
-        (participant) => participant.adultProfileId === consumed.adultProfileId,
-      )
-    )
+    const participant = planned.participants.find((item) => item.id === participantId);
+    if (!participant)
+      throw new PlanExecutionConflictError('Participant is not assigned to the planned meal.');
+    if (participant.adultProfileId !== consumed.adultProfileId)
       throw new PlanExecutionConflictError('Consumed meal adult does not participate in the plan.');
+    if (participant.consumedMealId || participant.status !== PlannedMealParticipantStatus.PLANNED)
+      throw new PlanExecutionConflictError('Participant already has a completed meal status.');
     if (
       calendarDate(planned.date, access.household.timezone) !==
       calendarDate(consumed.consumedAt, access.household.timezone)
     )
       throw new PlanExecutionConflictError('Consumed meal date does not match the plan.');
-    if (plan.meals.some((item) => item.mealId === consumedMealId))
+    if (
+      plan.meals.some((item) =>
+        item.participants.some((participant) => participant.consumedMealId === consumedMealId),
+      )
+    )
       throw new PlanExecutionConflictError('Consumed meal is already linked to a plan.');
-    plan.consumeMeal(plannedMealId, consumedMealId);
+    plan.consumeParticipant(plannedMealId, participantId, consumedMealId);
     await this.plans.save(plan);
     return plan;
   }
@@ -147,24 +159,50 @@ export class CalculateWeeklyAdherenceUseCase {
       page: 1,
       limit: 10000,
     });
-    const finalMeals = plan.meals.filter((meal) => FINAL_STATUSES.has(meal.status));
+    const finalMeals = plan.meals.filter(
+      (meal) =>
+        FINAL_STATUSES.has(meal.status) ||
+        meal.participants.some(
+          (participant) => participant.status !== PlannedMealParticipantStatus.PLANNED,
+        ),
+    );
+    const participantEntries = plan.meals.flatMap((meal) =>
+      meal.participants.map((participant) => ({
+        meal,
+        participant,
+        status:
+          participant.status === PlannedMealParticipantStatus.PLANNED &&
+          meal.status === PlannedMealStatus.CONSUMED
+            ? PlannedMealParticipantStatus.CONSUMED
+            : participant.status === PlannedMealParticipantStatus.PLANNED &&
+                meal.status === PlannedMealStatus.SKIPPED
+              ? PlannedMealParticipantStatus.SKIPPED
+              : participant.status,
+      })),
+    );
+    const consumedMealIds = new Set(
+      participantEntries
+        .filter((entry) => entry.status === PlannedMealParticipantStatus.CONSUMED)
+        .map((entry) => entry.participant.consumedMealId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    for (const meal of plan.meals) if (meal.mealId) consumedMealIds.add(meal.mealId);
     const counts = {
-      planned: finalMeals.length,
-      consumed: finalMeals.filter((meal) => meal.status === PlannedMealStatus.CONSUMED).length,
-      skipped: 0,
-      cancelled: 0,
-      replaced: 0,
-      unplanned: consumed.items.filter(
-        (meal) => !plan.meals.some((planned) => planned.mealId === meal.id),
+      planned: participantEntries.length,
+      consumed: participantEntries.filter(
+        (entry) => entry.status === PlannedMealParticipantStatus.CONSUMED,
       ).length,
+      skipped: participantEntries.filter(
+        (entry) => entry.status === PlannedMealParticipantStatus.SKIPPED,
+      ).length,
+      cancelled: plan.meals
+        .filter((meal) => meal.status === PlannedMealStatus.CANCELLED)
+        .reduce((total, meal) => total + meal.participants.length, 0),
+      replaced: plan.meals
+        .filter((meal) => meal.status === PlannedMealStatus.REPLACED)
+        .reduce((total, meal) => total + meal.participants.length, 0),
+      unplanned: consumed.items.filter((meal) => !consumedMealIds.has(meal.id)).length,
     };
-    counts.skipped = finalMeals.filter((meal) => meal.status === PlannedMealStatus.SKIPPED).length;
-    counts.cancelled = finalMeals.filter(
-      (meal) => meal.status === PlannedMealStatus.CANCELLED,
-    ).length;
-    counts.replaced = finalMeals.filter(
-      (meal) => meal.status === PlannedMealStatus.REPLACED,
-    ).length;
     const plannedNutrition = sumPlannedNutrition(finalMeals);
     const consumedNutrition = sumConsumedNutrition(
       consumed.items.filter((meal) => meal.status === 'CONFIRMED'),
@@ -173,21 +211,21 @@ export class CalculateWeeklyAdherenceUseCase {
       .filter((meal) => !meal.nutritionSnapshot)
       .map((meal) => `Nutrition snapshot unavailable for planned meal ${meal.id}.`);
     const byDay = new Map<string, { planned: number; consumed: number }>();
-    for (const meal of finalMeals) {
+    for (const entry of participantEntries) {
+      const meal = entry.meal;
       const day = calendarDate(meal.date);
       const current = byDay.get(day) ?? { planned: 0, consumed: 0 };
       current.planned += 1;
-      if (meal.status === PlannedMealStatus.CONSUMED) current.consumed += 1;
+      if (entry.status === PlannedMealParticipantStatus.CONSUMED) current.consumed += 1;
       byDay.set(day, current);
     }
     const byAdult = new Map<string, { planned: number; consumed: number }>();
-    for (const meal of finalMeals)
-      for (const participant of meal.participants) {
-        const current = byAdult.get(participant.adultProfileId) ?? { planned: 0, consumed: 0 };
-        current.planned += 1;
-        if (meal.status === PlannedMealStatus.CONSUMED) current.consumed += 1;
-        byAdult.set(participant.adultProfileId, current);
-      }
+    for (const entry of participantEntries) {
+      const current = byAdult.get(entry.participant.adultProfileId) ?? { planned: 0, consumed: 0 };
+      current.planned += 1;
+      if (entry.status === PlannedMealParticipantStatus.CONSUMED) current.consumed += 1;
+      byAdult.set(entry.participant.adultProfileId, current);
+    }
     return {
       weeklyPlanId: plan.id,
       weekStart: calendarDate(plan.weekStart),

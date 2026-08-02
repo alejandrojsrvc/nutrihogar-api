@@ -1,7 +1,8 @@
 import Decimal from 'decimal.js';
-import type {
-  NutritionTargetSnapshot,
-  PlannedMealParticipantProps,
+import {
+  PlannedMealParticipantStatus,
+  type NutritionTargetSnapshot,
+  type PlannedMealParticipantProps,
 } from '../../domain/models/meal-planning.models';
 
 export interface PrismaPlannedMealParticipantRecord {
@@ -15,6 +16,8 @@ export interface PrismaPlannedMealParticipantRecord {
   confirmedAt?: Date | null;
   confirmationSnapshot?: unknown;
   nutritionTargetSnapshot: unknown;
+  status?: string;
+  consumedMealId?: string | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +36,9 @@ export class PrismaPlannedMealParticipantMapper {
       confirmedAt: record.confirmedAt && new Date(record.confirmedAt),
       confirmationSnapshot: objectSnapshot(record.confirmationSnapshot),
       nutritionTargetSnapshot: objectSnapshot(record.nutritionTargetSnapshot),
+      status: (record.status ??
+        PlannedMealParticipantStatus.PLANNED) as PlannedMealParticipantStatus,
+      consumedMealId: record.consumedMealId ?? null,
       notes: record.notes,
       createdAt: new Date(record.createdAt),
       updatedAt: new Date(record.updatedAt),
@@ -54,6 +60,8 @@ export class PrismaPlannedMealParticipantMapper {
     confirmedAt: Date | null;
     confirmationSnapshot: NutritionTargetSnapshot | null;
     nutritionTargetSnapshot: NutritionTargetSnapshot | null;
+    status: PlannedMealParticipantStatus;
+    consumedMealId: string | null;
     notes: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -70,6 +78,8 @@ export class PrismaPlannedMealParticipantMapper {
       confirmedAt: props.confirmedAt ? new Date(props.confirmedAt) : null,
       confirmationSnapshot: props.confirmationSnapshot ?? null,
       nutritionTargetSnapshot: props.nutritionTargetSnapshot,
+      status: props.status,
+      consumedMealId: props.consumedMealId,
       notes: props.notes,
       createdAt: new Date(props.createdAt),
       updatedAt: new Date(props.updatedAt),

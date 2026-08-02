@@ -54,6 +54,8 @@ import {
   UPDATE_PLANNED_MEAL_USE_CASE,
   UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE,
   UpdatePlannedMealParticipantUseCase,
+  SKIP_PLANNED_MEAL_PARTICIPANT_USE_CASE,
+  SkipPlannedMealParticipantUseCase,
   UpdatePlannedMealUseCase,
 } from '../../application/use-cases/planned-meal.use-cases';
 import {
@@ -90,7 +92,6 @@ import {
   WeeklyPlanResponseDto,
   WeeklyRequirementsResponseDto,
 } from './dto/meal-planning-response.dto';
-import { PreparedBatchResponseDto } from '../../../recipes/presentation/http/dto/prepared-batch-response.dto';
 import { MealResponseDto } from '../../../meal-tracking/presentation/http/dto/meal-response.dto';
 import {
   CALCULATE_WEEKLY_ADHERENCE_USE_CASE,
@@ -103,9 +104,12 @@ import {
 import {
   rethrowMealPlanningHttpError,
   toListResponse,
+  toParticipantResponse,
   toWeeklyPlanResponse,
 } from './meal-planning-http.mapper';
 import type { WeeklyPlanListResponse, WeeklyPlanResponse } from './meal-planning-http.mapper';
+import { toPreparedBatchResponse } from '../../../recipes/presentation/http/prepared-batch-http.mapper';
+import { MealPreparationResponseDto } from './dto/meal-planning-response.dto';
 
 @ApiTags('meal-planning')
 @ApiBearerAuth()
@@ -130,6 +134,8 @@ export class MealPlanningController {
     private readonly removeParticipant: RemovePlannedMealParticipantUseCase,
     @Inject(UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE)
     private readonly updateParticipant: UpdatePlannedMealParticipantUseCase,
+    @Inject(SKIP_PLANNED_MEAL_PARTICIPANT_USE_CASE)
+    private readonly skipParticipant: SkipPlannedMealParticipantUseCase,
     @Inject(PROPOSE_MEAL_QUANTITIES_USE_CASE)
     private readonly proposeQuantities: ProposeMealQuantitiesUseCase,
     @Inject(GET_PLANNED_MEAL_QUANTITIES_QUERY)
@@ -372,6 +378,21 @@ export class MealPlanningController {
     }
   }
 
+  @Post('planned-meal-participants/:participantId/skip')
+  @ApiOperation({ summary: 'Omite la comida para un participante' })
+  @ApiParam({ name: 'participantId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async skipParticipantMeal(
+    @Param('participantId') id: string,
+    @CurrentUser() user: CurrentUserModel,
+  ) {
+    try {
+      return toWeeklyPlanResponse(await this.skipParticipant.execute(user.id, id));
+    } catch (e) {
+      rethrowMealPlanningHttpError(e);
+    }
+  }
+
   @Post('planned-meals/:plannedMealId/quantities/propose')
   @ApiOperation({ summary: 'Propone cantidades por participante' })
   @ApiParam({ name: 'plannedMealId', format: 'uuid' })
@@ -438,10 +459,14 @@ export class MealPlanningController {
   @Post('planned-meals/:plannedMealId/preparation')
   @ApiOperation({ summary: 'Inicia la preparación de una comida' })
   @ApiParam({ name: 'plannedMealId', format: 'uuid' })
-  @ApiCreatedResponse({ type: PreparedBatchResponseDto })
+  @ApiCreatedResponse({ type: MealPreparationResponseDto })
   async prepare(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
-      return await this.startPreparation.execute(user.id, id);
+      const result = await this.startPreparation.execute(user.id, id);
+      return {
+        batch: toPreparedBatchResponse(result.batch),
+        participants: result.participants.map(toParticipantResponse),
+      };
     } catch (e) {
       rethrowMealPlanningHttpError(e);
     }
@@ -449,10 +474,14 @@ export class MealPlanningController {
   @Get('planned-meals/:plannedMealId/preparation')
   @ApiOperation({ summary: 'Obtiene la preparación de una comida' })
   @ApiParam({ name: 'plannedMealId', format: 'uuid' })
-  @ApiOkResponse({ type: PreparedBatchResponseDto })
+  @ApiOkResponse({ type: MealPreparationResponseDto })
   async preparation(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
-      return await this.startPreparation.get(user.id, id);
+      const result = await this.startPreparation.get(user.id, id);
+      return {
+        batch: toPreparedBatchResponse(result.batch),
+        participants: result.participants.map(toParticipantResponse),
+      };
     } catch (e) {
       rethrowMealPlanningHttpError(e);
     }
@@ -467,7 +496,12 @@ export class MealPlanningController {
     @CurrentUser() user: CurrentUserModel,
   ) {
     try {
-      return await this.linkConsumption.execute(user.id, mealId, body.plannedMealId);
+      return await this.linkConsumption.execute(
+        user.id,
+        mealId,
+        body.plannedMealId,
+        body.participantId,
+      );
     } catch (e) {
       rethrowMealPlanningHttpError(e);
     }

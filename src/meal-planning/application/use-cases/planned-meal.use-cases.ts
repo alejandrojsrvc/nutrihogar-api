@@ -26,6 +26,7 @@ export const REMOVE_PLANNED_MEAL_PARTICIPANT_USE_CASE = Symbol(
 export const UPDATE_PLANNED_MEAL_PARTICIPANT_USE_CASE = Symbol(
   'UpdatePlannedMealParticipantUseCase',
 );
+export const SKIP_PLANNED_MEAL_PARTICIPANT_USE_CASE = Symbol('SkipPlannedMealParticipantUseCase');
 export const CONFIRM_PARTICIPANT_QUANTITY_USE_CASE = Symbol('ConfirmParticipantQuantityUseCase');
 
 type Dependencies = {
@@ -233,6 +234,26 @@ export class ConfirmParticipantQuantityUseCase {
       input.actorId,
     );
     await this.d.plans.save(plan);
+    return plan;
+  }
+}
+
+export class SkipPlannedMealParticipantUseCase {
+  constructor(
+    private readonly households: HouseholdRepository,
+    private readonly plans: WeeklyPlanRepository,
+  ) {}
+
+  async execute(actorId: string, participantId: string): Promise<WeeklyPlan> {
+    const plan = await this.plans.findByParticipantId(participantId);
+    if (!plan) throw new PlannedMealNotFoundError('Participant not found.');
+    await requireAccess(this.households, actorId, plan.householdId);
+    const meal = plan.meals.find((item) =>
+      item.participants.some((participant) => participant.id === participantId),
+    );
+    if (!meal) throw new PlannedMealNotFoundError('Planned meal not found.');
+    plan.skipParticipant(participantId);
+    await this.plans.save(plan);
     return plan;
   }
 }

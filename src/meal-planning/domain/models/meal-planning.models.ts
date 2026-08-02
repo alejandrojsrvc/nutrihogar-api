@@ -7,6 +7,12 @@ import type {
 
 export type NutritionTargetSnapshot = Record<string, unknown>;
 
+export enum PlannedMealParticipantStatus {
+  PLANNED = 'PLANNED',
+  CONSUMED = 'CONSUMED',
+  SKIPPED = 'SKIPPED',
+}
+
 export interface PlannedMealParticipantProps {
   id: string;
   adultProfileId: string;
@@ -18,6 +24,8 @@ export interface PlannedMealParticipantProps {
   confirmedAt?: Date | null;
   confirmationSnapshot?: Record<string, unknown> | null;
   nutritionTargetSnapshot: NutritionTargetSnapshot | null;
+  status: PlannedMealParticipantStatus;
+  consumedMealId: string | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;

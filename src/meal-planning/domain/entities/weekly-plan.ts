@@ -188,13 +188,44 @@ export class WeeklyPlan {
     this.touch(occurredAt);
   }
 
+  consumeParticipant(
+    mealId: string,
+    participantId: string,
+    consumedMealId: string,
+    occurredAt = new Date(),
+  ): void {
+    this.ensureActive();
+    this.requireMeal(mealId).consumeParticipant(participantId, consumedMealId, occurredAt);
+    this.touch(occurredAt);
+  }
+
+  skipParticipant(participantId: string, occurredAt = new Date()): void {
+    this.ensureActive();
+    const meal = this.mealEntities.find((item) =>
+      item.participants.some((participant) => participant.id === participantId),
+    );
+    if (!meal) throw new InvalidMealPlanningError('Participant is not assigned to a planned meal.');
+    meal.skipParticipant(participantId, occurredAt);
+    this.touch(occurredAt);
+  }
+
   updateParticipant(
     mealId: string,
     participantId: string,
     input: Parameters<PlannedMeal['updateParticipant']>[1],
   ): void {
-    this.ensureDraft();
-    this.requireMeal(mealId).updateParticipant(participantId, input);
+    if (
+      this.props.status !== WeeklyPlanStatus.DRAFT &&
+      this.props.status !== WeeklyPlanStatus.ACTIVE
+    )
+      throw new MealPlanningTransitionError(
+        'Only draft or active plans can edit participant snapshots.',
+      );
+    this.requireMeal(mealId).updateParticipant(
+      participantId,
+      input,
+      this.props.status === WeeklyPlanStatus.ACTIVE,
+    );
     this.touch(input.occurredAt);
   }
 

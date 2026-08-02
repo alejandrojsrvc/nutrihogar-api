@@ -109,6 +109,51 @@ describe('WeeklyPlan', () => {
     expect(weekly.meals[1].replacedMealId).toBe('meal-1');
   });
 
+  it('tracks consumption and omission independently for each participant', () => {
+    const weekly = plan();
+    weekly.addMeal(meal('shared-meal'));
+    weekly.assignParticipant('shared-meal', {
+      id: 'participant-1',
+      adultProfileId: 'adult-1',
+      occurredAt: now,
+    });
+    weekly.assignParticipant('shared-meal', {
+      id: 'participant-2',
+      adultProfileId: 'adult-2',
+      occurredAt: now,
+    });
+    weekly.activate(now);
+
+    weekly.consumeParticipant('shared-meal', 'participant-1', 'meal-1', now);
+    expect(weekly.meals[0].status).toBe(PlannedMealStatus.PLANNED);
+    expect(weekly.meals[0].participants[0].consumedMealId).toBe('meal-1');
+    expect(weekly.meals[0].participants[1].status).toBe('PLANNED');
+
+    weekly.skipParticipant('participant-2', now);
+    expect(weekly.meals[0].status).toBe(PlannedMealStatus.CONSUMED);
+    expect(weekly.meals[0].participants[1].status).toBe('SKIPPED');
+  });
+
+  it('keeps participant preparation snapshots editable after preparation starts', () => {
+    const weekly = plan();
+    weekly.addMeal(meal('prepared-meal'));
+    weekly.assignParticipant('prepared-meal', {
+      id: 'participant-1',
+      adultProfileId: 'adult-1',
+      occurredAt: now,
+    });
+    weekly.activate(now);
+    weekly.prepareMeal('prepared-meal', 'batch-1', now);
+
+    weekly.updateParticipant('prepared-meal', 'participant-1', {
+      suggestedQuantity: '1.5',
+      suggestedUnit: 'SERVING',
+      occurredAt: now,
+    });
+
+    expect(weekly.meals[0].participants[0].suggestedQuantity?.toString()).toBe('1.5');
+  });
+
   it('does not remove consumed meals and blocks completed plan edits', () => {
     const weekly = plan();
     weekly.addMeal(meal('meal-1'));

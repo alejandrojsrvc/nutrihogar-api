@@ -45,6 +45,7 @@ function normalizeProps(input: CreatePurchaseItemInput | PurchaseItemProps): Pur
   const unit = input.unit.trim();
   if (!input.id.trim() || !nameSnapshot || !unit)
     throw new InvalidPurchaseError('Purchase item id, name and unit are required.');
+  if (!isPurchaseUnit(unit)) throw new InvalidPurchaseError('Purchase item unit is not supported.');
   let quantity: Decimal;
   try {
     quantity = new Decimal(input.quantity);
@@ -62,4 +63,8 @@ function normalizeProps(input: CreatePurchaseItemInput | PurchaseItemProps): Pur
     unit,
     quantity,
   };
+}
+
+function isPurchaseUnit(unit: string): boolean {
+  return ['GRAM', 'MILLILITER', 'UNIT', 'KG', 'G', 'L', 'ML', 'EA'].includes(unit.toUpperCase());
 }

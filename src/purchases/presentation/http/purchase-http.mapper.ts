@@ -13,6 +13,7 @@ import {
   PurchaseNotFoundError,
   PurchaseInventorySelectionError,
   PurchaseIdempotencyConflictError,
+  PurchaseUnitConversionError,
 } from '../../application/errors/purchase-application.errors';
 import {
   InvalidPurchaseStateError,
@@ -48,7 +49,8 @@ export function rethrowPurchaseHttpError(error: unknown): never {
     error instanceof PurchaseFoodNotAvailableError ||
     error instanceof PurchaseInventorySelectionError ||
     error instanceof InvalidPurchaseError ||
-    error instanceof InvalidPurchaseStateError
+    error instanceof InvalidPurchaseStateError ||
+    error instanceof PurchaseUnitConversionError
   )
     throw new BadRequestException(error.message);
   if (error instanceof PurchaseIdempotencyConflictError) throw new ConflictException(error.message);

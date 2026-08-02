@@ -15,19 +15,19 @@ describe('Initial nutrition catalog data', () => {
     expect(USDA_FDC_SOURCE_URL).toBe('https://fdc.nal.usda.gov/');
   });
 
-  it('contains the 25 sourced global foods without duplicated source references', () => {
-    expect(NUTRITION_CATALOG_FOODS).toHaveLength(25);
+  it('contains the starter global foods without duplicated source references', () => {
+    expect(NUTRITION_CATALOG_FOODS).toHaveLength(31);
 
     const sourceKeys = NUTRITION_CATALOG_FOODS.map(
       ({ source, sourceReference }) => `${source}:${sourceReference}`,
     );
-    expect(new Set(sourceKeys).size).toBe(25);
+    expect(new Set(sourceKeys).size).toBe(31);
     expect(
       NUTRITION_CATALOG_FOODS.every(
         ({ source, sourceReference, description }) =>
-          source.startsWith('USDA_FDC_') &&
+          (source.startsWith('USDA_FDC_') || source === 'LOCAL_SEED') &&
           sourceReference.length > 0 &&
-          description.startsWith('USDA'),
+          (source === 'LOCAL_SEED' || description.startsWith('USDA')),
       ),
     ).toBe(true);
   });
@@ -41,6 +41,16 @@ describe('Initial nutrition catalog data', () => {
         expect(food.nutrients[code]).toBeGreaterThanOrEqual(0);
       }
     }
+  });
+
+  it('marks local demo foods as non-verified', () => {
+    const localFoods = NUTRITION_CATALOG_FOODS.filter(({ source }) => source === 'LOCAL_SEED');
+
+    expect(localFoods).toHaveLength(2);
+    expect(localFoods.every(({ confidenceLevel }) => confidenceLevel !== 'VERIFIED')).toBe(true);
+    expect(
+      localFoods.every(({ sourceReference }) => sourceReference.startsWith('LOCAL_SEED:')),
+    ).toBe(true);
   });
 
   it('keeps raw and cooked foods as separate catalog records', () => {

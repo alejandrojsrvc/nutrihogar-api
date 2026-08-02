@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 
 export type PurchaseStatus = 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+export type PurchaseUnit = 'GRAM' | 'MILLILITER' | 'UNIT' | 'KG' | 'G' | 'L' | 'ML' | 'EA';
 
 export interface PurchaseItemProps {
   id: string;

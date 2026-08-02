@@ -28,6 +28,12 @@ export class PurchaseInventorySelectionError extends Error {
     this.name = 'PurchaseInventorySelectionError';
   }
 }
+export class PurchaseUnitConversionError extends Error {
+  constructor() {
+    super('The purchase quantity unit is unknown or incompatible with the food reference unit.');
+    this.name = 'PurchaseUnitConversionError';
+  }
+}
 export class PurchaseIdempotencyConflictError extends Error {
   constructor() {
     super('The idempotency key is already used for another purchase.');

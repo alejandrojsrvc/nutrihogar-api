@@ -24,10 +24,6 @@ import {
   DigestiveSymptomFoodNotInMealError,
   DigestiveSymptomMealNotFoundError,
 } from '../../application/errors/digestive-symptom-application.errors';
-import {
-  HealthTrackingAccessDeniedError,
-  HealthTrackingProfileNotFoundError,
-} from '../../application/errors/health-tracking-application.errors';
 
 export function toHealthResponse(
   entry: BodyWeightEntry | BodyMeasurementEntry,

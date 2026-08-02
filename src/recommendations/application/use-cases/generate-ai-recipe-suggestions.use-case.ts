@@ -33,17 +33,28 @@ export class GenerateAiRecipeSuggestionsUseCase {
     if (!rate.allowed)
       throw new Error(`AI rate limit exceeded. Retry after ${rate.retryAfterSeconds} seconds.`);
     const context = await this.contexts.build(command);
+    const adultProfileIds = command.adultProfileIds.length
+      ? command.adultProfileIds
+      : readContextAdultIds(context);
     const request = AiGenerationRequest.create({
       id: crypto.randomUUID(),
       householdId: command.householdId,
-      adultProfileIds: command.adultProfileIds,
+      adultProfileIds,
       proposalType: 'RECIPE',
       contextVersion: context.contextVersion,
       promptVersion: context.schemaVersion,
       requestedBy: command.actorId,
       requestedAt: new Date(),
     });
-    const result = await this.provider.suggest(context);
+    await this.proposals.saveRequest(request);
+    let result: Awaited<ReturnType<RecipeSuggestionProvider['suggest']>>;
+    try {
+      result = await this.provider.suggest(context);
+    } catch (error) {
+      request.markFailed(error instanceof Error ? 'AI_PROVIDER_FAILED' : 'AI_PROVIDER_ERROR');
+      await this.proposals.saveRequest(request);
+      throw error;
+    }
     request.markGenerated();
     const proposal = AiGeneratedProposal.register({
       id: crypto.randomUUID(),
@@ -55,8 +66,17 @@ export class GenerateAiRecipeSuggestionsUseCase {
       generatedAt: new Date(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
-    await this.proposals.saveRequest(request);
     await this.proposals.saveProposal(proposal);
     return proposal;
   }
+}
+
+function readContextAdultIds(context: Record<string, unknown>): string[] {
+  if (!Array.isArray(context.adults)) return [];
+  return context.adults
+    .filter(
+      (adult): adult is Record<string, unknown> => typeof adult === 'object' && adult !== null,
+    )
+    .map((adult) => adult.id)
+    .filter((id): id is string => typeof id === 'string');
 }

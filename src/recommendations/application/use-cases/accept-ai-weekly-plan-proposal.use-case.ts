@@ -6,6 +6,7 @@ import {
   PlannedMealSource,
   PlannedMealType,
 } from '../../../meal-planning/domain/value-objects/planned-meal';
+import { AiWeeklyPlanProposalValidator } from '../services/ai-weekly-plan-proposal-validator';
 
 export interface AcceptAiWeeklyPlanProposalCommand {
   householdId: string;
@@ -19,6 +20,7 @@ export class AcceptAiWeeklyPlanProposalUseCase {
   constructor(
     private readonly proposals: AiProposalRepository,
     private readonly transaction: AiWeeklyPlanAcceptanceUnitOfWork,
+    private readonly validator: AiWeeklyPlanProposalValidator,
   ) {}
 
   async execute(command: AcceptAiWeeklyPlanProposalCommand): Promise<WeeklyPlan> {
@@ -28,6 +30,19 @@ export class AcceptAiWeeklyPlanProposalUseCase {
     );
     if (!proposal) throw new Error('AI proposal was not found.');
     const payload = command.editedPayload ?? proposal.structuredPayload;
+    if (command.editedPayload) {
+      const validation = this.validator.validate({
+        proposalId: proposal.id,
+        payload,
+        weekStart: readString(payload.weekStart),
+        mealTypes: readMealTypes(payload),
+        adultProfileIds: readAdultProfileIds(payload),
+        validatedAt: new Date(),
+      });
+      proposal.attachValidation(validation);
+      if (validation.hasBlockingErrors())
+        throw new Error('Edited AI proposal contains blocking errors.');
+    }
     const weekStart = readString(payload.weekStart);
     const now = new Date();
     const plan = WeeklyPlan.create({
@@ -103,4 +118,16 @@ function readEnum<T extends string>(value: unknown, allowed: T[], fallback: T): 
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readMealTypes(payload: Record<string, unknown>): string[] {
+  return Array.isArray(payload.mealTypes)
+    ? payload.mealTypes.filter((value): value is string => typeof value === 'string')
+    : [];
+}
+
+function readAdultProfileIds(payload: Record<string, unknown>): string[] {
+  return Array.isArray(payload.adultProfileIds)
+    ? payload.adultProfileIds.filter((value): value is string => typeof value === 'string')
+    : [];
 }

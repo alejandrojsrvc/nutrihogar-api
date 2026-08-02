@@ -44,7 +44,15 @@ export class GenerateAiWeeklyPlanProposalUseCase {
       requestedBy: command.actorId,
       requestedAt: new Date(),
     });
-    const result = await this.generator.generate(context);
+    await this.proposals.saveRequest(request);
+    let result: Awaited<ReturnType<WeeklyPlanGenerator['generate']>>;
+    try {
+      result = await this.generator.generate(context);
+    } catch (error) {
+      request.markFailed(error instanceof Error ? 'AI_PROVIDER_FAILED' : 'AI_PROVIDER_ERROR');
+      await this.proposals.saveRequest(request);
+      throw error;
+    }
     request.markGenerated();
     const proposal = AiGeneratedProposal.register({
       id: crypto.randomUUID(),
@@ -66,7 +74,6 @@ export class GenerateAiWeeklyPlanProposalUseCase {
     });
     proposal.attachValidation(validation);
     if (!validation.hasBlockingErrors()) proposal.markReadyForReview();
-    await this.proposals.saveRequest(request);
     await this.proposals.saveProposal(proposal);
     return proposal;
   }

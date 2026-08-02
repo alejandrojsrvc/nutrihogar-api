@@ -77,7 +77,9 @@ describe('Meal planning HTTP API (e2e)', () => {
     await request(app.getHttpServer())
       .get('/api/households/household-id/weekly-plans')
       .set('Authorization', 'Bearer valid-token')
+      .query({ page: 1, limit: 20 })
       .expect(200)
       .expect((response) => expect(response.body).toHaveProperty('items', [expect.anything()]));
+    expect(listPlans.execute).toHaveBeenCalledWith(expect.objectContaining({ page: 1, limit: 20 }));
   });
 });

@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -40,8 +41,18 @@ export class ListWeeklyPlansQueryDto {
   @IsOptional()
   @IsEnum(WeeklyPlanStatus)
   status?: WeeklyPlanStatus;
-  @ApiPropertyOptional({ type: Number, default: 1 }) @IsOptional() @IsInt() @Min(1) page = 1;
-  @ApiPropertyOptional({ type: Number, default: 20 }) @IsOptional() @IsInt() @Min(1) limit = 20;
+  @ApiPropertyOptional({ type: Number, default: 1 })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  page = 1;
+  @ApiPropertyOptional({ type: Number, default: 20 })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  limit = 20;
 }
 export class PlannedMealRequestDto {
   @ApiProperty() @IsDateString() date!: string;
@@ -51,6 +62,10 @@ export class PlannedMealRequestDto {
   @IsOptional()
   @IsUUID()
   recipeId?: string | null;
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  previousMealId?: string | null;
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()
@@ -75,6 +90,10 @@ export class UpdatePlannedMealRequestDto {
   @IsOptional()
   @IsUUID()
   recipeId?: string | null;
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  previousMealId?: string | null;
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()

@@ -38,6 +38,7 @@ export interface PlannedMealProps {
   replacedMealId: string | null;
   preparedBatchId: string | null;
   mealId: string | null;
+  previousMealId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -59,6 +59,9 @@ export class PlannedMealResponseDto {
   @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
   recipeId!: string | null;
 
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  previousMealId!: string | null;
+
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Pollo con arroz' })
   nameSnapshot!: string | null;
 

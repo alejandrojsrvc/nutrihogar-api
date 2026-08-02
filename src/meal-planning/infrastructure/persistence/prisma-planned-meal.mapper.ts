@@ -21,6 +21,7 @@ export interface PrismaPlannedMealRecord {
   replacedMealId: string | null;
   preparedBatchId: string | null;
   mealId: string | null;
+  previousMealId: string | null;
   createdAt: Date;
   updatedAt: Date;
   participants: PrismaPlannedMealParticipantRecord[];
@@ -45,6 +46,7 @@ export class PrismaPlannedMealMapper {
       replacedMealId: record.replacedMealId,
       preparedBatchId: record.preparedBatchId,
       mealId: record.mealId,
+      previousMealId: record.previousMealId,
       createdAt: new Date(record.createdAt),
       updatedAt: new Date(record.updatedAt),
     };
@@ -68,6 +70,7 @@ export class PrismaPlannedMealMapper {
     replacedMealId: string | null;
     preparedBatchId: string | null;
     mealId: string | null;
+    previousMealId: string | null;
     createdAt: Date;
     updatedAt: Date;
     participants: ReturnType<typeof PrismaPlannedMealParticipantMapper.toPersistence>[];
@@ -87,6 +90,7 @@ export class PrismaPlannedMealMapper {
       replacedMealId: props.replacedMealId,
       preparedBatchId: props.preparedBatchId,
       mealId: props.mealId,
+      previousMealId: props.previousMealId,
       createdAt: new Date(props.createdAt),
       updatedAt: new Date(props.updatedAt),
       participants: props.participants.map((participant) =>

@@ -5,7 +5,7 @@ import { IsBoolean, IsEnum, IsInt, IsOptional, IsUUID, Matches, Max, Min } from 
 import { MealTypeDto } from './create-meal-request.dto';
 
 export class ListMealsQueryDto {
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ type: String, format: 'uuid' })
   @IsOptional()
   @IsUUID()
   adultProfileId?: string;
@@ -25,20 +25,20 @@ export class ListMealsQueryDto {
   @IsEnum(MealTypeDto)
   mealType?: MealTypeDto;
 
-  @ApiPropertyOptional({ minimum: 1, default: 1 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, default: 1 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page = 1;
 
-  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @ApiPropertyOptional({ type: Number, minimum: 1, maximum: 100, default: 20 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
   limit = 20;
 
-  @ApiPropertyOptional({ default: false })
+  @ApiPropertyOptional({ type: Boolean, default: false })
   @IsOptional()
   @Transform(({ value }: TransformFnParams) => normalizeBoolean(value))
   @IsBoolean()

@@ -343,68 +343,68 @@ model TechnicalSeed {
 }
 
 model User {
-  id                      String                @id @default(uuid()) @db.Uuid
-  authProviderId          String                @unique @map("auth_provider_id") @db.VarChar(255)
-  email                   String                @unique @db.VarChar(320)
-  displayName             String?               @map("display_name") @db.VarChar(150)
-  avatarUrl               String?               @map("avatar_url") @db.VarChar(2048)
-  timezone                String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
-  locale                  String                @default("es-AR") @db.VarChar(10)
-  lastLoginAt             DateTime?             @map("last_login_at") @db.Timestamptz(6)
-  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt               DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdHouseholds       Household[]           @relation("HouseholdCreatedBy")
-  memberships             HouseholdMembership[] @relation("UserMemberships")
-  invitationsSent         HouseholdInvitation[] @relation("HouseholdInvitationInviter")
-  invitationsAccepted     HouseholdInvitation[] @relation("HouseholdInvitationAccepter")
-  adultProfiles           AdultProfile[]
-  foodsCreated            Food[]                @relation("FoodCreatedBy")
-  nutritionGoalsConfirmed NutritionGoal[]       @relation("NutritionGoalConfirmedBy")
-  plannedMealParticipantsConfirmed PlannedMealParticipant[] @relation("PlannedMealParticipantConfirmedBy")
-  mealsCreated            Meal[]                @relation("MealCreatedBy")
-  recipesCreated          Recipe[]              @relation("RecipeCreatedBy")
-  preparedBatchesCreated  PreparedBatch[]       @relation("PreparedBatchCreatedBy")
-  servedPortionsCreated   ServedPortion[]       @relation("ServedPortionCreatedBy")
-  inventoryMovements      InventoryMovement[]   @relation("InventoryMovementActor")
-  inventorySyncOperations InventorySyncOperation[] @relation("InventorySyncOperationActor")
+  id                               String                            @id @default(uuid()) @db.Uuid
+  authProviderId                   String                            @unique @map("auth_provider_id") @db.VarChar(255)
+  email                            String                            @unique @db.VarChar(320)
+  displayName                      String?                           @map("display_name") @db.VarChar(150)
+  avatarUrl                        String?                           @map("avatar_url") @db.VarChar(2048)
+  timezone                         String                            @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  locale                           String                            @default("es-AR") @db.VarChar(10)
+  lastLoginAt                      DateTime?                         @map("last_login_at") @db.Timestamptz(6)
+  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                        DateTime                          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdHouseholds                Household[]                       @relation("HouseholdCreatedBy")
+  memberships                      HouseholdMembership[]             @relation("UserMemberships")
+  invitationsSent                  HouseholdInvitation[]             @relation("HouseholdInvitationInviter")
+  invitationsAccepted              HouseholdInvitation[]             @relation("HouseholdInvitationAccepter")
+  adultProfiles                    AdultProfile[]
+  foodsCreated                     Food[]                            @relation("FoodCreatedBy")
+  nutritionGoalsConfirmed          NutritionGoal[]                   @relation("NutritionGoalConfirmedBy")
+  plannedMealParticipantsConfirmed PlannedMealParticipant[]          @relation("PlannedMealParticipantConfirmedBy")
+  mealsCreated                     Meal[]                            @relation("MealCreatedBy")
+  recipesCreated                   Recipe[]                          @relation("RecipeCreatedBy")
+  preparedBatchesCreated           PreparedBatch[]                   @relation("PreparedBatchCreatedBy")
+  servedPortionsCreated            ServedPortion[]                   @relation("ServedPortionCreatedBy")
+  inventoryMovements               InventoryMovement[]               @relation("InventoryMovementActor")
+  inventorySyncOperations          InventorySyncOperation[]          @relation("InventorySyncOperationActor")
   preparationInventoryConsumptions PreparationInventoryConsumption[]
-  purchasesRegistered     Purchase[]            @relation("PurchaseRegisteredBy")
-  shoppingItemsCreated    ShoppingListItem[]    @relation("ShoppingListItemActor")
-  shoppingItemsPurchased  ShoppingListItem[]    @relation("ShoppingListItemPurchaser")
-  shoppingItemsRemoved    ShoppingListItem[]    @relation("ShoppingListItemRemover")
-  weeklyPlansCreated      WeeklyPlan[]          @relation("WeeklyPlanCreatedBy")
-  aiGenerationRequests   AiGenerationRequest[] @relation("AiGenerationRequestRequestedBy")
-  aiProposalDecisions    AiProposalDecision[]  @relation("AiProposalDecisionDecidedBy")
+  purchasesRegistered              Purchase[]                        @relation("PurchaseRegisteredBy")
+  shoppingItemsCreated             ShoppingListItem[]                @relation("ShoppingListItemActor")
+  shoppingItemsPurchased           ShoppingListItem[]                @relation("ShoppingListItemPurchaser")
+  shoppingItemsRemoved             ShoppingListItem[]                @relation("ShoppingListItemRemover")
+  weeklyPlansCreated               WeeklyPlan[]                      @relation("WeeklyPlanCreatedBy")
+  aiGenerationRequests             AiGenerationRequest[]             @relation("AiGenerationRequestRequestedBy")
+  aiProposalDecisions              AiProposalDecision[]              @relation("AiProposalDecisionDecidedBy")
 
   @@map("users")
 }
 
 model Household {
-  id              String                @id @default(uuid()) @db.Uuid
-  name            String                @db.VarChar(150)
-  timezone        String                @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
-  currency        String                @default("ARS") @db.VarChar(3)
-  weeklyBudget    Decimal?              @map("weekly_budget") @db.Decimal(12, 2)
-  createdById     String                @map("created_by_id") @db.Uuid
-  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt       DateTime?             @map("deleted_at") @db.Timestamptz(6)
-  createdBy       User                  @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  memberships     HouseholdMembership[]
-  invitations     HouseholdInvitation[]
-  adultProfiles   AdultProfile[]
-  foods           Food[]
-  meals           Meal[]
-  recipes         Recipe[]
-  preparedBatches PreparedBatch[]
-  preparedFoodLeftovers PreparedFoodLeftover[]
-  inventoryItems        InventoryItem[]
-  inventorySyncOperations InventorySyncOperation[]
+  id                               String                            @id @default(uuid()) @db.Uuid
+  name                             String                            @db.VarChar(150)
+  timezone                         String                            @default("America/Argentina/Buenos_Aires") @db.VarChar(64)
+  currency                         String                            @default("ARS") @db.VarChar(3)
+  weeklyBudget                     Decimal?                          @map("weekly_budget") @db.Decimal(12, 2)
+  createdById                      String                            @map("created_by_id") @db.Uuid
+  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                        DateTime                          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                        DateTime?                         @map("deleted_at") @db.Timestamptz(6)
+  createdBy                        User                              @relation("HouseholdCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  memberships                      HouseholdMembership[]
+  invitations                      HouseholdInvitation[]
+  adultProfiles                    AdultProfile[]
+  foods                            Food[]
+  meals                            Meal[]
+  recipes                          Recipe[]
+  preparedBatches                  PreparedBatch[]
+  preparedFoodLeftovers            PreparedFoodLeftover[]
+  inventoryItems                   InventoryItem[]
+  inventorySyncOperations          InventorySyncOperation[]
   preparationInventoryConsumptions PreparationInventoryConsumption[]
-  purchases             Purchase[]
-  shoppingLists         ShoppingList[]
-  weeklyPlans           WeeklyPlan[]
-  aiGenerationRequests AiGenerationRequest[]
+  purchases                        Purchase[]
+  shoppingLists                    ShoppingList[]
+  weeklyPlans                      WeeklyPlan[]
+  aiGenerationRequests             AiGenerationRequest[]
 
   @@index([createdById])
   @@index([deletedAt])
@@ -412,16 +412,16 @@ model Household {
 }
 
 model BodyWeightEntry {
-  id              String              @id @default(uuid()) @db.Uuid
-  adultProfileId  String              @map("adult_profile_id") @db.Uuid
-  value           Decimal             @db.Decimal(18, 6)
+  id              String                @id @default(uuid()) @db.Uuid
+  adultProfileId  String                @map("adult_profile_id") @db.Uuid
+  value           Decimal               @db.Decimal(18, 6)
   unit            BodyWeightUnit
-  recordedAt      DateTime            @map("recorded_at") @db.Timestamptz(6)
+  recordedAt      DateTime              @map("recorded_at") @db.Timestamptz(6)
   source          BodyMeasurementSource
-  correctedFromId String?             @map("corrected_from_id") @db.Uuid
-  adultProfile    AdultProfile        @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  correctedFrom   BodyWeightEntry?    @relation("BodyWeightCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
-  corrections     BodyWeightEntry[]   @relation("BodyWeightCorrections")
+  correctedFromId String?               @map("corrected_from_id") @db.Uuid
+  adultProfile    AdultProfile          @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  correctedFrom   BodyWeightEntry?      @relation("BodyWeightCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
+  corrections     BodyWeightEntry[]     @relation("BodyWeightCorrections")
 
   @@index([adultProfileId, recordedAt])
   @@index([adultProfileId, unit])
@@ -430,17 +430,17 @@ model BodyWeightEntry {
 }
 
 model BodyMeasurementEntry {
-  id                    String                @id @default(uuid()) @db.Uuid
-  adultProfileId        String                @map("adult_profile_id") @db.Uuid
+  id                    String                 @id @default(uuid()) @db.Uuid
+  adultProfileId        String                 @map("adult_profile_id") @db.Uuid
   type                  BodyMeasurementType
-  customMeasurementName String?               @map("custom_measurement_name") @db.VarChar(100)
-  value                 Decimal               @db.Decimal(18, 6)
+  customMeasurementName String?                @map("custom_measurement_name") @db.VarChar(100)
+  value                 Decimal                @db.Decimal(18, 6)
   unit                  BodyMeasurementUnit
-  recordedAt            DateTime              @map("recorded_at") @db.Timestamptz(6)
+  recordedAt            DateTime               @map("recorded_at") @db.Timestamptz(6)
   source                BodyMeasurementSource
-  correctedFromId       String?               @map("corrected_from_id") @db.Uuid
-  adultProfile          AdultProfile          @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  correctedFrom         BodyMeasurementEntry? @relation("BodyMeasurementCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
+  correctedFromId       String?                @map("corrected_from_id") @db.Uuid
+  adultProfile          AdultProfile           @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  correctedFrom         BodyMeasurementEntry?  @relation("BodyMeasurementCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
   corrections           BodyMeasurementEntry[] @relation("BodyMeasurementCorrections")
 
   @@index([adultProfileId, recordedAt])
@@ -450,23 +450,23 @@ model BodyMeasurementEntry {
 }
 
 model MeasurementConfiguration {
-  id                 String                       @id @default(uuid()) @db.Uuid
-  adultProfileId     String                       @unique @map("adult_profile_id") @db.Uuid
-  enabledTypes       BodyMeasurementType[]        @map("enabled_types")
+  id                 String                        @id @default(uuid()) @db.Uuid
+  adultProfileId     String                        @unique @map("adult_profile_id") @db.Uuid
+  enabledTypes       BodyMeasurementType[]         @map("enabled_types")
   units              Json
-  adultProfile       AdultProfile                 @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  adultProfile       AdultProfile                  @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
   customMeasurements CustomMeasurementDefinition[]
 
   @@map("measurement_configurations")
 }
 
 model CustomMeasurementDefinition {
-  id              String                 @id @default(uuid()) @db.Uuid
-  configurationId String                 @map("configuration_id") @db.Uuid
-  name            String                 @db.VarChar(100)
-  normalizedName  String                 @map("normalized_name") @db.VarChar(100)
+  id              String                   @id @default(uuid()) @db.Uuid
+  configurationId String                   @map("configuration_id") @db.Uuid
+  name            String                   @db.VarChar(100)
+  normalizedName  String                   @map("normalized_name") @db.VarChar(100)
   unit            BodyMeasurementUnit
-  enabled         Boolean                @default(true)
+  enabled         Boolean                  @default(true)
   configuration   MeasurementConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
 
   @@unique([configurationId, normalizedName])
@@ -516,23 +516,23 @@ model HouseholdInvitation {
 }
 
 model AdultProfile {
-  id                       String                    @id @default(uuid()) @db.Uuid
-  householdId              String                    @map("household_id") @db.Uuid
-  userId                   String                    @map("user_id") @db.Uuid
-  name                     String                    @db.VarChar(150)
-  birthDate                DateTime                  @map("birth_date") @db.Date
-  biologicalSex            BiologicalSex             @map("biological_sex")
-  weightKg                 Decimal?                  @map("weight_kg") @db.Decimal(5, 2)
-  heightCm                 Decimal                   @map("height_cm") @db.Decimal(5, 2)
-  activityLevel            ActivityLevel             @map("activity_level")
-  primaryGoal              PrimaryGoal               @map("primary_goal")
-  hasKitchenScale          Boolean                   @map("has_kitchen_scale")
-  isActive                 Boolean                   @default(true) @map("is_active")
-  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt                DateTime?                 @map("deleted_at") @db.Timestamptz(6)
-  household                Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  user                     User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id                       String                     @id @default(uuid()) @db.Uuid
+  householdId              String                     @map("household_id") @db.Uuid
+  userId                   String                     @map("user_id") @db.Uuid
+  name                     String                     @db.VarChar(150)
+  birthDate                DateTime                   @map("birth_date") @db.Date
+  biologicalSex            BiologicalSex              @map("biological_sex")
+  weightKg                 Decimal?                   @map("weight_kg") @db.Decimal(5, 2)
+  heightCm                 Decimal                    @map("height_cm") @db.Decimal(5, 2)
+  activityLevel            ActivityLevel              @map("activity_level")
+  primaryGoal              PrimaryGoal                @map("primary_goal")
+  hasKitchenScale          Boolean                    @map("has_kitchen_scale")
+  isActive                 Boolean                    @default(true) @map("is_active")
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                DateTime?                  @map("deleted_at") @db.Timestamptz(6)
+  household                Household                  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user                     User                       @relation(fields: [userId], references: [id], onDelete: Restrict)
   dietaryRestrictions      DietaryRestriction[]
   nutritionGoalSuggestions NutritionGoalSuggestion[]
   nutritionGoals           NutritionGoal[]
@@ -567,7 +567,7 @@ model NutritionGoalSuggestion {
   createdAt                  DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   expiresAt                  DateTime                      @map("expires_at") @db.Timestamptz(6)
   adultProfile               AdultProfile                  @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  review                      NutritionGoalReview?
+  review                     NutritionGoalReview?
 
   @@index([adultProfileId, status])
   @@index([status, expiresAt])
@@ -600,20 +600,20 @@ model NutritionGoal {
 }
 
 model NutritionGoalReview {
-  id                  String                         @id @default(uuid()) @db.Uuid
-  adultProfileId      String                         @map("adult_profile_id") @db.Uuid
-  outcome             String                         @db.VarChar(50)
-  reasons             Json
-  evaluatedAt         DateTime                       @map("evaluated_at") @db.Timestamptz(6)
-  postponedUntil      DateTime?                      @map("postponed_until") @db.Timestamptz(6)
-  proposalSuggestionId String?                       @unique @map("proposal_suggestion_id") @db.Uuid
-  terminalAction      NutritionGoalReviewTerminalAction? @map("terminal_action")
-  actedById           String?                        @map("acted_by_id") @db.Uuid
-  actedAt             DateTime?                      @map("acted_at") @db.Timestamptz(6)
-  createdAt           DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  adultProfile        AdultProfile                   @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  proposalSuggestion  NutritionGoalSuggestion?       @relation(fields: [proposalSuggestionId], references: [id], onDelete: SetNull)
+  id                   String                             @id @default(uuid()) @db.Uuid
+  adultProfileId       String                             @map("adult_profile_id") @db.Uuid
+  outcome              String                             @db.VarChar(50)
+  reasons              Json
+  evaluatedAt          DateTime                           @map("evaluated_at") @db.Timestamptz(6)
+  postponedUntil       DateTime?                          @map("postponed_until") @db.Timestamptz(6)
+  proposalSuggestionId String?                            @unique @map("proposal_suggestion_id") @db.Uuid
+  terminalAction       NutritionGoalReviewTerminalAction? @map("terminal_action")
+  actedById            String?                            @map("acted_by_id") @db.Uuid
+  actedAt              DateTime?                          @map("acted_at") @db.Timestamptz(6)
+  createdAt            DateTime                           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  adultProfile         AdultProfile                       @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  proposalSuggestion   NutritionGoalSuggestion?           @relation(fields: [proposalSuggestionId], references: [id], onDelete: SetNull)
 
   @@index([adultProfileId, evaluatedAt])
   @@index([adultProfileId, postponedUntil])
@@ -621,19 +621,19 @@ model NutritionGoalReview {
 }
 
 model AiGenerationRequest {
-  id             String                    @id @default(uuid()) @db.Uuid
-  householdId    String                    @map("household_id") @db.Uuid
-  proposalType   AiProposalType            @map("proposal_type")
-  contextVersion String                    @map("context_version") @db.VarChar(100)
-  promptVersion  String                    @map("prompt_version") @db.VarChar(100)
-  requestedById  String                    @map("requested_by_id") @db.Uuid
-  requestedAt    DateTime                  @map("requested_at") @db.Timestamptz(6)
+  id             String                     @id @default(uuid()) @db.Uuid
+  householdId    String                     @map("household_id") @db.Uuid
+  proposalType   AiProposalType             @map("proposal_type")
+  contextVersion String                     @map("context_version") @db.VarChar(100)
+  promptVersion  String                     @map("prompt_version") @db.VarChar(100)
+  requestedById  String                     @map("requested_by_id") @db.Uuid
+  requestedAt    DateTime                   @map("requested_at") @db.Timestamptz(6)
   status         AiGenerationRequestStatus
-  failureCode    String?                   @map("failure_code") @db.VarChar(100)
-  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household      Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  requestedBy    User                      @relation("AiGenerationRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  failureCode    String?                    @map("failure_code") @db.VarChar(100)
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household      Household                  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  requestedBy    User                       @relation("AiGenerationRequestRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
   adults         AiGenerationRequestAdult[]
   proposals      AiGeneratedProposal[]
 
@@ -646,7 +646,7 @@ model AiGenerationRequestAdult {
   requestId      String              @map("request_id") @db.Uuid
   adultProfileId String              @map("adult_profile_id") @db.Uuid
   request        AiGenerationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  adultProfile   AdultProfile         @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  adultProfile   AdultProfile        @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
 
   @@id([requestId, adultProfileId])
   @@index([adultProfileId])
@@ -678,34 +678,34 @@ model AiGeneratedProposal {
 }
 
 model AiProposalValidation {
-  id               String              @id @default(uuid()) @db.Uuid
-  proposalId       String              @unique @map("proposal_id") @db.Uuid
-  schemaValid      Boolean             @map("schema_valid")
-  catalogValid     Boolean             @map("catalog_valid")
-  nutritionValid   Boolean             @map("nutrition_valid")
-  restrictionsValid Boolean            @map("restrictions_valid")
-  inventoryValid   Boolean             @map("inventory_valid")
-  budgetEvaluated  Boolean             @map("budget_evaluated")
-  warnings         Json
-  errors           Json
-  validatedAt      DateTime            @map("validated_at") @db.Timestamptz(6)
-  proposal         AiGeneratedProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  id                String              @id @default(uuid()) @db.Uuid
+  proposalId        String              @unique @map("proposal_id") @db.Uuid
+  schemaValid       Boolean             @map("schema_valid")
+  catalogValid      Boolean             @map("catalog_valid")
+  nutritionValid    Boolean             @map("nutrition_valid")
+  restrictionsValid Boolean             @map("restrictions_valid")
+  inventoryValid    Boolean             @map("inventory_valid")
+  budgetEvaluated   Boolean             @map("budget_evaluated")
+  warnings          Json
+  errors            Json
+  validatedAt       DateTime            @map("validated_at") @db.Timestamptz(6)
+  proposal          AiGeneratedProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 
   @@index([validatedAt])
   @@map("ai_proposal_validations")
 }
 
 model AiProposalDecision {
-  id            String                @id @default(uuid()) @db.Uuid
-  proposalId    String                @unique @map("proposal_id") @db.Uuid
+  id            String              @id @default(uuid()) @db.Uuid
+  proposalId    String              @unique @map("proposal_id") @db.Uuid
   decision      AiDecisionType
-  selectedItems Json                  @map("selected_items")
-  editedPayload Json?                 @map("edited_payload")
-  decidedById   String                @map("decided_by_id") @db.Uuid
-  decidedAt     DateTime              @map("decided_at") @db.Timestamptz(6)
-  reason        String?               @db.Text
-  proposal      AiGeneratedProposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  decidedBy     User                  @relation("AiProposalDecisionDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
+  selectedItems Json                @map("selected_items")
+  editedPayload Json?               @map("edited_payload")
+  decidedById   String              @map("decided_by_id") @db.Uuid
+  decidedAt     DateTime            @map("decided_at") @db.Timestamptz(6)
+  reason        String?             @db.Text
+  proposal      AiGeneratedProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  decidedBy     User                @relation("AiProposalDecisionDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
 
   @@index([decidedById, decidedAt])
   @@map("ai_proposal_decisions")
@@ -754,37 +754,37 @@ model NutrientDefinition {
 }
 
 model Food {
-  id                       String                    @id @default(uuid()) @db.Uuid
-  householdId              String?                   @map("household_id") @db.Uuid
-  name                     String                    @db.VarChar(150)
-  brand                    String?                   @db.VarChar(150)
-  description              String?                   @db.Text
-  categoryId               String                    @map("category_id") @db.Uuid
-  foodType                 FoodType                  @map("food_type")
-  preparationState         PreparationState          @map("preparation_state")
-  referenceQuantity        Decimal                   @map("reference_quantity") @db.Decimal(12, 4)
-  referenceUnit            ReferenceUnit             @map("reference_unit")
-  source                   String                    @db.VarChar(100)
-  sourceReference          String?                   @map("source_reference") @db.VarChar(255)
-  confidenceLevel          ConfidenceLevel           @map("confidence_level")
-  isGlobal                 Boolean                   @default(false) @map("is_global")
-  isActive                 Boolean                   @default(true) @map("is_active")
-  createdById              String?                   @map("created_by_id") @db.Uuid
-  createdAt                DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt                DateTime?                 @map("deleted_at") @db.Timestamptz(6)
-  household                Household?                @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  category                 FoodCategory              @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  createdBy                User?                     @relation("FoodCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  nutrients                FoodNutrient[]
-  servings                 FoodServing[]
-  aliases                  FoodAlias[]
-  mealItems                MealItem[]
-  recipeIngredients        RecipeIngredient[]
-  preparedBatchIngredients PreparedBatchIngredient[]
-  inventoryItems           InventoryItem[]
-  purchaseItems            PurchaseItem[]
-  shoppingListItems        ShoppingListItem[]
+  id                        String                     @id @default(uuid()) @db.Uuid
+  householdId               String?                    @map("household_id") @db.Uuid
+  name                      String                     @db.VarChar(150)
+  brand                     String?                    @db.VarChar(150)
+  description               String?                    @db.Text
+  categoryId                String                     @map("category_id") @db.Uuid
+  foodType                  FoodType                   @map("food_type")
+  preparationState          PreparationState           @map("preparation_state")
+  referenceQuantity         Decimal                    @map("reference_quantity") @db.Decimal(12, 4)
+  referenceUnit             ReferenceUnit              @map("reference_unit")
+  source                    String                     @db.VarChar(100)
+  sourceReference           String?                    @map("source_reference") @db.VarChar(255)
+  confidenceLevel           ConfidenceLevel            @map("confidence_level")
+  isGlobal                  Boolean                    @default(false) @map("is_global")
+  isActive                  Boolean                    @default(true) @map("is_active")
+  createdById               String?                    @map("created_by_id") @db.Uuid
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz(6)
+  household                 Household?                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  category                  FoodCategory               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy                 User?                      @relation("FoodCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  nutrients                 FoodNutrient[]
+  servings                  FoodServing[]
+  aliases                   FoodAlias[]
+  mealItems                 MealItem[]
+  recipeIngredients         RecipeIngredient[]
+  preparedBatchIngredients  PreparedBatchIngredient[]
+  inventoryItems            InventoryItem[]
+  purchaseItems             PurchaseItem[]
+  shoppingListItems         ShoppingListItem[]
   digestiveSymptomFoodLinks DigestiveSymptomFoodLink[]
 
   @@unique([source, sourceReference])
@@ -839,23 +839,24 @@ model FoodAlias {
 }
 
 model Meal {
-  id             String       @id @default(uuid()) @db.Uuid
-  householdId    String       @map("household_id") @db.Uuid
-  adultProfileId String       @map("adult_profile_id") @db.Uuid
-  mealType       MealType     @map("meal_type")
-  consumedAt     DateTime     @map("consumed_at") @db.Timestamptz(6)
-  status         MealStatus   @default(CONFIRMED)
-  source         MealSource   @default(MANUAL)
-  notes          String?      @db.Text
-  createdById    String       @map("created_by_id") @db.Uuid
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz(6)
-  household      Household    @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  adultProfile   AdultProfile @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  createdBy      User         @relation("MealCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  items          MealItem[]
-  plannedMeals   PlannedMeal[]
+  id                        String                     @id @default(uuid()) @db.Uuid
+  householdId               String                     @map("household_id") @db.Uuid
+  adultProfileId            String                     @map("adult_profile_id") @db.Uuid
+  mealType                  MealType                   @map("meal_type")
+  consumedAt                DateTime                   @map("consumed_at") @db.Timestamptz(6)
+  status                    MealStatus                 @default(CONFIRMED)
+  source                    MealSource                 @default(MANUAL)
+  notes                     String?                    @db.Text
+  createdById               String                     @map("created_by_id") @db.Uuid
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                 DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz(6)
+  household                 Household                  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  adultProfile              AdultProfile               @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  createdBy                 User                       @relation("MealCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  items                     MealItem[]
+  plannedMeals              PlannedMeal[]              @relation("PlannedMealConsumedMeal")
+  previousPlannedMeals      PlannedMeal[]              @relation("PlannedMealPreviousMeal")
   digestiveSymptomMealLinks DigestiveSymptomMealLink[]
   digestiveSymptomFoodLinks DigestiveSymptomFoodLink[]
 
@@ -894,21 +895,21 @@ model MealItem {
 }
 
 model DigestiveSymptomEntry {
-  id             String                    @id @default(uuid()) @db.Uuid
-  adultProfileId String                    @map("adult_profile_id") @db.Uuid
-  type           DigestiveSymptomType
-  customTypeName String?                   @map("custom_type_name") @db.VarChar(150)
-  intensity      Int
-  startAt        DateTime                  @map("start_at") @db.Timestamptz(6)
-  endAt          DateTime?                 @map("end_at") @db.Timestamptz(6)
-  notes          String?                   @db.Text
-  status         DigestiveSymptomStatus    @default(ACTIVE)
-  correctedFromId String?                  @map("corrected_from_id") @db.Uuid
-  adultProfile   AdultProfile              @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  correctedFrom  DigestiveSymptomEntry?    @relation("DigestiveSymptomCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
-  corrections    DigestiveSymptomEntry[]   @relation("DigestiveSymptomCorrections")
-  mealLinks      DigestiveSymptomMealLink[]
-  foodLinks      DigestiveSymptomFoodLink[]
+  id              String                     @id @default(uuid()) @db.Uuid
+  adultProfileId  String                     @map("adult_profile_id") @db.Uuid
+  type            DigestiveSymptomType
+  customTypeName  String?                    @map("custom_type_name") @db.VarChar(150)
+  intensity       Int
+  startAt         DateTime                   @map("start_at") @db.Timestamptz(6)
+  endAt           DateTime?                  @map("end_at") @db.Timestamptz(6)
+  notes           String?                    @db.Text
+  status          DigestiveSymptomStatus     @default(ACTIVE)
+  correctedFromId String?                    @map("corrected_from_id") @db.Uuid
+  adultProfile    AdultProfile               @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  correctedFrom   DigestiveSymptomEntry?     @relation("DigestiveSymptomCorrections", fields: [correctedFromId], references: [id], onDelete: Restrict)
+  corrections     DigestiveSymptomEntry[]    @relation("DigestiveSymptomCorrections")
+  mealLinks       DigestiveSymptomMealLink[]
+  foodLinks       DigestiveSymptomFoodLink[]
 
   @@index([adultProfileId, type, startAt])
   @@index([adultProfileId, intensity, startAt])
@@ -918,11 +919,11 @@ model DigestiveSymptomEntry {
 }
 
 model DigestiveSymptomMealLink {
-  id         String                 @id @default(uuid()) @db.Uuid
-  symptomId  String                 @map("symptom_id") @db.Uuid
-  mealId     String                 @map("meal_id") @db.Uuid
-  symptom    DigestiveSymptomEntry  @relation(fields: [symptomId], references: [id], onDelete: Cascade)
-  meal       Meal                   @relation(fields: [mealId], references: [id], onDelete: Restrict)
+  id        String                @id @default(uuid()) @db.Uuid
+  symptomId String                @map("symptom_id") @db.Uuid
+  mealId    String                @map("meal_id") @db.Uuid
+  symptom   DigestiveSymptomEntry @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+  meal      Meal                  @relation(fields: [mealId], references: [id], onDelete: Restrict)
 
   @@unique([symptomId, mealId])
   @@index([mealId])
@@ -930,16 +931,16 @@ model DigestiveSymptomMealLink {
 }
 
 model DigestiveSymptomFoodLink {
-  id             String                         @id @default(uuid()) @db.Uuid
-  symptomId      String                         @map("symptom_id") @db.Uuid
-  foodId         String                         @map("food_id") @db.Uuid
-  mealId         String?                        @map("meal_id") @db.Uuid
-  source         DigestiveSymptomFoodLinkSource
-  foodNameSnapshot String?                      @map("food_name_snapshot") @db.VarChar(150)
-  snapshot       Json?
-  symptom        DigestiveSymptomEntry         @relation(fields: [symptomId], references: [id], onDelete: Cascade)
-  food           Food                           @relation(fields: [foodId], references: [id], onDelete: Restrict)
-  meal           Meal?                          @relation(fields: [mealId], references: [id], onDelete: Restrict)
+  id               String                         @id @default(uuid()) @db.Uuid
+  symptomId        String                         @map("symptom_id") @db.Uuid
+  foodId           String                         @map("food_id") @db.Uuid
+  mealId           String?                        @map("meal_id") @db.Uuid
+  source           DigestiveSymptomFoodLinkSource
+  foodNameSnapshot String?                        @map("food_name_snapshot") @db.VarChar(150)
+  snapshot         Json?
+  symptom          DigestiveSymptomEntry          @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+  food             Food                           @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  meal             Meal?                          @relation(fields: [mealId], references: [id], onDelete: Restrict)
 
   @@unique([symptomId, foodId, mealId, source])
   @@index([foodId])
@@ -1021,27 +1022,27 @@ model RecipeInstruction {
 }
 
 model PreparedBatch {
-  id                 String                          @id @default(uuid()) @db.Uuid
-  householdId        String                          @map("household_id") @db.Uuid
-  recipeId           String?                         @map("recipe_id") @db.Uuid
-  recipeNameSnapshot String                          @map("recipe_name_snapshot") @db.VarChar(150)
-  preparedAt         DateTime                        @map("prepared_at") @db.Timestamptz(6)
-  status             PreparedBatchStatus             @default(DRAFT)
-  finalCookedWeight  Decimal?                        @map("final_cooked_weight") @db.Decimal(18, 6)
-  createdById        String                          @map("created_by_id") @db.Uuid
-  createdAt          DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  finalizedAt        DateTime?                       @map("finalized_at") @db.Timestamptz(6)
-  cancelledAt        DateTime?                       @map("cancelled_at") @db.Timestamptz(6)
-  household          Household                       @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  recipe             Recipe?                         @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  createdBy          User                            @relation("PreparedBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  ingredients        PreparedBatchIngredient[]
-  nutrientSnapshots  PreparedBatchNutrientSnapshot[]
-  servedPortions     ServedPortion[]
-  preparedFoodLeftovers PreparedFoodLeftover[]
+  id                               String                            @id @default(uuid()) @db.Uuid
+  householdId                      String                            @map("household_id") @db.Uuid
+  recipeId                         String?                           @map("recipe_id") @db.Uuid
+  recipeNameSnapshot               String                            @map("recipe_name_snapshot") @db.VarChar(150)
+  preparedAt                       DateTime                          @map("prepared_at") @db.Timestamptz(6)
+  status                           PreparedBatchStatus               @default(DRAFT)
+  finalCookedWeight                Decimal?                          @map("final_cooked_weight") @db.Decimal(18, 6)
+  createdById                      String                            @map("created_by_id") @db.Uuid
+  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                        DateTime                          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  finalizedAt                      DateTime?                         @map("finalized_at") @db.Timestamptz(6)
+  cancelledAt                      DateTime?                         @map("cancelled_at") @db.Timestamptz(6)
+  household                        Household                         @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipe                           Recipe?                           @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  createdBy                        User                              @relation("PreparedBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  ingredients                      PreparedBatchIngredient[]
+  nutrientSnapshots                PreparedBatchNutrientSnapshot[]
+  servedPortions                   ServedPortion[]
+  preparedFoodLeftovers            PreparedFoodLeftover[]
   preparationInventoryConsumptions PreparationInventoryConsumption[]
-  plannedMeals                PlannedMeal[]
+  plannedMeals                     PlannedMeal[]
 
   @@index([householdId, status, preparedAt])
   @@index([recipeId])
@@ -1158,18 +1159,18 @@ model ServedPortionNutrientSnapshot {
 }
 
 model PreparedFoodLeftover {
-  id                String                              @id @default(uuid()) @db.Uuid
-  preparedBatchId   String                              @map("prepared_batch_id") @db.Uuid
-  householdId       String                              @map("household_id") @db.Uuid
-  availableWeight   Decimal                             @map("available_weight") @db.Decimal(18, 6)
-  storedAt          DateTime                            @map("stored_at") @db.Timestamptz(6)
-  storageLocation   String?                             @map("storage_location") @db.VarChar(100)
-  notes             String?                             @db.Text
-  status            PreparedFoodLeftoverStatus          @default(AVAILABLE)
-  createdAt         DateTime                            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime                            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  preparedBatch     PreparedBatch                       @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
-  household         Household                           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  id                String                                 @id @default(uuid()) @db.Uuid
+  preparedBatchId   String                                 @map("prepared_batch_id") @db.Uuid
+  householdId       String                                 @map("household_id") @db.Uuid
+  availableWeight   Decimal                                @map("available_weight") @db.Decimal(18, 6)
+  storedAt          DateTime                               @map("stored_at") @db.Timestamptz(6)
+  storageLocation   String?                                @map("storage_location") @db.VarChar(100)
+  notes             String?                                @db.Text
+  status            PreparedFoodLeftoverStatus             @default(AVAILABLE)
+  createdAt         DateTime                               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  preparedBatch     PreparedBatch                          @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
+  household         Household                              @relation(fields: [householdId], references: [id], onDelete: Cascade)
   nutrientSnapshots PreparedFoodLeftoverNutrientSnapshot[]
   inventoryItems    InventoryItem[]
 
@@ -1179,12 +1180,12 @@ model PreparedFoodLeftover {
 }
 
 model PreparedFoodLeftoverNutrientSnapshot {
-  id                     String              @id @default(uuid()) @db.Uuid
-  preparedFoodLeftoverId String              @map("prepared_food_leftover_id") @db.Uuid
-  nutrientCode           String              @map("nutrient_code") @db.VarChar(50)
-  nutrientName           String              @map("nutrient_name") @db.VarChar(100)
-  unit                   String              @db.VarChar(20)
-  amountPerGram          Decimal             @map("amount_per_gram") @db.Decimal(18, 6)
+  id                     String               @id @default(uuid()) @db.Uuid
+  preparedFoodLeftoverId String               @map("prepared_food_leftover_id") @db.Uuid
+  nutrientCode           String               @map("nutrient_code") @db.VarChar(50)
+  nutrientName           String               @map("nutrient_name") @db.VarChar(100)
+  unit                   String               @db.VarChar(20)
+  amountPerGram          Decimal              @map("amount_per_gram") @db.Decimal(18, 6)
   leftover               PreparedFoodLeftover @relation(fields: [preparedFoodLeftoverId], references: [id], onDelete: Cascade)
 
   @@unique([preparedFoodLeftoverId, nutrientCode])
@@ -1193,34 +1194,34 @@ model PreparedFoodLeftoverNutrientSnapshot {
 }
 
 model InventoryItem {
-  id                     String                  @id @default(uuid()) @db.Uuid
-  householdId            String                  @map("household_id") @db.Uuid
-  foodId                 String?                 @map("food_id") @db.Uuid
-  preparedFoodLeftoverId String?                 @map("prepared_food_leftover_id") @db.Uuid
-  nameSnapshot           String                  @map("name_snapshot") @db.VarChar(150)
-  itemType               InventoryItemType       @map("item_type")
-  currentQuantity        Decimal                 @map("current_quantity") @db.Decimal(30, 12)
-  unit                   InventoryUnit
-  minimumQuantity        Decimal?                @map("minimum_quantity") @db.Decimal(30, 12)
-  location               String?                 @db.VarChar(100)
-  expiresAt              DateTime?               @map("expires_at") @db.Timestamptz(6)
-  status                 InventoryItemStatus     @default(ACTIVE)
-  version                Int                     @default(0)
-  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household              Household               @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  food                   Food?                   @relation(fields: [foodId], references: [id], onDelete: Restrict)
-  preparedFoodLeftover   PreparedFoodLeftover?   @relation(fields: [preparedFoodLeftoverId], references: [id], onDelete: Restrict)
-  movements              InventoryMovement[]
-  purchaseItems          PurchaseItem[]
+  id                      String                   @id @default(uuid()) @db.Uuid
+  householdId             String                   @map("household_id") @db.Uuid
+  foodId                  String?                  @map("food_id") @db.Uuid
+  preparedFoodLeftoverId  String?                  @map("prepared_food_leftover_id") @db.Uuid
+  nameSnapshot            String                   @map("name_snapshot") @db.VarChar(150)
+  itemType                InventoryItemType        @map("item_type")
+  currentQuantity         Decimal                  @map("current_quantity") @db.Decimal(30, 12)
+  unit                    InventoryUnit
+  minimumQuantity         Decimal?                 @map("minimum_quantity") @db.Decimal(30, 12)
+  location                String?                  @db.VarChar(100)
+  expiresAt               DateTime?                @map("expires_at") @db.Timestamptz(6)
+  status                  InventoryItemStatus      @default(ACTIVE)
+  version                 Int                      @default(0)
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household               Household                @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  food                    Food?                    @relation(fields: [foodId], references: [id], onDelete: Restrict)
+  preparedFoodLeftover    PreparedFoodLeftover?    @relation(fields: [preparedFoodLeftoverId], references: [id], onDelete: Restrict)
+  movements               InventoryMovement[]
+  purchaseItems           PurchaseItem[]
   inventorySyncOperations InventorySyncOperation[]
 
+  @@unique([preparedFoodLeftoverId])
   @@index([householdId, status])
   @@index([householdId, itemType])
   @@index([householdId, expiresAt])
   @@index([foodId])
   @@index([preparedFoodLeftoverId])
-  @@unique([preparedFoodLeftoverId])
   @@map("inventory_items")
 }
 
@@ -1247,16 +1248,16 @@ model Purchase {
 }
 
 model PurchaseItem {
-  id                   String        @id @default(uuid()) @db.Uuid
-  purchaseId           String        @map("purchase_id") @db.Uuid
-  foodId               String?       @map("food_id") @db.Uuid
-  inventoryItemId      String?       @map("inventory_item_id") @db.Uuid
-  sourceShoppingItemId String?       @map("source_shopping_item_id") @db.Uuid
-  nameSnapshot         String        @map("name_snapshot") @db.VarChar(150)
-  unit                 String        @db.VarChar(50)
-  quantity             Decimal       @db.Decimal(30, 12)
-  purchase             Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  food                 Food?         @relation(fields: [foodId], references: [id], onDelete: SetNull)
+  id                   String         @id @default(uuid()) @db.Uuid
+  purchaseId           String         @map("purchase_id") @db.Uuid
+  foodId               String?        @map("food_id") @db.Uuid
+  inventoryItemId      String?        @map("inventory_item_id") @db.Uuid
+  sourceShoppingItemId String?        @map("source_shopping_item_id") @db.Uuid
+  nameSnapshot         String         @map("name_snapshot") @db.VarChar(150)
+  unit                 String         @db.VarChar(50)
+  quantity             Decimal        @db.Decimal(30, 12)
+  purchase             Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  food                 Food?          @relation(fields: [foodId], references: [id], onDelete: SetNull)
   inventoryItem        InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
 
   @@index([purchaseId])
@@ -1267,39 +1268,39 @@ model PurchaseItem {
 }
 
 model ShoppingList {
-  id          String              @id @default(uuid()) @db.Uuid
-  householdId String              @unique @map("household_id") @db.Uuid
-  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household   Household           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  id          String             @id @default(uuid()) @db.Uuid
+  householdId String             @unique @map("household_id") @db.Uuid
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household   Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
   items       ShoppingListItem[]
 
   @@map("shopping_lists")
 }
 
 model ShoppingListItem {
-  id                 String                 @id @default(uuid()) @db.Uuid
-  shoppingListId     String                 @map("shopping_list_id") @db.Uuid
-  foodId             String?                @map("food_id") @db.Uuid
-  name               String                 @db.VarChar(150)
-  normalizedName     String                 @map("normalized_name") @db.VarChar(150)
-  quantity           Decimal                @db.Decimal(30, 12)
-  unit               String                 @db.VarChar(50)
-  source             ShoppingListSource
-  sourceReferenceId  String?                @map("source_reference_id") @db.Uuid
-  status             ShoppingListItemStatus @default(PENDING)
-  actorId            String                 @map("actor_id") @db.Uuid
-  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
-  purchasedAt        DateTime?              @map("purchased_at") @db.Timestamptz(6)
-  purchasedById      String?                @map("purchased_by_id") @db.Uuid
-  removedAt          DateTime?              @map("removed_at") @db.Timestamptz(6)
-  removedById        String?                @map("removed_by_id") @db.Uuid
-  shoppingList       ShoppingList           @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
-  food               Food?                  @relation(fields: [foodId], references: [id], onDelete: SetNull)
-  actor              User                   @relation("ShoppingListItemActor", fields: [actorId], references: [id], onDelete: Restrict)
-  purchasedBy        User?                  @relation("ShoppingListItemPurchaser", fields: [purchasedById], references: [id], onDelete: SetNull)
-  removedBy          User?                  @relation("ShoppingListItemRemover", fields: [removedById], references: [id], onDelete: SetNull)
+  id                String                 @id @default(uuid()) @db.Uuid
+  shoppingListId    String                 @map("shopping_list_id") @db.Uuid
+  foodId            String?                @map("food_id") @db.Uuid
+  name              String                 @db.VarChar(150)
+  normalizedName    String                 @map("normalized_name") @db.VarChar(150)
+  quantity          Decimal                @db.Decimal(30, 12)
+  unit              String                 @db.VarChar(50)
+  source            ShoppingListSource
+  sourceReferenceId String?                @map("source_reference_id") @db.Uuid
+  status            ShoppingListItemStatus @default(PENDING)
+  actorId           String                 @map("actor_id") @db.Uuid
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  purchasedAt       DateTime?              @map("purchased_at") @db.Timestamptz(6)
+  purchasedById     String?                @map("purchased_by_id") @db.Uuid
+  removedAt         DateTime?              @map("removed_at") @db.Timestamptz(6)
+  removedById       String?                @map("removed_by_id") @db.Uuid
+  shoppingList      ShoppingList           @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  food              Food?                  @relation(fields: [foodId], references: [id], onDelete: SetNull)
+  actor             User                   @relation("ShoppingListItemActor", fields: [actorId], references: [id], onDelete: Restrict)
+  purchasedBy       User?                  @relation("ShoppingListItemPurchaser", fields: [purchasedById], references: [id], onDelete: SetNull)
+  removedBy         User?                  @relation("ShoppingListItemRemover", fields: [removedById], references: [id], onDelete: SetNull)
 
   @@index([shoppingListId, status])
   @@index([shoppingListId, foodId, status])
@@ -1309,14 +1310,14 @@ model ShoppingListItem {
 }
 
 model PreparationInventoryConsumption {
-  id              String   @id @default(uuid()) @db.Uuid
-  preparedBatchId String   @unique @map("prepared_batch_id") @db.Uuid
-  householdId     String   @map("household_id") @db.Uuid
-  actorId         String   @map("actor_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String        @id @default(uuid()) @db.Uuid
+  preparedBatchId String        @unique @map("prepared_batch_id") @db.Uuid
+  householdId     String        @map("household_id") @db.Uuid
+  actorId         String        @map("actor_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   preparedBatch   PreparedBatch @relation(fields: [preparedBatchId], references: [id], onDelete: Cascade)
-  household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  actor           User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  actor           User          @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([householdId])
   @@map("preparation_inventory_consumptions")
@@ -1343,29 +1344,31 @@ model WeeklyPlan {
 }
 
 model PlannedMeal {
-  id                     String             @id @default(uuid()) @db.Uuid
-  weeklyPlanId           String             @map("weekly_plan_id") @db.Uuid
-  date                   DateTime           @db.Date
-  type                   PlannedMealType
-  source                 PlannedMealSource
-  recipeId               String?            @map("recipe_id") @db.Uuid
-  nameSnapshot           String?            @map("name_snapshot") @db.VarChar(150)
-  nutritionSnapshot      Json?              @map("nutrition_snapshot")
-  notes                  String?            @db.Text
-  status                 PlannedMealStatus  @default(PLANNED)
-  position               Int
-  replacedMealId         String?            @map("replaced_meal_id") @db.Uuid
-  preparedBatchId        String?            @map("prepared_batch_id") @db.Uuid
-  mealId                 String?            @map("meal_id") @db.Uuid
-  createdAt              DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
-  weeklyPlan             WeeklyPlan         @relation(fields: [weeklyPlanId], references: [id], onDelete: Cascade)
-  recipe                 Recipe?            @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  preparedBatch          PreparedBatch?     @relation(fields: [preparedBatchId], references: [id], onDelete: SetNull)
-  meal                   Meal?              @relation(fields: [mealId], references: [id], onDelete: SetNull)
-  replacedMeal           PlannedMeal?       @relation("MealReplacement", fields: [replacedMealId], references: [id], onDelete: SetNull)
-  replacementMeals       PlannedMeal[]       @relation("MealReplacement")
-  participants           PlannedMealParticipant[]
+  id                String                   @id @default(uuid()) @db.Uuid
+  weeklyPlanId      String                   @map("weekly_plan_id") @db.Uuid
+  date              DateTime                 @db.Date
+  type              PlannedMealType
+  source            PlannedMealSource
+  recipeId          String?                  @map("recipe_id") @db.Uuid
+  nameSnapshot      String?                  @map("name_snapshot") @db.VarChar(150)
+  nutritionSnapshot Json?                    @map("nutrition_snapshot")
+  notes             String?                  @db.Text
+  status            PlannedMealStatus        @default(PLANNED)
+  position          Int
+  replacedMealId    String?                  @map("replaced_meal_id") @db.Uuid
+  preparedBatchId   String?                  @map("prepared_batch_id") @db.Uuid
+  mealId            String?                  @map("meal_id") @db.Uuid
+  previousMealId    String?                  @map("previous_meal_id") @db.Uuid
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  weeklyPlan        WeeklyPlan               @relation(fields: [weeklyPlanId], references: [id], onDelete: Cascade)
+  recipe            Recipe?                  @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  preparedBatch     PreparedBatch?           @relation(fields: [preparedBatchId], references: [id], onDelete: SetNull)
+  meal              Meal?                    @relation("PlannedMealConsumedMeal", fields: [mealId], references: [id], onDelete: SetNull)
+  previousMeal      Meal?                    @relation("PlannedMealPreviousMeal", fields: [previousMealId], references: [id], onDelete: SetNull)
+  replacedMeal      PlannedMeal?             @relation("MealReplacement", fields: [replacedMealId], references: [id], onDelete: SetNull)
+  replacementMeals  PlannedMeal[]            @relation("MealReplacement")
+  participants      PlannedMealParticipant[]
 
   @@index([weeklyPlanId, date, type])
   @@index([weeklyPlanId, status])
@@ -1373,27 +1376,28 @@ model PlannedMeal {
   @@index([replacedMealId])
   @@index([preparedBatchId])
   @@index([mealId])
+  @@index([previousMealId])
   @@map("planned_meals")
 }
 
 model PlannedMealParticipant {
-  id                       String       @id @default(uuid()) @db.Uuid
-  plannedMealId            String       @map("planned_meal_id") @db.Uuid
-  adultProfileId           String       @map("adult_profile_id") @db.Uuid
-  suggestedQuantity        Decimal?     @map("suggested_quantity") @db.Decimal(30, 12)
-  suggestedUnit            String?      @map("suggested_unit") @db.VarChar(50)
-  confirmedQuantity        Decimal?     @map("confirmed_quantity") @db.Decimal(30, 12)
-  confirmedUnit            String?      @map("confirmed_unit") @db.VarChar(50)
-  confirmedById            String?      @map("confirmed_by_id") @db.Uuid
-  confirmedAt              DateTime?    @map("confirmed_at") @db.Timestamptz(6)
-  confirmationSnapshot     Json?        @map("confirmation_snapshot")
-  nutritionTargetSnapshot  Json?        @map("nutrition_target_snapshot")
-  notes                    String?      @db.Text
-  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  plannedMeal              PlannedMeal  @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
-  adultProfile             AdultProfile @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
-  confirmedBy              User?        @relation("PlannedMealParticipantConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  id                      String       @id @default(uuid()) @db.Uuid
+  plannedMealId           String       @map("planned_meal_id") @db.Uuid
+  adultProfileId          String       @map("adult_profile_id") @db.Uuid
+  suggestedQuantity       Decimal?     @map("suggested_quantity") @db.Decimal(30, 12)
+  suggestedUnit           String?      @map("suggested_unit") @db.VarChar(50)
+  confirmedQuantity       Decimal?     @map("confirmed_quantity") @db.Decimal(30, 12)
+  confirmedUnit           String?      @map("confirmed_unit") @db.VarChar(50)
+  confirmedById           String?      @map("confirmed_by_id") @db.Uuid
+  confirmedAt             DateTime?    @map("confirmed_at") @db.Timestamptz(6)
+  confirmationSnapshot    Json?        @map("confirmation_snapshot")
+  nutritionTargetSnapshot Json?        @map("nutrition_target_snapshot")
+  notes                   String?      @db.Text
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  plannedMeal             PlannedMeal  @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
+  adultProfile            AdultProfile @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  confirmedBy             User?        @relation("PlannedMealParticipantConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
 
   @@unique([plannedMealId, adultProfileId])
   @@index([plannedMealId])
@@ -1431,21 +1435,21 @@ enum InventorySyncOperationStatus {
 }
 
 model InventorySyncOperation {
-  id                 String                     @id @default(uuid()) @db.Uuid
-  operationId        String                     @unique @map("operation_id") @db.VarChar(255)
-  householdId        String                     @map("household_id") @db.Uuid
-  inventoryItemId    String?                    @map("inventory_item_id") @db.Uuid
-  actorId            String                     @map("actor_id") @db.Uuid
-  deviceId           String                     @map("device_id") @db.VarChar(255)
-  status             InventorySyncOperationStatus
-  reason             String?                    @db.Text
-  resultingVersion   Int?                       @map("resulting_version")
-  snapshot           Json?
-  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household          Household                  @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  inventoryItem      InventoryItem?             @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
-  actor              User                       @relation("InventorySyncOperationActor", fields: [actorId], references: [id], onDelete: Restrict)
+  id               String                       @id @default(uuid()) @db.Uuid
+  operationId      String                       @unique @map("operation_id") @db.VarChar(255)
+  householdId      String                       @map("household_id") @db.Uuid
+  inventoryItemId  String?                      @map("inventory_item_id") @db.Uuid
+  actorId          String                       @map("actor_id") @db.Uuid
+  deviceId         String                       @map("device_id") @db.VarChar(255)
+  status           InventorySyncOperationStatus
+  reason           String?                      @db.Text
+  resultingVersion Int?                         @map("resulting_version")
+  snapshot         Json?
+  createdAt        DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household        Household                    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  inventoryItem    InventoryItem?               @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  actor            User                         @relation("InventorySyncOperationActor", fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([householdId, createdAt])
   @@index([inventoryItemId, createdAt])

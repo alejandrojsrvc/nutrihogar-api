@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { AiProposalDecision } from '../../domain/entities/ai-proposal-decision';
 import type { AiProposalDecisionProps } from '../../domain/models/ai-recommendation.models';
 
@@ -12,7 +12,8 @@ export class PrismaAiProposalDecisionMapper {
       proposalId: props.proposalId,
       decision: props.decision,
       selectedItems: props.selectedItems,
-      editedPayload: props.editedPayload,
+      editedPayload:
+        props.editedPayload === null ? Prisma.JsonNull : toInputJson(props.editedPayload),
       decidedById: props.decidedBy,
       decidedAt: props.decidedAt,
       reason: props.reason,
@@ -40,7 +41,7 @@ function asStringArray(value: Prisma.JsonValue): string[] {
   if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
     throw new Error('AI decision selected items must be a JSON array of strings.');
   }
-  return value;
+  return value as unknown as string[];
 }
 
 function asPayload(value: Prisma.JsonValue): Record<string, unknown> {
@@ -48,4 +49,8 @@ function asPayload(value: Prisma.JsonValue): Record<string, unknown> {
     throw new Error('AI decision edited payload must be a JSON object.');
   }
   return value;
+}
+
+function toInputJson(value: Record<string, unknown>): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }

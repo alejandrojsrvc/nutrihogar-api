@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-type StarterIngredientUnit = 'GRAM' | 'MILLILITER' | 'UNIT';
+type StarterIngredientUnit = 'GRAM' | 'MILLILITER' | 'UNIT' | 'SERVING';
 
 export interface StarterRecipeDefinition {
   name: string;

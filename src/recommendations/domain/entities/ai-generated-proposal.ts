@@ -215,13 +215,17 @@ export class AiGeneratedProposal {
   }
 
   private createDecision(
-    input: Omit<AiProposalDecisionProps, 'id' | 'proposalId'> & { id?: string },
+    input: Omit<AiProposalDecisionProps, 'id' | 'proposalId' | 'reason'> & {
+      id?: string;
+      reason?: string | null;
+    },
   ): AiProposalDecision {
     if (this.props.decision) throw new AiProposalDecisionAlreadyRecordedError();
     return AiProposalDecision.create({
       ...input,
       id: input.id ?? crypto.randomUUID(),
       proposalId: this.id,
+      reason: input.reason ?? null,
     });
   }
 

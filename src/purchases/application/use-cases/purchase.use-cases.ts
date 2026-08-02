@@ -21,6 +21,7 @@ import {
   PurchaseInventorySelectionError,
   PurchaseNotFoundError,
 } from '../errors/purchase-application.errors';
+import { normalizePurchaseQuantity } from '../purchase-quantity-converter';
 
 export interface PurchaseItemCommand {
   id?: string;
@@ -203,9 +204,8 @@ export class ConfirmPurchaseUseCase {
         : null;
       if (item.foodId && (!food || (!food.isGlobal && food.householdId !== purchase.householdId)))
         throw new PurchaseFoodNotAvailableError();
-      const unit = (food?.referenceUnit ?? item.unit) as PurchaseConfirmationItem['unit'];
-      if (!['GRAM', 'MILLILITER', 'UNIT'].includes(unit))
-        throw new PurchaseInventorySelectionError();
+      const normalized = normalizePurchaseQuantity(item.quantity, item.unit, food?.referenceUnit);
+      const unit = normalized.unit;
       let inventoryItemId = input.selections?.[item.id] ?? item.inventoryItemId;
       if (inventoryItemId) {
         const selected = await this.inventory.findById(inventoryItemId);
@@ -237,7 +237,7 @@ export class ConfirmPurchaseUseCase {
         foodId: item.foodId,
         inventoryItemId,
         name: item.nameSnapshot,
-        quantity: item.quantity.toString(),
+        quantity: normalized.quantity.toString(),
         unit,
         sourceShoppingItemId: item.sourceShoppingItemId,
       });

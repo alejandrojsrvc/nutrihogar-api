@@ -80,6 +80,39 @@ describe('purchase use cases', () => {
     ).rejects.toThrow('administrator');
   });
 
+  it('normalizes a commercial quantity before matching inventory', async () => {
+    const purchase = Purchase.create({
+      ...input(),
+      items: [{ ...input().items[0], unit: 'KG', quantity: 1 }],
+    });
+    const purchases = { findById: jest.fn().mockResolvedValue(purchase) } as any;
+    const foods = {
+      findVisibleById: jest.fn().mockResolvedValue({
+        id: 'food-id',
+        name: 'Rice',
+        referenceUnit: 'GRAM',
+        isGlobal: true,
+      }),
+    } as any;
+    const inventory = { listByHousehold: jest.fn().mockResolvedValue({ items: [] }) } as any;
+    const transaction = { confirm: jest.fn().mockResolvedValue(purchase) } as any;
+    const useCase = new ConfirmPurchaseUseCase(
+      households,
+      purchases,
+      foods,
+      inventory,
+      transaction,
+    );
+
+    await useCase.execute({ actorId: 'user-id', purchaseId: 'purchase-id' });
+
+    expect(transaction.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        items: [expect.objectContaining({ quantity: '1000', unit: 'GRAM' })],
+      }),
+    );
+  });
+
   it('converts selected pending items without changing their state', async () => {
     const item = {
       id: 'shopping-id',

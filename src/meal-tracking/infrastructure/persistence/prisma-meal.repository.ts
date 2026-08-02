@@ -86,6 +86,24 @@ export class PrismaMealRepository implements MealRepository, MealUnitOfWork {
     };
   }
 
+  async listForAnalysis(criteria: Omit<MealListCriteria, 'page' | 'limit'>): Promise<MealView[]> {
+    const where: Prisma.MealWhereInput = {
+      householdId: criteria.householdId,
+      adultProfileId: criteria.adultProfileId,
+      mealType: criteria.mealType,
+      ...(criteria.includeCancelled ? {} : { status: MealStatus.CONFIRMED }),
+      ...(criteria.dateFrom || criteria.dateTo
+        ? { consumedAt: { gte: criteria.dateFrom, lt: criteria.dateTo } }
+        : {}),
+    };
+    const meals = await this.prisma.meal.findMany({
+      where,
+      include: mealInclude,
+      orderBy: [{ consumedAt: 'asc' }, { id: 'asc' }],
+    });
+    return meals.map((meal) => PrismaMealMapper.toView(meal));
+  }
+
   async create(input: CreateMealInput): Promise<MealView> {
     const meal = await this.prisma.$transaction(async (transaction) =>
       transaction.meal.create({

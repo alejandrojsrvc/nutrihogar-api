@@ -74,6 +74,32 @@ export class PrismaBodyMeasurementRepository implements BodyMeasurementRepositor
     };
   }
 
+  async listForProgress(
+    adultProfileId: string,
+    filters: {
+      dateFrom?: Date;
+      dateTo?: Date;
+      type?: import('../../domain/value-objects/health-tracking.value-objects').MeasurementTypeValue;
+    },
+  ) {
+    const records = await this.client().bodyMeasurementEntry.findMany({
+      where: {
+        adultProfileId,
+        ...(filters.type ? { type: filters.type } : {}),
+        ...(filters.dateFrom || filters.dateTo
+          ? {
+              recordedAt: {
+                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: [{ recordedAt: 'asc' }, { id: 'asc' }],
+    });
+    return records.map((record) => PrismaBodyMeasurementMapper.toDomain(record));
+  }
+
   private client(): HealthTrackingPrismaClient {
     return this.prisma as unknown as HealthTrackingPrismaClient;
   }

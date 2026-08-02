@@ -38,7 +38,7 @@ export const CORRECT_BODY_MEASUREMENT_USE_CASE = Symbol('CorrectBodyMeasurementU
 export const LIST_BODY_MEASUREMENTS_QUERY = Symbol('ListBodyMeasurementsQuery');
 
 type Access = {
-  profile: Awaited<ReturnType<AdultProfileRepository['findActiveById']>>;
+  profile: NonNullable<Awaited<ReturnType<AdultProfileRepository['findActiveById']>>>;
   admin: boolean;
 };
 type Dependencies = {

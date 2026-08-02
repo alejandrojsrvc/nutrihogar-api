@@ -87,4 +87,15 @@ describe('DigestiveSymptomEntry', () => {
     expect(corrected.correctedFromId).toBe('symptom-1');
     expect(corrected.toProps().type).toBe('ABDOMINAL_PAIN');
   });
+
+  it('reconstitutes resolved history and notes without making it mutable', () => {
+    const entry = DigestiveSymptomEntry.fromPersistence({
+      ...symptom({ notes: 'after lunch' }).toProps(),
+      status: 'RESOLVED',
+      mealLinks: [{ mealId: 'meal-1' }],
+      foodLinks: [],
+    });
+    expect(entry.toProps()).toMatchObject({ status: 'RESOLVED', notes: 'after lunch' });
+    expect(() => entry.resolve()).toThrow(InvalidDigestiveSymptomStateError);
+  });
 });

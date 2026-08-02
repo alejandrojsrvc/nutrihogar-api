@@ -68,6 +68,24 @@ export class PrismaBodyWeightRepository implements BodyWeightRepository {
     return record ? PrismaBodyWeightMapper.toDomain(record) : null;
   }
 
+  async listForProgress(adultProfileId: string, filters: { dateFrom?: Date; dateTo?: Date }) {
+    const records = await this.client().bodyWeightEntry.findMany({
+      where: {
+        adultProfileId,
+        ...(filters.dateFrom || filters.dateTo
+          ? {
+              recordedAt: {
+                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: [{ recordedAt: 'asc' }, { id: 'asc' }],
+    });
+    return records.map((record) => PrismaBodyWeightMapper.toDomain(record));
+  }
+
   private client(): HealthTrackingPrismaClient {
     return this.prisma as unknown as HealthTrackingPrismaClient;
   }

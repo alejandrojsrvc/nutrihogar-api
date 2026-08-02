@@ -22,6 +22,7 @@ export interface DigestiveSymptomEntryProps {
   adultProfileId: string;
   type: DigestiveSymptomTypeValue;
   name: string | null;
+  notes: string | null;
   intensity: number;
   startAt: Date;
   endAt: Date | null;

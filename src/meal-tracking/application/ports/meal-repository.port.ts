@@ -82,6 +82,7 @@ export interface MealRepository {
   hasActiveProfile(adultProfileId: string, householdId: string): Promise<boolean>;
   findById(mealId: string): Promise<MealView | null>;
   list(criteria: MealListCriteria): Promise<MealListResult>;
+  listForAnalysis(criteria: Omit<MealListCriteria, 'page' | 'limit'>): Promise<MealView[]>;
 }
 
 export interface MealUnitOfWork {

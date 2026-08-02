@@ -2,6 +2,19 @@ import { Module } from '@nestjs/common';
 import { IdentityModule } from '../identity/identity.module';
 import { HouseholdsModule } from '../households/households.module';
 import { NutritionModule } from '../nutrition/nutrition.module';
+import { MealTrackingModule } from '../meal-tracking/meal-tracking.module';
+import {
+  MEAL_REPOSITORY,
+  MealRepository,
+} from '../meal-tracking/application/ports/meal-repository.port';
+import {
+  NUTRITION_FOOD_REPOSITORY,
+  NutritionFoodRepository,
+} from '../nutrition/application/ports/nutrition-food-repository.port';
+import {
+  DIGESTIVE_SYMPTOM_REPOSITORY,
+  DigestiveSymptomRepository,
+} from './application/ports/digestive-symptom-repository.port';
 import {
   BodyMeasurementRepository,
   BODY_MEASUREMENT_REPOSITORY,
@@ -17,6 +30,7 @@ import {
 import { PrismaBodyMeasurementRepository } from './infrastructure/persistence/prisma-body-measurement.repository';
 import { PrismaBodyWeightRepository } from './infrastructure/persistence/prisma-body-weight.repository';
 import { PrismaMeasurementConfigurationRepository } from './infrastructure/persistence/prisma-measurement-configuration.repository';
+import { PrismaDigestiveSymptomRepository } from './infrastructure/persistence/prisma-digestive-symptom.repository';
 import { HealthTrackingController } from './presentation/http/health-tracking.controller';
 import {
   CORRECT_BODY_MEASUREMENT_USE_CASE,
@@ -41,6 +55,26 @@ import {
   UpdateMeasurementConfigurationUseCase,
 } from './application/use-cases/health-tracking.use-cases';
 import {
+  CORRECT_DIGESTIVE_SYMPTOM_USE_CASE,
+  CorrectDigestiveSymptomUseCase,
+  GET_DIGESTIVE_SYMPTOM_QUERY,
+  GET_RECENT_MEALS_FOR_SYMPTOM_LINK_QUERY,
+  GetDigestiveSymptomQuery,
+  GetRecentMealsForSymptomLinkQuery,
+  LIST_DIGESTIVE_SYMPTOMS_QUERY,
+  ListDigestiveSymptomsQuery,
+  REGISTER_DIGESTIVE_SYMPTOM_USE_CASE,
+  RegisterDigestiveSymptomUseCase,
+  RESOLVE_DIGESTIVE_SYMPTOM_USE_CASE,
+  ResolveDigestiveSymptomUseCase,
+} from './application/use-cases/digestive-symptom.use-cases';
+import {
+  GET_BODY_PROGRESS_QUERY,
+  GET_DIGESTIVE_SYMPTOM_INSIGHTS_QUERY,
+  GetBodyProgressQuery,
+  GetDigestiveSymptomInsightsQuery,
+} from './application/use-cases/health-tracking-analysis.use-cases';
+import {
   ADULT_PROFILE_REPOSITORY,
   AdultProfileRepository,
 } from '../households/application/adult-profile-ports/adult-profile-repository.port';
@@ -51,11 +85,12 @@ import {
 import { CLOCK, Clock } from '../nutrition/application/ports/clock.port';
 
 @Module({
-  imports: [IdentityModule, HouseholdsModule, NutritionModule],
+  imports: [IdentityModule, HouseholdsModule, NutritionModule, MealTrackingModule],
   controllers: [HealthTrackingController],
   providers: [
     { provide: BODY_WEIGHT_REPOSITORY, useClass: PrismaBodyWeightRepository },
     { provide: BODY_MEASUREMENT_REPOSITORY, useClass: PrismaBodyMeasurementRepository },
+    { provide: DIGESTIVE_SYMPTOM_REPOSITORY, useClass: PrismaDigestiveSymptomRepository },
     {
       provide: MEASUREMENT_CONFIGURATION_REPOSITORY,
       useClass: PrismaMeasurementConfigurationRepository,
@@ -183,6 +218,133 @@ import { CLOCK, Clock } from '../nutrition/application/ports/clock.port';
         clock: Clock,
       ) => new ListBodyMeasurementsQuery(measurements, { profiles, households, clock }),
     },
+    ...digestiveProviders(),
+    {
+      provide: GET_BODY_PROGRESS_QUERY,
+      inject: [
+        BODY_WEIGHT_REPOSITORY,
+        BODY_MEASUREMENT_REPOSITORY,
+        ADULT_PROFILE_REPOSITORY,
+        HOUSEHOLD_REPOSITORY,
+      ],
+      useFactory: (
+        weights: BodyWeightRepository,
+        measurements: BodyMeasurementRepository,
+        profiles: AdultProfileRepository,
+        households: HouseholdRepository,
+      ) => new GetBodyProgressQuery(weights, measurements, { profiles, households }),
+    },
+    {
+      provide: GET_DIGESTIVE_SYMPTOM_INSIGHTS_QUERY,
+      inject: [
+        DIGESTIVE_SYMPTOM_REPOSITORY,
+        ADULT_PROFILE_REPOSITORY,
+        HOUSEHOLD_REPOSITORY,
+        MEAL_REPOSITORY,
+      ],
+      useFactory: (
+        symptoms: DigestiveSymptomRepository,
+        profiles: AdultProfileRepository,
+        households: HouseholdRepository,
+        meals: MealRepository,
+      ) => new GetDigestiveSymptomInsightsQuery(symptoms, { profiles, households, meals }),
+    },
   ],
 })
 export class HealthTrackingModule {}
+
+function digestiveProviders() {
+  const deps = [
+    ADULT_PROFILE_REPOSITORY,
+    HOUSEHOLD_REPOSITORY,
+    MEAL_REPOSITORY,
+    NUTRITION_FOOD_REPOSITORY,
+    CLOCK,
+  ];
+  const makeDeps = (
+    profiles: AdultProfileRepository,
+    households: HouseholdRepository,
+    meals: MealRepository,
+    foods: NutritionFoodRepository,
+    clock: Clock,
+  ) => ({ profiles, households, meals, foods, clock });
+  return [
+    {
+      provide: REGISTER_DIGESTIVE_SYMPTOM_USE_CASE,
+      inject: [DIGESTIVE_SYMPTOM_REPOSITORY, ...deps],
+      useFactory: (
+        s: DigestiveSymptomRepository,
+        p: AdultProfileRepository,
+        h: HouseholdRepository,
+        m: MealRepository,
+        f: NutritionFoodRepository,
+        c: Clock,
+      ) => new RegisterDigestiveSymptomUseCase(s, makeDeps(p, h, m, f, c)),
+    },
+    {
+      provide: RESOLVE_DIGESTIVE_SYMPTOM_USE_CASE,
+      inject: [DIGESTIVE_SYMPTOM_REPOSITORY, ...deps],
+      useFactory: (
+        s: DigestiveSymptomRepository,
+        p: AdultProfileRepository,
+        h: HouseholdRepository,
+        m: MealRepository,
+        f: NutritionFoodRepository,
+        c: Clock,
+      ) => new ResolveDigestiveSymptomUseCase(s, makeDeps(p, h, m, f, c)),
+    },
+    {
+      provide: CORRECT_DIGESTIVE_SYMPTOM_USE_CASE,
+      inject: [DIGESTIVE_SYMPTOM_REPOSITORY, ...deps],
+      useFactory: (
+        s: DigestiveSymptomRepository,
+        p: AdultProfileRepository,
+        h: HouseholdRepository,
+        m: MealRepository,
+        f: NutritionFoodRepository,
+        c: Clock,
+      ) => new CorrectDigestiveSymptomUseCase(s, makeDeps(p, h, m, f, c)),
+    },
+    {
+      provide: GET_DIGESTIVE_SYMPTOM_QUERY,
+      inject: [DIGESTIVE_SYMPTOM_REPOSITORY, ...deps],
+      useFactory: (
+        s: DigestiveSymptomRepository,
+        p: AdultProfileRepository,
+        h: HouseholdRepository,
+        m: MealRepository,
+        f: NutritionFoodRepository,
+        c: Clock,
+      ) => new GetDigestiveSymptomQuery(s, makeDeps(p, h, m, f, c)),
+    },
+    {
+      provide: LIST_DIGESTIVE_SYMPTOMS_QUERY,
+      inject: [DIGESTIVE_SYMPTOM_REPOSITORY, ...deps],
+      useFactory: (
+        s: DigestiveSymptomRepository,
+        p: AdultProfileRepository,
+        h: HouseholdRepository,
+        m: MealRepository,
+        f: NutritionFoodRepository,
+        c: Clock,
+      ) => new ListDigestiveSymptomsQuery(s, makeDeps(p, h, m, f, c)),
+    },
+    {
+      provide: GET_RECENT_MEALS_FOR_SYMPTOM_LINK_QUERY,
+      inject: [
+        MEAL_REPOSITORY,
+        ADULT_PROFILE_REPOSITORY,
+        HOUSEHOLD_REPOSITORY,
+        NUTRITION_FOOD_REPOSITORY,
+        CLOCK,
+      ],
+      useFactory: (
+        m: MealRepository,
+        p: AdultProfileRepository,
+        h: HouseholdRepository,
+        f: NutritionFoodRepository,
+        c: Clock,
+      ) => new GetRecentMealsForSymptomLinkQuery(makeDeps(p, h, m, f, c)),
+    },
+  ];
+}

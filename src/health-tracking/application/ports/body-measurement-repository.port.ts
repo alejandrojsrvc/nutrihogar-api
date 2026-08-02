@@ -10,6 +10,10 @@ export interface BodyMeasurementListFilters {
   page: number;
   limit: number;
 }
+export type BodyMeasurementProgressFilters = Pick<
+  BodyMeasurementListFilters,
+  'dateFrom' | 'dateTo' | 'type'
+>;
 
 export interface BodyMeasurementPage {
   items: BodyMeasurementEntry[];
@@ -26,4 +30,8 @@ export interface BodyMeasurementRepository {
     adultProfileId: string,
     filters: BodyMeasurementListFilters,
   ): Promise<BodyMeasurementPage>;
+  listForProgress(
+    adultProfileId: string,
+    filters: BodyMeasurementProgressFilters,
+  ): Promise<BodyMeasurementEntry[]>;
 }

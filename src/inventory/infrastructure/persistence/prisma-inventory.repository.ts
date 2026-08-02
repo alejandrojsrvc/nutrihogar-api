@@ -139,7 +139,7 @@ export class PrismaInventoryRepository
   async hasPreparedBatchConsumption(batchId: string): Promise<boolean> {
     const rows = await this.prisma.$queryRaw<
       { id: string }[]
-    >`SELECT id FROM preparation_inventory_consumptions WHERE prepared_batch_id = ${batchId} LIMIT 1`;
+    >`SELECT id FROM preparation_inventory_consumptions WHERE prepared_batch_id = CAST(${batchId} AS uuid) LIMIT 1`;
     return rows.length > 0;
   }
 

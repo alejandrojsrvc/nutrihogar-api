@@ -56,7 +56,7 @@ async function savePlan(client: Prisma.TransactionClient, plan: WeeklyPlan): Pro
           nutritionSnapshot:
             meal.nutritionSnapshot === null ? Prisma.JsonNull : toInputJson(meal.nutritionSnapshot),
           participants: {
-            create: meal.participants.map(({ plannedMealId, ...participant }) => participant),
+            create: meal.participants.map((participant) => withoutPlannedMealId(participant)),
           },
         })) as unknown as Prisma.PlannedMealCreateWithoutWeeklyPlanInput[],
       },
@@ -84,4 +84,12 @@ function withoutParticipants(meal: ReturnType<typeof PrismaPlannedMealMapper.toP
 
 function toInputJson(value: Record<string, unknown>): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function withoutPlannedMealId(
+  participant: ReturnType<typeof PrismaPlannedMealMapper.toPersistence>['participants'][number],
+) {
+  const { plannedMealId, ...data } = participant;
+  void plannedMealId;
+  return data;
 }

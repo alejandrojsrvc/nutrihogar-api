@@ -88,10 +88,7 @@ export class AiProposalValidator {
     }
     const inventoryRequirements = new Map<string, number>();
     for (const reference of references) {
-      const food = await this.foods.findVisibleById({
-        actorId: input.actorId,
-        foodId: reference.foodId,
-      });
+      const food = await this.foods.findVisibleById(input.actorId, reference.foodId);
       if (!food) {
         errors.push(
           block(

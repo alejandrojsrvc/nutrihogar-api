@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import type {
   AiWeeklyPlanAcceptanceTransaction,
   AiWeeklyPlanAcceptanceUnitOfWork,
@@ -53,8 +53,12 @@ async function savePlan(client: Prisma.TransactionClient, plan: WeeklyPlan): Pro
       meals: {
         create: data.meals.map((meal) => ({
           ...withoutParticipants(meal),
-          participants: { create: meal.participants },
-        })),
+          nutritionSnapshot:
+            meal.nutritionSnapshot === null ? Prisma.JsonNull : toInputJson(meal.nutritionSnapshot),
+          participants: {
+            create: meal.participants.map(({ plannedMealId, ...participant }) => participant),
+          },
+        })) as unknown as Prisma.PlannedMealCreateWithoutWeeklyPlanInput[],
       },
     },
   });
@@ -76,4 +80,8 @@ function withoutParticipants(meal: ReturnType<typeof PrismaPlannedMealMapper.toP
   const { participants, ...data } = meal;
   void participants;
   return data;
+}
+
+function toInputJson(value: Record<string, unknown>): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }

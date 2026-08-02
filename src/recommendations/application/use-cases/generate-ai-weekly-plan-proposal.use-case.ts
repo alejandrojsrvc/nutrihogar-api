@@ -73,8 +73,6 @@ export class GenerateAiWeeklyPlanProposalUseCase {
       householdId: command.householdId,
       actorId: command.actorId,
       restrictions: readRestrictions(context),
-      weekStart: command.weekStart,
-      mealTypes: command.mealTypes,
       validatedAt: new Date(),
     });
     proposal.attachValidation(validation);

@@ -34,8 +34,8 @@ export class PrismaAiProposalValidationMapper {
       restrictionsValid: props.restrictionsValid,
       inventoryValid: props.inventoryValid,
       budgetEvaluated: props.budgetEvaluated,
-      warnings: props.warnings,
-      errors: props.errors,
+      warnings: toInputJson(props.warnings),
+      errors: toInputJson(props.errors),
       validatedAt: props.validatedAt,
     };
   }
@@ -60,5 +60,9 @@ export class PrismaAiProposalValidationMapper {
 
 function asMessages(value: Prisma.JsonValue): AiProposalValidationProps['warnings'] {
   if (!Array.isArray(value)) throw new Error('AI validation messages must be a JSON array.');
-  return value as AiProposalValidationProps['warnings'];
+  return value as unknown as AiProposalValidationProps['warnings'];
+}
+
+function toInputJson(value: unknown): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }

@@ -2,6 +2,8 @@ import type { Prisma } from '@prisma/client';
 import { AiGeneratedProposal } from '../../domain/entities/ai-generated-proposal';
 import type { AiGeneratedProposalProps } from '../../domain/models/ai-recommendation.models';
 import { aiProposalValidationInclude } from './prisma-ai-proposal-validation.mapper';
+import { PrismaAiProposalValidationMapper } from './prisma-ai-proposal-validation.mapper';
+import { PrismaAiProposalDecisionMapper } from './prisma-ai-proposal-decision.mapper';
 
 export const aiGeneratedProposalInclude = {
   validation: aiProposalValidationInclude,
@@ -22,7 +24,7 @@ export class PrismaAiProposalMapper {
       requestId: props.requestId,
       provider: props.provider,
       model: props.model,
-      structuredPayload: props.structuredPayload,
+      structuredPayload: toInputJson(props.structuredPayload),
       rawResponseReference: props.rawResponseReference,
       status: props.status,
       generatedAt: props.generatedAt,
@@ -51,8 +53,12 @@ export class PrismaAiProposalMapper {
       estimatedCost: record.estimatedCost?.toString() ?? null,
       latencyMilliseconds: record.latencyMilliseconds,
       correlationId: record.correlationId,
-      validation: record.validation,
-      decision: record.decision,
+      validation: record.validation
+        ? PrismaAiProposalValidationMapper.toDomain(record.validation).toProps()
+        : null,
+      decision: record.decision
+        ? PrismaAiProposalDecisionMapper.toDomain(record.decision).toProps()
+        : null,
     };
     return AiGeneratedProposal.reconstitute(props);
   }
@@ -63,4 +69,8 @@ function asStructuredPayload(value: Prisma.JsonValue): Record<string, unknown> {
     throw new Error('AI proposal payload must be a JSON object.');
   }
   return value;
+}
+
+function toInputJson(value: Record<string, unknown>): Prisma.InputJsonValue {
+  return value as Prisma.InputJsonValue;
 }

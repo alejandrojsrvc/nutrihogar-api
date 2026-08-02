@@ -97,6 +97,11 @@ export interface AiGeneratedProposalProps {
   status: AiProposalStatus;
   generatedAt: Date;
   expiresAt: Date | null;
+  inputTokenCount?: number | null;
+  outputTokenCount?: number | null;
+  estimatedCost?: string | null;
+  latencyMilliseconds?: number | null;
+  correlationId?: string | null;
   validation: AiProposalValidationProps | null;
   decision: AiProposalDecisionProps | null;
 }

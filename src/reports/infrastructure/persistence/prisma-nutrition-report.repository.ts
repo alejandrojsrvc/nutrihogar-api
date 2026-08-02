@@ -24,7 +24,7 @@ const planInclude = {
     orderBy: [{ date: 'asc' }, { position: 'asc' }, { id: 'asc' }],
     include: { participants: { orderBy: { id: 'asc' } } },
   },
-};
+} satisfies Prisma.WeeklyPlanInclude;
 
 @Injectable()
 export class PrismaNutritionReportRepository

@@ -136,7 +136,7 @@ export class GetWeeklyNutritionReportQuery {
       const date = addDays(command.weekStart, index);
       const range = dateRange(date, timezone);
       return toDaily(
-        { profile, timezone, goals },
+        { profile, timezone },
         date,
         meals.filter((meal) => meal.consumedAt >= range.from && meal.consumedAt < range.to),
         findGoal(goals, range.from),
@@ -154,7 +154,7 @@ export class GetWeeklyNutritionReportQuery {
       const date = addDays(command.weekStart, index - 7);
       const range = dateRange(date, timezone);
       return toDaily(
-        { profile, timezone, goals },
+        { profile, timezone },
         date,
         previousMeals.filter((meal) => meal.consumedAt >= range.from && meal.consumedAt < range.to),
         findGoal(goals, range.from),

@@ -12,7 +12,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
@@ -75,6 +83,16 @@ import {
   AdherenceQueryDto,
 } from './dto/meal-planning.dto';
 import {
+  AdherenceResponseDto,
+  InventoryComparisonResponseDto,
+  QuantitySuggestionResponseDto,
+  WeeklyPlanListResponseDto,
+  WeeklyPlanResponseDto,
+  WeeklyRequirementsResponseDto,
+} from './dto/meal-planning-response.dto';
+import { PreparedBatchResponseDto } from '../../../recipes/presentation/http/dto/prepared-batch-response.dto';
+import { MealResponseDto } from '../../../meal-tracking/presentation/http/dto/meal-response.dto';
+import {
   CALCULATE_WEEKLY_ADHERENCE_USE_CASE,
   CalculateWeeklyAdherenceUseCase,
   LINK_CONSUMED_MEAL_TO_PLANNED_MEAL_USE_CASE,
@@ -131,7 +149,9 @@ export class MealPlanningController {
   ) {}
 
   @Post('households/:householdId/weekly-plans')
-  @ApiCreatedResponse({ description: 'Weekly plan created.' })
+  @ApiOperation({ summary: 'Crea un plan semanal para un hogar' })
+  @ApiParam({ name: 'householdId', format: 'uuid' })
+  @ApiCreatedResponse({ type: WeeklyPlanResponseDto, description: 'Plan semanal creado.' })
   async create(
     @Param('householdId') householdId: string,
     @Body() body: CreateWeeklyPlanRequestDto,
@@ -145,7 +165,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Get('households/:householdId/weekly-plans') async list(
+  @Get('households/:householdId/weekly-plans')
+  @ApiOperation({ summary: 'Lista los planes semanales de un hogar' })
+  @ApiParam({ name: 'householdId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanListResponseDto })
+  async list(
     @Param('householdId') householdId: string,
     @Query() query: ListWeeklyPlansQueryDto,
     @CurrentUser() user: CurrentUserModel,
@@ -158,7 +182,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Get('weekly-plans/:weeklyPlanId') async get(
+  @Get('weekly-plans/:weeklyPlanId')
+  @ApiOperation({ summary: 'Obtiene un plan semanal' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async get(
     @Param('weeklyPlanId') id: string,
     @CurrentUser() user: CurrentUserModel,
   ): Promise<WeeklyPlanResponse> {
@@ -168,7 +196,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Patch('weekly-plans/:weeklyPlanId') async update(
+  @Patch('weekly-plans/:weeklyPlanId')
+  @ApiOperation({ summary: 'Actualiza el presupuesto de un plan semanal' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async update(
     @Param('weeklyPlanId') id: string,
     @Body() body: UpdateWeeklyPlanRequestDto,
     @CurrentUser() user: CurrentUserModel,
@@ -181,7 +213,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Post('weekly-plans/:weeklyPlanId/activate') async activate(
+  @Post('weekly-plans/:weeklyPlanId/activate')
+  @ApiOperation({ summary: 'Activa un plan semanal' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async activate(
     @Param('weeklyPlanId') id: string,
     @CurrentUser() user: CurrentUserModel,
   ): Promise<WeeklyPlanResponse> {
@@ -191,7 +227,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Post('weekly-plans/:weeklyPlanId/complete') async complete(
+  @Post('weekly-plans/:weeklyPlanId/complete')
+  @ApiOperation({ summary: 'Completa un plan semanal' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async complete(
     @Param('weeklyPlanId') id: string,
     @CurrentUser() user: CurrentUserModel,
   ): Promise<WeeklyPlanResponse> {
@@ -201,7 +241,12 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Delete('weekly-plans/:weeklyPlanId') @HttpCode(HttpStatus.NO_CONTENT) async cancel(
+  @Delete('weekly-plans/:weeklyPlanId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Cancela un plan semanal' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'Plan semanal cancelado.' })
+  async cancel(
     @Param('weeklyPlanId') id: string,
     @CurrentUser() user: CurrentUserModel,
   ): Promise<void> {
@@ -211,7 +256,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Post('weekly-plans/:weeklyPlanId/meals') async add(
+  @Post('weekly-plans/:weeklyPlanId/meals')
+  @ApiOperation({ summary: 'Agrega una comida planificada' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiCreatedResponse({ type: WeeklyPlanResponseDto })
+  async add(
     @Param('weeklyPlanId') id: string,
     @Body() body: PlannedMealRequestDto,
     @CurrentUser() user: CurrentUserModel,
@@ -224,7 +273,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Patch('planned-meals/:plannedMealId') async editMeal(
+  @Patch('planned-meals/:plannedMealId')
+  @ApiOperation({ summary: 'Edita una comida planificada' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async editMeal(
     @Param('plannedMealId') id: string,
     @Body() body: UpdatePlannedMealRequestDto,
     @CurrentUser() user: CurrentUserModel,
@@ -237,7 +290,12 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Delete('planned-meals/:plannedMealId') @HttpCode(HttpStatus.NO_CONTENT) async deleteMeal(
+  @Delete('planned-meals/:plannedMealId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Elimina una comida planificada' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'Comida planificada eliminada.' })
+  async deleteMeal(
     @Param('plannedMealId') id: string,
     @CurrentUser() user: CurrentUserModel,
   ): Promise<void> {
@@ -247,7 +305,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Post('planned-meals/:plannedMealId/replace') async replace(
+  @Post('planned-meals/:plannedMealId/replace')
+  @ApiOperation({ summary: 'Reemplaza una comida planificada' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async replace(
     @Param('plannedMealId') id: string,
     @Body() body: ReplacePlannedMealRequestDto,
     @CurrentUser() user: CurrentUserModel,
@@ -260,7 +322,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Post('planned-meals/:plannedMealId/participants') async assign(
+  @Post('planned-meals/:plannedMealId/participants')
+  @ApiOperation({ summary: 'Asigna un adulto a una comida planificada' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async assign(
     @Param('plannedMealId') id: string,
     @Body() body: AssignParticipantRequestDto,
     @CurrentUser() user: CurrentUserModel,
@@ -273,7 +339,11 @@ export class MealPlanningController {
       rethrowMealPlanningHttpError(e);
     }
   }
-  @Patch('planned-meal-participants/:participantId') async editParticipant(
+  @Patch('planned-meal-participants/:participantId')
+  @ApiOperation({ summary: 'Actualiza cantidades de un participante' })
+  @ApiParam({ name: 'participantId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
+  async editParticipant(
     @Param('participantId') id: string,
     @Body() body: UpdateParticipantRequestDto,
     @CurrentUser() user: CurrentUserModel,
@@ -288,6 +358,9 @@ export class MealPlanningController {
   }
   @Delete('planned-meal-participants/:participantId')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Elimina un participante de una comida' })
+  @ApiParam({ name: 'participantId', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'Participante eliminado.' })
   async deleteParticipant(
     @Param('participantId') id: string,
     @CurrentUser() user: CurrentUserModel,
@@ -300,6 +373,9 @@ export class MealPlanningController {
   }
 
   @Post('planned-meals/:plannedMealId/quantities/propose')
+  @ApiOperation({ summary: 'Propone cantidades por participante' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: QuantitySuggestionResponseDto, isArray: true })
   async propose(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.proposeQuantities.execute(user.id, id);
@@ -309,6 +385,9 @@ export class MealPlanningController {
   }
 
   @Get('planned-meals/:plannedMealId/quantities')
+  @ApiOperation({ summary: 'Obtiene las cantidades sugeridas' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: QuantitySuggestionResponseDto, isArray: true })
   async quantities(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.getQuantities.execute(user.id, id);
@@ -318,6 +397,9 @@ export class MealPlanningController {
   }
 
   @Post('planned-meals/:plannedMealId/quantities/accept-suggestions')
+  @ApiOperation({ summary: 'Acepta las cantidades sugeridas' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
   async accept(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return toWeeklyPlanResponse(await this.acceptQuantities.execute(user.id, id));
@@ -327,6 +409,9 @@ export class MealPlanningController {
   }
 
   @Get('weekly-plans/:weeklyPlanId/requirements')
+  @ApiOperation({ summary: 'Calcula los requerimientos de ingredientes' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyRequirementsResponseDto })
   async requirementsQuery(
     @Param('weeklyPlanId') id: string,
     @CurrentUser() user: CurrentUserModel,
@@ -339,6 +424,9 @@ export class MealPlanningController {
   }
 
   @Get('weekly-plans/:weeklyPlanId/inventory-comparison')
+  @ApiOperation({ summary: 'Compara los requerimientos con el inventario' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: InventoryComparisonResponseDto })
   async compareInventory(@Param('weeklyPlanId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.inventoryComparison.execute(user.id, id);
@@ -348,6 +436,9 @@ export class MealPlanningController {
   }
 
   @Post('planned-meals/:plannedMealId/preparation')
+  @ApiOperation({ summary: 'Inicia la preparación de una comida' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiCreatedResponse({ type: PreparedBatchResponseDto })
   async prepare(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.startPreparation.execute(user.id, id);
@@ -356,6 +447,9 @@ export class MealPlanningController {
     }
   }
   @Get('planned-meals/:plannedMealId/preparation')
+  @ApiOperation({ summary: 'Obtiene la preparación de una comida' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: PreparedBatchResponseDto })
   async preparation(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.startPreparation.get(user.id, id);
@@ -364,6 +458,9 @@ export class MealPlanningController {
     }
   }
   @Post('consumed-meals/:consumedMealId/link')
+  @ApiOperation({ summary: 'Vincula una comida consumida con una comida planificada' })
+  @ApiParam({ name: 'consumedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: WeeklyPlanResponseDto })
   async link(
     @Param('consumedMealId') mealId: string,
     @Body() body: LinkConsumedMealRequestDto,
@@ -376,6 +473,9 @@ export class MealPlanningController {
     }
   }
   @Get('planned-meals/:plannedMealId/consumption')
+  @ApiOperation({ summary: 'Obtiene el consumo vinculado' })
+  @ApiParam({ name: 'plannedMealId', format: 'uuid' })
+  @ApiOkResponse({ type: MealResponseDto, nullable: true })
   async consumption(@Param('plannedMealId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.linkConsumption.get(user.id, id);
@@ -384,6 +484,9 @@ export class MealPlanningController {
     }
   }
   @Get('weekly-plans/:weeklyPlanId/adherence')
+  @ApiOperation({ summary: 'Calcula la adherencia de un plan semanal' })
+  @ApiParam({ name: 'weeklyPlanId', format: 'uuid' })
+  @ApiOkResponse({ type: AdherenceResponseDto })
   async planAdherence(@Param('weeklyPlanId') id: string, @CurrentUser() user: CurrentUserModel) {
     try {
       return await this.adherence.execute(user.id, { weeklyPlanId: id });
@@ -392,6 +495,9 @@ export class MealPlanningController {
     }
   }
   @Get('households/:householdId/adherence')
+  @ApiOperation({ summary: 'Calcula la adherencia del hogar' })
+  @ApiParam({ name: 'householdId', format: 'uuid' })
+  @ApiOkResponse({ type: AdherenceResponseDto })
   async householdAdherence(
     @Param('householdId') householdId: string,
     @Query() query: AdherenceQueryDto,

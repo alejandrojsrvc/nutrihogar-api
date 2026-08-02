@@ -4,6 +4,7 @@ import { MealItemView, MealNutrientSnapshotView, MealView } from '../../domain/m
 
 export type MealRecord = Meal & {
   items: (MealItem & { nutrientSnapshots: MealItemNutrientSnapshot[] })[];
+  plannedMeals?: { id: string }[];
 };
 
 export class PrismaMealMapper {
@@ -22,6 +23,7 @@ export class PrismaMealMapper {
       updatedAt: record.updatedAt,
       deletedAt: record.deletedAt,
       items: record.items.map((item) => toItemView(item)),
+      plannedMealId: record.plannedMeals?.[0]?.id ?? null,
     };
   }
 }

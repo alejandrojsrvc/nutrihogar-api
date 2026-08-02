@@ -51,7 +51,25 @@ export class PrismaShoppingListRepository implements ShoppingListRepository {
       await client.shoppingListItem.deleteMany({ where: { shoppingListId: data.id } });
       if (data.items.length)
         await client.shoppingListItem.createMany({
-          data: data.items.map((item) => ({ ...item, shoppingListId: data.id })),
+          data: data.items.map((item) => ({
+            id: item.id,
+            shoppingListId: data.id,
+            foodId: item.foodId,
+            name: item.name,
+            normalizedName: item.normalizedName,
+            quantity: item.quantity,
+            unit: item.unit,
+            source: item.source,
+            sourceReferenceId: item.sourceReferenceId,
+            status: item.status,
+            actorId: item.actorId,
+            createdAt: item.createdAt,
+            updatedAt: item.updatedAt,
+            purchasedAt: item.purchasedAt,
+            purchasedById: item.purchasedById,
+            removedAt: item.removedAt,
+            removedById: item.removedById,
+          })),
         });
     });
   }

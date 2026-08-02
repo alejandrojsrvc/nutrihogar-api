@@ -161,6 +161,7 @@ function toReviewResponse(
   const differences = 'review' in result ? result.differences : null;
   return {
     ...review,
+    reasons: [...review.reasons],
     proposal: proposal
       ? {
           id: proposal.id,
@@ -172,12 +173,13 @@ function toReviewResponse(
         }
       : null,
     differences: differences
-      ? Object.fromEntries(
-          Object.entries(differences).map(([key, value]) => [
-            key,
-            (value as { toNumber: () => number }).toNumber(),
-          ]),
-        )
+      ? {
+          calories: differences.calories.toNumber(),
+          proteinGrams: differences.proteinGrams.toNumber(),
+          carbohydrateGrams: differences.carbohydrateGrams.toNumber(),
+          fatGrams: differences.fatGrams.toNumber(),
+          fiberGrams: differences.fiberGrams.toNumber(),
+        }
       : null,
   };
 }

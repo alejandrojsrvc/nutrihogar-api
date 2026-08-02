@@ -223,7 +223,7 @@ export class PrismaNutritionGoalUnitOfWork
           fiberGrams: suggestion.suggestedFiberGrams,
           goalType: goalType(suggestion.calculationInput),
           calculationMethod: suggestion.calculationMethod,
-          calculationInput: suggestion.calculationInput,
+          calculationInput: PrismaNutritionGoalMapper.snapshotToPrisma(suggestion.calculationInput),
           confirmedById: input.actorId,
         },
       });

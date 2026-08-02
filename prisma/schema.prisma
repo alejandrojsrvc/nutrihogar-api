@@ -90,6 +90,12 @@ enum NutritionGoalSuggestionStatus {
   EXPIRED
 }
 
+enum NutritionGoalReviewTerminalAction {
+  ACCEPTED
+  REJECTED
+  POSTPONED
+}
+
 enum MealType {
   BREAKFAST
   LUNCH
@@ -493,6 +499,7 @@ model AdultProfile {
   dietaryRestrictions      DietaryRestriction[]
   nutritionGoalSuggestions NutritionGoalSuggestion[]
   nutritionGoals           NutritionGoal[]
+  nutritionGoalReviews     NutritionGoalReview[]
   meals                    Meal[]
   servedPortions           ServedPortion[]
   plannedMealParticipants  PlannedMealParticipant[]
@@ -522,6 +529,7 @@ model NutritionGoalSuggestion {
   createdAt                  DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
   expiresAt                  DateTime                      @map("expires_at") @db.Timestamptz(6)
   adultProfile               AdultProfile                  @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  review                      NutritionGoalReview?
 
   @@index([adultProfileId, status])
   @@index([status, expiresAt])
@@ -551,6 +559,27 @@ model NutritionGoal {
   @@index([adultProfileId, validFrom])
   @@index([confirmedById])
   @@map("nutrition_goals")
+}
+
+model NutritionGoalReview {
+  id                  String                         @id @default(uuid()) @db.Uuid
+  adultProfileId      String                         @map("adult_profile_id") @db.Uuid
+  outcome             String                         @db.VarChar(50)
+  reasons             Json
+  evaluatedAt         DateTime                       @map("evaluated_at") @db.Timestamptz(6)
+  postponedUntil      DateTime?                      @map("postponed_until") @db.Timestamptz(6)
+  proposalSuggestionId String?                       @unique @map("proposal_suggestion_id") @db.Uuid
+  terminalAction      NutritionGoalReviewTerminalAction? @map("terminal_action")
+  actedById           String?                        @map("acted_by_id") @db.Uuid
+  actedAt             DateTime?                      @map("acted_at") @db.Timestamptz(6)
+  createdAt           DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  adultProfile        AdultProfile                   @relation(fields: [adultProfileId], references: [id], onDelete: Cascade)
+  proposalSuggestion  NutritionGoalSuggestion?       @relation(fields: [proposalSuggestionId], references: [id], onDelete: SetNull)
+
+  @@index([adultProfileId, evaluatedAt])
+  @@index([adultProfileId, postponedUntil])
+  @@map("nutrition_goal_reviews")
 }
 
 model DietaryRestriction {

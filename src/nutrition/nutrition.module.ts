@@ -53,15 +53,47 @@ import { PrismaNutritionGoalUnitOfWork } from './infrastructure/persistence/pris
 import { PrismaNutritionProfileRepository } from './infrastructure/persistence/prisma-nutrition-profile.repository';
 import { NutritionGoalCalculator } from './domain/services/nutrition-goal-calculator';
 import { NutritionGoalSuggestionsController } from './presentation/http/nutrition-goal-suggestions.controller';
+import { NutritionGoalReviewController } from './presentation/http/nutrition-goal-review.controller';
+import { NutritionGoalReviewEvaluator } from './domain/services/nutrition-goal-review-evaluator';
+import {
+  NUTRITION_GOAL_REVIEW_REPOSITORY,
+  NUTRITION_GOAL_REVIEW_UNIT_OF_WORK,
+  NutritionGoalReviewRepository,
+  NutritionGoalReviewUnitOfWork,
+} from './application/ports/nutrition-goal-review-repository.port';
+import { PrismaNutritionGoalReviewRepository } from './infrastructure/persistence/prisma-nutrition-goal-review.repository';
+import {
+  GET_NUTRITION_GOAL_REVIEW_QUERY,
+  GetNutritionGoalReviewQuery,
+} from './application/use-cases/get-nutrition-goal-review.query';
+import {
+  GENERATE_REVIEWED_NUTRITION_GOAL_PROPOSAL_USE_CASE,
+  GenerateReviewedNutritionGoalProposalUseCase,
+} from './application/use-cases/generate-reviewed-nutrition-goal-proposal.use-case';
+import {
+  ACCEPT_NUTRITION_GOAL_REVIEW_USE_CASE,
+  AcceptNutritionGoalReviewUseCase,
+} from './application/use-cases/accept-nutrition-goal-review.use-case';
+import {
+  REJECT_NUTRITION_GOAL_REVIEW_USE_CASE,
+  RejectNutritionGoalReviewUseCase,
+} from './application/use-cases/reject-nutrition-goal-review.use-case';
+import {
+  POSTPONE_NUTRITION_GOAL_REVIEW_USE_CASE,
+  PostponeNutritionGoalReviewUseCase,
+} from './application/use-cases/postpone-nutrition-goal-review.use-case';
 
 @Module({
   imports: [IdentityModule],
-  controllers: [NutritionGoalSuggestionsController],
+  controllers: [NutritionGoalSuggestionsController, NutritionGoalReviewController],
   providers: [
     { provide: NUTRITION_FOOD_REPOSITORY, useClass: PrismaNutritionFoodRepository },
     { provide: CLOCK, useClass: SystemClock },
     { provide: NUTRITION_GOAL_REPOSITORY, useClass: PrismaNutritionGoalRepository },
     { provide: NUTRITION_GOAL_UNIT_OF_WORK, useClass: PrismaNutritionGoalUnitOfWork },
+    { provide: NUTRITION_GOAL_REVIEW_REPOSITORY, useClass: PrismaNutritionGoalReviewRepository },
+    { provide: NUTRITION_GOAL_REVIEW_UNIT_OF_WORK, useExisting: NUTRITION_GOAL_UNIT_OF_WORK },
+    NutritionGoalReviewEvaluator,
     { provide: NUTRITION_PROFILE_REPOSITORY, useClass: PrismaNutritionProfileRepository },
     {
       provide: NUTRITION_ENGINE_SERVICE,
@@ -133,6 +165,85 @@ import { NutritionGoalSuggestionsController } from './presentation/http/nutritio
       inject: [NUTRITION_GOAL_REPOSITORY],
       useFactory: (goals: NutritionGoalRepository) => new ListNutritionGoalsUseCase(goals),
     },
+    {
+      provide: GET_NUTRITION_GOAL_REVIEW_QUERY,
+      inject: [
+        NUTRITION_GOAL_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_UNIT_OF_WORK,
+        CLOCK,
+        NutritionGoalReviewEvaluator,
+      ],
+      useFactory: (
+        goals: NutritionGoalRepository,
+        reviews: NutritionGoalReviewRepository,
+        uow: NutritionGoalReviewUnitOfWork,
+        clock: Clock,
+        evaluator: NutritionGoalReviewEvaluator,
+      ) => new GetNutritionGoalReviewQuery(goals, reviews, uow, evaluator, clock),
+    },
+    {
+      provide: GENERATE_REVIEWED_NUTRITION_GOAL_PROPOSAL_USE_CASE,
+      inject: [
+        NUTRITION_GOAL_REPOSITORY,
+        GET_NUTRITION_GOAL_REVIEW_QUERY,
+        NUTRITION_GOAL_REVIEW_UNIT_OF_WORK,
+        GENERATE_NUTRITION_GOAL_SUGGESTION_USE_CASE,
+        CLOCK,
+      ],
+      useFactory: (
+        goals: NutritionGoalRepository,
+        review: GetNutritionGoalReviewQuery,
+        uow: NutritionGoalReviewUnitOfWork,
+        generate: GenerateNutritionGoalSuggestionUseCase,
+        clock: Clock,
+      ) => new GenerateReviewedNutritionGoalProposalUseCase(goals, review, uow, generate, clock),
+    },
+    {
+      provide: ACCEPT_NUTRITION_GOAL_REVIEW_USE_CASE,
+      inject: [
+        NUTRITION_GOAL_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_UNIT_OF_WORK,
+        CLOCK,
+      ],
+      useFactory: (
+        goals: NutritionGoalRepository,
+        reviews: NutritionGoalReviewRepository,
+        uow: NutritionGoalReviewUnitOfWork,
+        clock: Clock,
+      ) => new AcceptNutritionGoalReviewUseCase(goals, reviews, uow, clock),
+    },
+    {
+      provide: REJECT_NUTRITION_GOAL_REVIEW_USE_CASE,
+      inject: [
+        NUTRITION_GOAL_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_UNIT_OF_WORK,
+        CLOCK,
+      ],
+      useFactory: (
+        goals: NutritionGoalRepository,
+        reviews: NutritionGoalReviewRepository,
+        uow: NutritionGoalReviewUnitOfWork,
+        clock: Clock,
+      ) => new RejectNutritionGoalReviewUseCase(goals, reviews, uow, clock),
+    },
+    {
+      provide: POSTPONE_NUTRITION_GOAL_REVIEW_USE_CASE,
+      inject: [
+        NUTRITION_GOAL_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_REPOSITORY,
+        NUTRITION_GOAL_REVIEW_UNIT_OF_WORK,
+        CLOCK,
+      ],
+      useFactory: (
+        goals: NutritionGoalRepository,
+        reviews: NutritionGoalReviewRepository,
+        uow: NutritionGoalReviewUnitOfWork,
+        clock: Clock,
+      ) => new PostponeNutritionGoalReviewUseCase(goals, reviews, uow, clock),
+    },
   ],
   exports: [
     NUTRITION_FOOD_REPOSITORY,
@@ -145,6 +256,7 @@ import { NutritionGoalSuggestionsController } from './presentation/http/nutritio
     REJECT_NUTRITION_GOAL_SUGGESTION_USE_CASE,
     GET_CURRENT_NUTRITION_GOAL_USE_CASE,
     LIST_NUTRITION_GOALS_USE_CASE,
+    GET_NUTRITION_GOAL_REVIEW_QUERY,
   ],
 })
 export class NutritionModule {}

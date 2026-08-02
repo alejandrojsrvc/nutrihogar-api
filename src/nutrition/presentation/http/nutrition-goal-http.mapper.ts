@@ -17,6 +17,13 @@ import {
   NutritionGoalSuggestionExpiredError,
   NutritionGoalSuggestionNotFoundError,
 } from '../../application/errors/nutrition-goal.errors';
+import {
+  NutritionGoalReviewAlreadyHandledError,
+  NutritionGoalReviewNoCurrentGoalError,
+  NutritionGoalReviewNotFoundError,
+  NutritionGoalReviewPostponedError,
+  NutritionGoalReviewProposalRequiredError,
+} from '../../application/errors/nutrition-goal-review.errors';
 
 export function rethrowNutritionGoalHttpError(error: unknown): never {
   if (
@@ -42,6 +49,17 @@ export function rethrowNutritionGoalHttpError(error: unknown): never {
   if (error instanceof NutritionGoalSuggestionNotFoundError) {
     throw new NotFoundException(error.message);
   }
+  if (
+    error instanceof NutritionGoalReviewNoCurrentGoalError ||
+    error instanceof NutritionGoalReviewNotFoundError
+  )
+    throw new NotFoundException(error.message);
+  if (
+    error instanceof NutritionGoalReviewAlreadyHandledError ||
+    error instanceof NutritionGoalReviewPostponedError ||
+    error instanceof NutritionGoalReviewProposalRequiredError
+  )
+    throw new ConflictException(error.message);
 
   throw error;
 }

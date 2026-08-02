@@ -455,6 +455,8 @@ function toSyncResult(record: SyncOperationRecord): InventorySyncOperationResult
     inventoryItemId: record.inventoryItemId ?? '',
     actorId: record.actorId,
     status: record.status,
+    conflictCode: record.status === 'CONFLICT' ? 'RETRYABLE' : null,
+    retryable: false,
     reason: record.reason,
     resultingVersion: record.resultingVersion,
     snapshot: record.snapshot ? deserializeSnapshot(record.snapshot) : null,

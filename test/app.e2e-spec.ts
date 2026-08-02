@@ -34,6 +34,35 @@ interface OpenApiResponseBody {
         security: Array<Record<string, string[]>>;
       };
     };
+    '/api/prepared-batches/{batchId}/inventory-consumption-preview': unknown;
+    '/api/prepared-leftovers/{leftoverId}/add-to-inventory': {
+      post: {
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                $ref: string;
+              };
+            };
+          };
+        };
+      };
+    };
+    '/api/households/{householdId}/inventory/sync': unknown;
+  };
+  components: {
+    schemas: {
+      PreparedBatchInventoryPreviewResponseDto: {
+        properties: Record<string, unknown>;
+      };
+      InventorySyncOperationRequestDto: {
+        properties: {
+          movementType: {
+            enum: string[];
+          };
+        };
+      };
+    };
   };
 }
 
@@ -109,6 +138,21 @@ describe('Application (e2e)', () => {
     expect(body.paths['/api/food-categories']).toBeDefined();
     expect(body.paths['/api/nutrients']).toBeDefined();
     expect(body.paths['/api/users/me'].get.security).toEqual([{ bearer: [] }]);
+    expect(
+      body.paths['/api/prepared-batches/{batchId}/inventory-consumption-preview'],
+    ).toBeDefined();
+    expect(
+      body.paths['/api/prepared-leftovers/{leftoverId}/add-to-inventory'].post.requestBody.content[
+        'application/json'
+      ].schema.$ref,
+    ).toContain('AddPreparedLeftoverToInventoryRequestDto');
+    expect(body.paths['/api/households/{householdId}/inventory/sync']).toBeDefined();
+    expect(
+      body.components.schemas.PreparedBatchInventoryPreviewResponseDto.properties.ingredients,
+    ).toBeDefined();
+    expect(
+      body.components.schemas.InventorySyncOperationRequestDto.properties.movementType.enum,
+    ).toContain('EXPIRATION');
   });
 
   it('rejects a request without a Supabase access token', async () => {

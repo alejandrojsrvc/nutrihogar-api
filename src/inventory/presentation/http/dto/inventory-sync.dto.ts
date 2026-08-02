@@ -25,11 +25,13 @@ export class InventorySyncOperationRequestDto {
   @IsIn(['MOVEMENT', 'ABSOLUTE_ADJUSTMENT'])
   type!: 'MOVEMENT' | 'ABSOLUTE_ADJUSTMENT';
   @ApiProperty({ format: 'uuid' }) @IsUUID() inventoryItemId!: string;
-  @ApiPropertyOptional({ enum: ['PURCHASE', 'CONSUMPTION', 'WASTE', 'REMAINDER_RETURN'] })
+  @ApiPropertyOptional({
+    enum: ['PURCHASE', 'CONSUMPTION', 'WASTE', 'EXPIRATION', 'REMAINDER_RETURN'],
+  })
   @ValidateIf((o: InventorySyncOperationRequestDto) => o.type === 'MOVEMENT')
   @IsDefined()
-  @IsIn(['PURCHASE', 'CONSUMPTION', 'WASTE', 'REMAINDER_RETURN'])
-  movementType?: 'PURCHASE' | 'CONSUMPTION' | 'WASTE' | 'REMAINDER_RETURN';
+  @IsIn(['PURCHASE', 'CONSUMPTION', 'WASTE', 'EXPIRATION', 'REMAINDER_RETURN'])
+  movementType?: 'PURCHASE' | 'CONSUMPTION' | 'WASTE' | 'EXPIRATION' | 'REMAINDER_RETURN';
   @ApiPropertyOptional({ minimum: 0 })
   @ValidateIf((o: InventorySyncOperationRequestDto) => o.type === 'MOVEMENT')
   @IsDefined()

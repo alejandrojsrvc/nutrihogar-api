@@ -20,7 +20,7 @@ export type InventorySyncOperation =
       inventoryItemId: string;
       movementType: Extract<
         InventoryMovementType,
-        'PURCHASE' | 'CONSUMPTION' | 'WASTE' | 'REMAINDER_RETURN'
+        'PURCHASE' | 'CONSUMPTION' | 'WASTE' | 'EXPIRATION' | 'REMAINDER_RETURN'
       >;
       quantity: number | string;
       unit: InventoryUnit;
@@ -96,6 +96,9 @@ export class SynchronizeInventoryOperationsUseCase {
               case 'WASTE':
                 item.registerWaste(quantity, metadata);
                 break;
+              case 'EXPIRATION':
+                item.registerExpiration(quantity, metadata);
+                break;
               case 'REMAINDER_RETURN':
                 item.returnRemainder(quantity, metadata);
                 break;
@@ -141,6 +144,8 @@ export class SynchronizeInventoryOperationsUseCase {
       householdId: command.householdId,
       inventoryItemId: operation.inventoryItemId,
       status,
+      conflictCode: status === 'CONFLICT' ? conflictCode(errorReason(reason)) : null,
+      retryable: status === 'CONFLICT' && isRetryableConflict(errorReason(reason)),
       reason,
       resultingVersion: item?.version ?? null,
       snapshot: item?.toProps() ?? null,
@@ -156,4 +161,20 @@ export class SynchronizeInventoryOperationsUseCase {
 function conflictReason(error: unknown): string {
   if (error instanceof Error && error.message !== 'ITEM_NOT_FOUND') return error.message;
   return 'ITEM_NOT_FOUND';
+}
+
+function errorReason(reason: string | null): string {
+  return reason ?? '';
+}
+
+function conflictCode(reason: string): InventorySyncOperationResult['conflictCode'] {
+  if (reason.includes('negative')) return 'INSUFFICIENT_BALANCE';
+  if (reason.includes('Archived')) return 'ARCHIVED_ITEM';
+  if (reason.includes('incompatible')) return 'INCOMPATIBLE_UNIT';
+  if (reason.includes('accessible')) return 'FORBIDDEN';
+  return 'RETRYABLE';
+}
+
+function isRetryableConflict(reason: string): boolean {
+  return reason === 'STALE_VERSION' || reason === 'LAST_WRITE_WINS_NOT_ALLOWED';
 }

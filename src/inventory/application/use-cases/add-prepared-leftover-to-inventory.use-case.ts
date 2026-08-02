@@ -22,7 +22,13 @@ export class AddPreparedLeftoverToInventoryUseCase {
     private readonly inventory: PreparationInventoryUnitOfWork,
   ) {}
 
-  async execute(input: { actorId: string; leftoverId: string }): Promise<InventoryItem> {
+  async execute(input: {
+    actorId: string;
+    leftoverId: string;
+    quantity?: number;
+    location?: string | null;
+    expiresAt?: Date | null;
+  }): Promise<InventoryItem> {
     const leftover = await this.leftovers.findById(input.leftoverId);
     if (!leftover) throw new InventoryItemNotFoundError('Prepared food leftover not found.');
     const access = await this.households.findAccess(input.actorId, leftover.householdId);
@@ -34,15 +40,16 @@ export class AddPreparedLeftoverToInventoryUseCase {
     const batch = await this.batches.findById(leftover.preparedBatchId);
     if (!batch || batch.householdId !== leftover.householdId)
       throw new InventoryItemNotFoundError('Prepared batch not found.');
+    const quantity = input.quantity?.toString() ?? leftover.availableWeight.toString();
     return this.inventory.addPreparedLeftover({
       householdId: leftover.householdId,
       leftoverId: leftover.id,
       batchId: leftover.preparedBatchId,
       name: batch.recipeNameSnapshot,
-      quantity: leftover.availableWeight.toString(),
-      location: leftover.storageLocation,
+      quantity,
+      location: input.location === undefined ? leftover.storageLocation : input.location,
       minimumQuantity: null,
-      expiresAt: null,
+      expiresAt: input.expiresAt ?? null,
       actorId: input.actorId,
       occurredAt: new Date(),
     });

@@ -28,6 +28,8 @@ export interface PreparedBatchInventoryPreview {
     foodId: string;
     quantity: string;
     unit: string;
+    availableQuantity: string;
+    availability: 'AVAILABLE' | 'PARTIAL' | 'UNAVAILABLE';
     candidates: PreviewCandidate[];
   }>;
 }
@@ -69,7 +71,24 @@ export class PreviewPreparedBatchInventoryConsumptionUseCase {
         ).map(toCandidate),
       })),
     );
-    return { batchId, ingredients };
+    return {
+      batchId,
+      ingredients: ingredients.map((ingredient) => {
+        const availableQuantity = ingredient.candidates
+          .filter((candidate) => candidate.status === 'ACTIVE')
+          .reduce((total, candidate) => total.plus(candidate.quantity), new Decimal(0));
+        const requiredQuantity = new Decimal(ingredient.quantity);
+        return {
+          ...ingredient,
+          availableQuantity: availableQuantity.toString(),
+          availability: availableQuantity.gte(requiredQuantity)
+            ? 'AVAILABLE'
+            : availableQuantity.gt(0)
+              ? 'PARTIAL'
+              : 'UNAVAILABLE',
+        };
+      }),
+    };
   }
 }
 

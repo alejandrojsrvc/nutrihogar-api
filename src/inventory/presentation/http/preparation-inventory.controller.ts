@@ -11,6 +11,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
@@ -36,6 +37,8 @@ import {
 } from '../../application/use-cases/add-prepared-leftover-to-inventory.use-case';
 import {
   ConfirmPreparedBatchInventoryConsumptionRequestDto,
+  ConfirmPreparedBatchInventoryConsumptionResponseDto,
+  AddPreparedLeftoverToInventoryRequestDto,
   PreparedBatchInventoryPreviewResponseDto,
 } from './dto/preparation-inventory.dto';
 import { rethrowInventoryHttpError } from './inventory-http.mapper';
@@ -77,17 +80,18 @@ export class PreparationInventoryController {
   @Post('prepared-batches/:batchId/inventory-consumption')
   @ApiOperation({ summary: 'Confirma el consumo de ingredientes del inventario' })
   @ApiParam({ name: 'batchId', format: 'uuid' })
-  @ApiOkResponse({ description: 'El consumo fue aplicado.' })
+  @ApiOkResponse({ type: ConfirmPreparedBatchInventoryConsumptionResponseDto })
   @ApiBadRequestResponse()
-  @ApiConflictResponse()
+  @ApiConflictResponse({ description: 'El consumo ya fue aplicado; no se vuelve a ejecutar.' })
   @ApiForbiddenResponse()
   async confirmBatch(
     @Param('batchId', new ParseUUIDPipe()) batchId: string,
     @CurrentUser() user: CurrentUserModel,
     @Body() body: ConfirmPreparedBatchInventoryConsumptionRequestDto,
-  ): Promise<void> {
+  ): Promise<ConfirmPreparedBatchInventoryConsumptionResponseDto> {
     try {
       await this.confirm.execute({ actorId: user.id, batchId, decisions: body.decisions });
+      return { batchId, status: 'APPLIED', idempotent: true };
     } catch (error) {
       rethrowInventoryHttpError(error);
     }
@@ -96,6 +100,7 @@ export class PreparationInventoryController {
   @Post('prepared-leftovers/:leftoverId/add-to-inventory')
   @ApiOperation({ summary: 'Incorpora un sobrante preparado al inventario' })
   @ApiParam({ name: 'leftoverId', format: 'uuid' })
+  @ApiBody({ type: AddPreparedLeftoverToInventoryRequestDto })
   @ApiCreatedResponse({ type: InventoryItemResponseDto })
   @ApiBadRequestResponse()
   @ApiConflictResponse()
@@ -104,10 +109,22 @@ export class PreparationInventoryController {
   async add(
     @Param('leftoverId', new ParseUUIDPipe()) leftoverId: string,
     @CurrentUser() user: CurrentUserModel,
+    @Body() body: AddPreparedLeftoverToInventoryRequestDto,
   ): Promise<InventoryItemResponseDto> {
     try {
       return toInventoryItemResponse(
-        await this.addLeftover.execute({ actorId: user.id, leftoverId }),
+        await this.addLeftover.execute({
+          actorId: user.id,
+          leftoverId,
+          quantity: body.quantity,
+          location: body.location,
+          expiresAt:
+            body.expiresAt === undefined
+              ? undefined
+              : body.expiresAt === null
+                ? null
+                : new Date(body.expiresAt),
+        }),
       );
     } catch (error) {
       rethrowInventoryHttpError(error);

@@ -40,4 +40,13 @@ export const environmentValidationSchema = Joi.object({
   SUPABASE_JWT_SECRET: optionalString,
   SUPABASE_STORAGE_BUCKET: Joi.string().default('user-files'),
   FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
+  AI_PROVIDER: Joi.string().default('disabled'),
+  AI_PROVIDER_API_KEY: optionalString,
+  AI_PROVIDER_ENDPOINT: optionalString,
+  AI_MODEL_WEEKLY_PLAN: Joi.string().default('weekly-plan-default'),
+  AI_MODEL_RECIPE: Joi.string().default('recipe-default'),
+  AI_REQUEST_TIMEOUT_MS: Joi.number().integer().min(100).default(10000),
+  AI_MAX_RETRIES: Joi.number().integer().min(0).max(5).default(1),
+  AI_FEATURE_ENABLED: Joi.boolean().default(false),
+  AI_MAX_REQUESTS_PER_HOUSEHOLD: Joi.number().integer().min(1).default(10),
 }).unknown(true);

@@ -51,6 +51,10 @@ export class PlannedMealRequestDto {
   @IsOptional()
   @IsUUID()
   recipeId?: string | null;
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  previousMealId?: string | null;
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()
@@ -75,6 +79,10 @@ export class UpdatePlannedMealRequestDto {
   @IsOptional()
   @IsUUID()
   recipeId?: string | null;
+  @ApiPropertyOptional({ type: String, format: 'uuid', nullable: true })
+  @IsOptional()
+  @IsUUID()
+  previousMealId?: string | null;
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()

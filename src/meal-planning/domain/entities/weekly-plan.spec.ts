@@ -72,6 +72,20 @@ describe('WeeklyPlan', () => {
     expect(weekly.status).toBe(WeeklyPlanStatus.ACTIVE);
   });
 
+  it('requires a previous meal id for previous meal entries', () => {
+    const weekly = plan();
+
+    expect(() =>
+      weekly.addMeal(meal('previous-without-id', PlannedMealSource.PREVIOUS_MEAL)),
+    ).toThrow(InvalidMealPlanningError);
+
+    weekly.addMeal({
+      ...meal('previous-meal', PlannedMealSource.PREVIOUS_MEAL),
+      previousMealId: 'meal-from-history',
+    });
+    expect(weekly.meals[0].previousMealId).toBe('meal-from-history');
+  });
+
   it('rejects duplicate participants and preserves replacement history', () => {
     const weekly = plan();
     weekly.addMeal(meal('meal-1'));

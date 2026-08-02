@@ -29,6 +29,7 @@ describe('PrismaWeeklyPlanMapper', () => {
           replacedMealId: null,
           preparedBatchId: null,
           mealId: null,
+          previousMealId: null,
           createdAt: new Date('2026-08-01T00:00:00.000Z'),
           updatedAt: new Date('2026-08-01T00:00:00.000Z'),
           participants: [

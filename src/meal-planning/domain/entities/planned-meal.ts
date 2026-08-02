@@ -26,6 +26,7 @@ export interface PlannedMealInput {
   replacedMealId?: string | null;
   preparedBatchId?: string | null;
   mealId?: string | null;
+  previousMealId?: string | null;
 }
 
 export class PlannedMeal {
@@ -35,7 +36,7 @@ export class PlannedMeal {
   ) {}
 
   static create(input: PlannedMealInput): PlannedMeal {
-    validateSource(input.source, input.recipeId);
+    validateSource(input.source, input.recipeId, input.previousMealId);
     if (!Number.isInteger(input.position) || input.position < 0)
       throw new InvalidMealPlanningError('Meal position must be a non-negative integer.');
     return new PlannedMeal(
@@ -54,6 +55,7 @@ export class PlannedMeal {
         replacedMealId: input.replacedMealId?.trim() || null,
         preparedBatchId: input.preparedBatchId?.trim() || null,
         mealId: input.mealId?.trim() || null,
+        previousMealId: input.previousMealId?.trim() || null,
         createdAt: new Date(input.occurredAt),
         updatedAt: new Date(input.occurredAt),
       },
@@ -102,6 +104,7 @@ export class PlannedMeal {
         | 'nutritionSnapshot'
         | 'preparedBatchId'
         | 'mealId'
+        | 'previousMealId'
         | 'position'
       >
     > & { occurredAt: Date },
@@ -109,7 +112,14 @@ export class PlannedMeal {
     this.ensureEditable();
     const source = input.source ?? this.props.source;
     const recipeId = input.recipeId === undefined ? this.props.recipeId : input.recipeId;
-    validateSource(source, recipeId);
+    const sourceChanged = input.source !== undefined && input.source !== this.props.source;
+    const previousMealId =
+      input.previousMealId === undefined
+        ? sourceChanged && source !== PlannedMealSource.PREVIOUS_MEAL
+          ? null
+          : this.props.previousMealId
+        : input.previousMealId;
+    validateSource(source, recipeId, previousMealId);
     if (input.position !== undefined && (!Number.isInteger(input.position) || input.position < 0))
       throw new InvalidMealPlanningError('Meal position must be a non-negative integer.');
     this.props.type = input.type ?? this.props.type;
@@ -124,6 +134,8 @@ export class PlannedMeal {
     if (input.preparedBatchId !== undefined)
       this.props.preparedBatchId = input.preparedBatchId?.trim() || null;
     if (input.mealId !== undefined) this.props.mealId = input.mealId?.trim() || null;
+    if (input.previousMealId !== undefined || sourceChanged)
+      this.props.previousMealId = previousMealId?.trim() || null;
     if (input.position !== undefined) this.props.position = input.position;
     this.props.updatedAt = new Date(input.occurredAt);
   }
@@ -270,9 +282,17 @@ export interface PlannedMealParticipantPropsView {
 function toParticipantView(participant: PlannedMealParticipant): PlannedMealParticipantPropsView {
   return participant.toProps();
 }
-function validateSource(source: PlannedMealSource, recipeId?: string | null): void {
+function validateSource(
+  source: PlannedMealSource,
+  recipeId?: string | null,
+  previousMealId?: string | null,
+): void {
   if (source === PlannedMealSource.RECIPE && !recipeId?.trim())
     throw new InvalidMealPlanningError('Recipe meals require a recipe id.');
   if (source !== PlannedMealSource.RECIPE && recipeId?.trim())
     throw new InvalidMealPlanningError('Only recipe meals can have a recipe id.');
+  if (source === PlannedMealSource.PREVIOUS_MEAL && !previousMealId?.trim())
+    throw new InvalidMealPlanningError('Previous meal entries require a previous meal id.');
+  if (source !== PlannedMealSource.PREVIOUS_MEAL && previousMealId?.trim())
+    throw new InvalidMealPlanningError('Only previous meal entries can have a previous meal id.');
 }

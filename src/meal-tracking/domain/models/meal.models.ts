@@ -44,4 +44,5 @@ export interface MealView {
   updatedAt: Date;
   deletedAt: Date | null;
   items: MealItemView[];
+  plannedMealId?: string | null;
 }

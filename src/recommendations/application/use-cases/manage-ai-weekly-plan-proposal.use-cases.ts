@@ -1,6 +1,6 @@
 import type { AiProposalRepository } from '../ports/ai-proposal-repository.port';
 import { AiGeneratedProposalId } from '../../domain/value-objects/ai-recommendation.value-objects';
-import { AiWeeklyPlanProposalValidator } from '../services/ai-weekly-plan-proposal-validator';
+import { AiProposalValidator } from '../services/ai-proposal-validator';
 
 export class GetAiWeeklyPlanProposalQuery {
   constructor(private readonly proposals: AiProposalRepository) {}
@@ -19,7 +19,7 @@ export class GetAiWeeklyPlanProposalQuery {
 export class UpdateAiWeeklyPlanProposalUseCase {
   constructor(
     private readonly proposals: AiProposalRepository,
-    private readonly validator: AiWeeklyPlanProposalValidator,
+    private readonly validator: AiProposalValidator,
   ) {}
 
   async execute(input: {
@@ -28,14 +28,17 @@ export class UpdateAiWeeklyPlanProposalUseCase {
     payload: Record<string, unknown>;
     mealTypes: string[];
     adultProfileIds: string[];
+    actorId: string;
   }) {
     const proposal = await this.require(input.householdId, input.proposalId);
-    const validation = this.validator.validate({
+    const validation = await this.validator.validate({
       proposalId: proposal.id,
       payload: input.payload,
       weekStart: readWeekStart(input.payload, proposal.structuredPayload),
       mealTypes: input.mealTypes,
       adultProfileIds: input.adultProfileIds,
+      householdId: input.householdId,
+      actorId: input.actorId,
       validatedAt: new Date(),
     });
     proposal.attachValidation(validation);

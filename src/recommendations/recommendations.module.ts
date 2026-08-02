@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HouseholdsModule } from '../households/households.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { FoodCatalogModule } from '../food-catalog/food-catalog.module';
+import { NutritionModule } from '../nutrition/nutrition.module';
+import { RecipesModule } from '../recipes/recipes.module';
 import { IdentityModule } from '../identity/identity.module';
 import { MealPlanningModule } from '../meal-planning/meal-planning.module';
 import {
@@ -34,7 +37,23 @@ import {
   REJECT_AI_WEEKLY_PLAN_PROPOSAL_USE_CASE,
   UPDATE_AI_WEEKLY_PLAN_PROPOSAL_USE_CASE,
 } from './application/use-cases/recommendation-use-case.tokens';
-import { AiWeeklyPlanProposalValidator } from './application/services/ai-weekly-plan-proposal-validator';
+import { AiProposalValidator } from './application/services/ai-proposal-validator';
+import {
+  FOOD_CATALOG_READ_REPOSITORY,
+  type FoodCatalogReadRepository,
+} from '../food-catalog/application/ports/food-catalog-read-repository.port';
+import {
+  RECIPE_REPOSITORY,
+  type RecipeRepository,
+} from '../recipes/application/ports/recipe-repository.port';
+import {
+  INVENTORY_ITEM_REPOSITORY,
+  type InventoryItemRepository,
+} from '../inventory/application/ports/inventory-repository.port';
+import {
+  NUTRITION_ENGINE_SERVICE,
+  NutritionEngineService,
+} from '../nutrition/application/nutrition-engine.service';
 import { PrismaAiProposalRepository } from './infrastructure/persistence/prisma-ai-proposal.repository';
 import { PrismaAiWeeklyPlanAcceptanceUnitOfWork } from './infrastructure/persistence/prisma-ai-weekly-plan-acceptance.unit-of-work';
 import {
@@ -57,7 +76,15 @@ import type { AiRateLimiter } from './application/ports/ai-rate-limiter.port';
 import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-weekly-plan-acceptance-unit-of-work.port';
 
 @Module({
-  imports: [IdentityModule, HouseholdsModule, InventoryModule, MealPlanningModule],
+  imports: [
+    IdentityModule,
+    HouseholdsModule,
+    FoodCatalogModule,
+    NutritionModule,
+    RecipesModule,
+    InventoryModule,
+    MealPlanningModule,
+  ],
   controllers: [AiRecommendationsController],
   providers: [
     { provide: AI_PROPOSAL_REPOSITORY, useClass: PrismaAiProposalRepository },
@@ -84,7 +111,21 @@ import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-we
     },
     { provide: WEEKLY_PLAN_GENERATOR, useExisting: 'AI_ADAPTER' },
     { provide: RECIPE_SUGGESTION_PROVIDER, useExisting: 'AI_ADAPTER' },
-    AiWeeklyPlanProposalValidator,
+    {
+      provide: AiProposalValidator,
+      inject: [
+        FOOD_CATALOG_READ_REPOSITORY,
+        RECIPE_REPOSITORY,
+        INVENTORY_ITEM_REPOSITORY,
+        NUTRITION_ENGINE_SERVICE,
+      ],
+      useFactory: (
+        foods: FoodCatalogReadRepository,
+        recipes: RecipeRepository,
+        inventory: InventoryItemRepository,
+        nutrition: NutritionEngineService,
+      ) => new AiProposalValidator(foods, recipes, inventory, nutrition),
+    },
     {
       provide: GENERATE_AI_WEEKLY_PLAN_PROPOSAL_USE_CASE,
       inject: [
@@ -92,7 +133,7 @@ import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-we
         WEEKLY_PLAN_GENERATOR,
         AI_PROPOSAL_REPOSITORY,
         AI_RATE_LIMITER,
-        AiWeeklyPlanProposalValidator,
+        AiProposalValidator,
         ConfigService,
       ],
       useFactory: (
@@ -100,7 +141,7 @@ import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-we
         generator: WeeklyPlanGenerator,
         proposals: AiProposalRepository,
         limiter: AiRateLimiter,
-        validator: AiWeeklyPlanProposalValidator,
+        validator: AiProposalValidator,
         config: ConfigService,
       ) =>
         new GenerateAiWeeklyPlanProposalUseCase(
@@ -123,6 +164,7 @@ import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-we
         AI_PROPOSAL_REPOSITORY,
         AI_RATE_LIMITER,
         ConfigService,
+        AiProposalValidator,
       ],
       useFactory: (
         contexts: RecipeSuggestionContextBuilder,
@@ -130,8 +172,9 @@ import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-we
         proposals: AiProposalRepository,
         limiter: AiRateLimiter,
         config: ConfigService,
+        validator: AiProposalValidator,
       ) =>
-        new GenerateAiRecipeSuggestionsUseCase(contexts, provider, proposals, limiter, {
+        new GenerateAiRecipeSuggestionsUseCase(contexts, provider, proposals, limiter, validator, {
           maxRequestsPerHousehold: config.get('AI_RATE_LIMIT', 5),
           windowMs: config.get('AI_RATE_WINDOW_MS', 60000),
         }),
@@ -143,21 +186,17 @@ import type { AiWeeklyPlanAcceptanceUnitOfWork } from './application/ports/ai-we
     },
     {
       provide: UPDATE_AI_WEEKLY_PLAN_PROPOSAL_USE_CASE,
-      inject: [AI_PROPOSAL_REPOSITORY, AiWeeklyPlanProposalValidator],
-      useFactory: (p: AiProposalRepository, v: AiWeeklyPlanProposalValidator) =>
+      inject: [AI_PROPOSAL_REPOSITORY, AiProposalValidator],
+      useFactory: (p: AiProposalRepository, v: AiProposalValidator) =>
         new UpdateAiWeeklyPlanProposalUseCase(p, v),
     },
     {
       provide: ACCEPT_AI_WEEKLY_PLAN_PROPOSAL_USE_CASE,
-      inject: [
-        AI_PROPOSAL_REPOSITORY,
-        AI_WEEKLY_PLAN_ACCEPTANCE_UNIT_OF_WORK,
-        AiWeeklyPlanProposalValidator,
-      ],
+      inject: [AI_PROPOSAL_REPOSITORY, AI_WEEKLY_PLAN_ACCEPTANCE_UNIT_OF_WORK, AiProposalValidator],
       useFactory: (
         p: AiProposalRepository,
         u: AiWeeklyPlanAcceptanceUnitOfWork,
-        v: AiWeeklyPlanProposalValidator,
+        v: AiProposalValidator,
       ) => new AcceptAiWeeklyPlanProposalUseCase(p, u, v),
     },
     {

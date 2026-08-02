@@ -4,6 +4,7 @@ import type { RecipeSuggestionContextBuilder } from '../ports/ai-context-builder
 import type { RecipeSuggestionProvider } from '../ports/ai-generation.ports';
 import { AiGenerationRequest } from '../../domain/entities/ai-generation-request';
 import { AiGeneratedProposal } from '../../domain/entities/ai-generated-proposal';
+import { AiProposalValidator } from '../services/ai-proposal-validator';
 
 export interface GenerateAiRecipeSuggestionsCommand {
   actorId: string;
@@ -21,6 +22,7 @@ export class GenerateAiRecipeSuggestionsUseCase {
     private readonly provider: RecipeSuggestionProvider,
     private readonly proposals: AiProposalRepository,
     private readonly rateLimiter: AiRateLimiter,
+    private readonly validator: AiProposalValidator,
     private readonly config: { maxRequestsPerHousehold: number; windowMs: number },
   ) {}
 
@@ -66,6 +68,17 @@ export class GenerateAiRecipeSuggestionsUseCase {
       generatedAt: new Date(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
+    const validation = await this.validator.validate({
+      proposalId: proposal.id,
+      payload: result.payload,
+      householdId: command.householdId,
+      actorId: command.actorId,
+      adultProfileIds,
+      restrictions: readContextRestrictions(context),
+      validatedAt: new Date(),
+    });
+    proposal.attachValidation(validation);
+    if (!validation.hasBlockingErrors()) proposal.markReadyForReview();
     await this.proposals.saveProposal(proposal);
     return proposal;
   }
@@ -79,4 +92,15 @@ function readContextAdultIds(context: Record<string, unknown>): string[] {
     )
     .map((adult) => adult.id)
     .filter((id): id is string => typeof id === 'string');
+}
+
+function readContextRestrictions(context: Record<string, unknown>): string[] {
+  if (!Array.isArray(context.adults)) return [];
+  return context.adults.flatMap((adult) => {
+    if (!adult || typeof adult !== 'object' || Array.isArray(adult)) return [];
+    const restrictions = (adult as Record<string, unknown>).restrictions;
+    return Array.isArray(restrictions)
+      ? restrictions.filter((restriction): restriction is string => typeof restriction === 'string')
+      : [];
+  });
 }

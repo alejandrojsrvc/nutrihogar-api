@@ -4,7 +4,7 @@ import type { WeeklyPlanContextBuilder } from '../ports/ai-context-builder.ports
 import type { WeeklyPlanGenerator } from '../ports/ai-generation.ports';
 import { AiGenerationRequest } from '../../domain/entities/ai-generation-request';
 import { AiGeneratedProposal } from '../../domain/entities/ai-generated-proposal';
-import { AiWeeklyPlanProposalValidator } from '../services/ai-weekly-plan-proposal-validator';
+import { AiProposalValidator } from '../services/ai-proposal-validator';
 
 export interface GenerateAiWeeklyPlanProposalCommand {
   actorId: string;
@@ -21,7 +21,7 @@ export class GenerateAiWeeklyPlanProposalUseCase {
     private readonly generator: WeeklyPlanGenerator,
     private readonly proposals: AiProposalRepository,
     private readonly rateLimiter: AiRateLimiter,
-    private readonly validator: AiWeeklyPlanProposalValidator,
+    private readonly validator: AiProposalValidator,
     private readonly config: { maxRequestsPerHousehold: number; windowMs: number },
   ) {}
 
@@ -64,12 +64,17 @@ export class GenerateAiWeeklyPlanProposalUseCase {
       generatedAt: new Date(),
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
-    const validation = this.validator.validate({
+    const validation = await this.validator.validate({
       proposalId: proposal.id,
       payload: result.payload,
       weekStart: command.weekStart,
       mealTypes: command.mealTypes,
       adultProfileIds: command.adultProfileIds,
+      householdId: command.householdId,
+      actorId: command.actorId,
+      restrictions: readRestrictions(context),
+      weekStart: command.weekStart,
+      mealTypes: command.mealTypes,
       validatedAt: new Date(),
     });
     proposal.attachValidation(validation);
@@ -77,4 +82,22 @@ export class GenerateAiWeeklyPlanProposalUseCase {
     await this.proposals.saveProposal(proposal);
     return proposal;
   }
+}
+
+function readRestrictions(context: Record<string, unknown>): string[] {
+  const adults: unknown[] = Array.isArray(context.adults) ? context.adults : [];
+  return adults.flatMap((adult: unknown): string[] => {
+    if (!adult || typeof adult !== 'object' || Array.isArray(adult)) return [];
+    const candidate = adult as Record<string, unknown>;
+    const restrictions = candidate.restrictions;
+    if (!Array.isArray(restrictions)) return [];
+    return restrictions.flatMap((restriction: unknown): string[] => {
+      if (typeof restriction === 'string') return [restriction];
+      if (restriction && typeof restriction === 'object' && !Array.isArray(restriction)) {
+        const name = (restriction as Record<string, unknown>).name;
+        if (typeof name === 'string') return [name];
+      }
+      return [];
+    });
+  });
 }

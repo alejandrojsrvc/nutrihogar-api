@@ -6,7 +6,7 @@ import {
   PlannedMealSource,
   PlannedMealType,
 } from '../../../meal-planning/domain/value-objects/planned-meal';
-import { AiWeeklyPlanProposalValidator } from '../services/ai-weekly-plan-proposal-validator';
+import { AiProposalValidator } from '../services/ai-proposal-validator';
 
 export interface AcceptAiWeeklyPlanProposalCommand {
   householdId: string;
@@ -20,7 +20,7 @@ export class AcceptAiWeeklyPlanProposalUseCase {
   constructor(
     private readonly proposals: AiProposalRepository,
     private readonly transaction: AiWeeklyPlanAcceptanceUnitOfWork,
-    private readonly validator: AiWeeklyPlanProposalValidator,
+    private readonly validator: AiProposalValidator,
   ) {}
 
   async execute(command: AcceptAiWeeklyPlanProposalCommand): Promise<WeeklyPlan> {
@@ -31,12 +31,14 @@ export class AcceptAiWeeklyPlanProposalUseCase {
     if (!proposal) throw new Error('AI proposal was not found.');
     const payload = command.editedPayload ?? proposal.structuredPayload;
     if (command.editedPayload) {
-      const validation = this.validator.validate({
+      const validation = await this.validator.validate({
         proposalId: proposal.id,
         payload,
         weekStart: readString(payload.weekStart),
         mealTypes: readMealTypes(payload),
         adultProfileIds: readAdultProfileIds(payload),
+        householdId: command.householdId,
+        actorId: command.actorId,
         validatedAt: new Date(),
       });
       proposal.attachValidation(validation);

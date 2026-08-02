@@ -130,6 +130,7 @@ export class AiRecommendationsController {
         ...body,
         proposalId,
         householdId: await this.proposalHousehold(user.id, proposalId),
+        actorId: user.id,
       }),
     );
   }

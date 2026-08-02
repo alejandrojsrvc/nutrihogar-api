@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
 import { CurrentUser } from '../../application/models/current-user';
 import { CreateUserInput, UserRepository } from '../../application/ports/user-repository.port';
@@ -17,19 +18,39 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async create(input: CreateUserInput): Promise<CurrentUser> {
-    const user = await this.prisma.user.create({
-      data: {
-        authProviderId: input.authProviderId,
-        email: input.email,
-        displayName: input.displayName,
-        avatarUrl: input.avatarUrl,
-        timezone: input.timezone,
-        locale: input.locale,
-        lastLoginAt: input.lastLoginAt,
-      },
-    });
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          authProviderId: input.authProviderId,
+          email: input.email,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          timezone: input.timezone,
+          locale: input.locale,
+          lastLoginAt: input.lastLoginAt,
+        },
+      });
 
-    return PrismaUserMapper.toCurrentUser(user);
+      return PrismaUserMapper.toCurrentUser(user);
+    } catch (error) {
+      const isAuthProviderDuplicate =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        (error.meta?.target === 'auth_provider_id' ||
+          (Array.isArray(error.meta?.target) && error.meta.target.includes('auth_provider_id')));
+
+      if (!isAuthProviderDuplicate) {
+        throw error;
+      }
+
+      const existingUser = await this.findByAuthProviderId(input.authProviderId);
+
+      if (!existingUser) {
+        throw error;
+      }
+
+      return existingUser;
+    }
   }
 
   async updateLastLogin(userId: string, lastLoginAt: Date): Promise<CurrentUser> {

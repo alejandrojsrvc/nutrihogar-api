@@ -71,6 +71,8 @@ function toSyncOperationResponse(
   return {
     operationId: result.operationId,
     status: result.status,
+    conflictCode: result.conflictCode ?? null,
+    retryable: result.retryable ?? false,
     reason: result.reason,
     resultingVersion: result.resultingVersion,
     snapshot: result.snapshot ? toInventoryItemPropsResponse(result.snapshot) : null,

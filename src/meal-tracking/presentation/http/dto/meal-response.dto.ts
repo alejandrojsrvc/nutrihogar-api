@@ -74,13 +74,17 @@ export class MealResponseDto {
   @ApiProperty({ example: 'CONFIRMED' })
   status!: string;
 
-  @ApiProperty({ example: 'MANUAL' })
+  @ApiProperty({ enum: ['MANUAL', 'DUPLICATED', 'PREPARED_BATCH', 'PREPARED_INVENTORY'] })
   source!: string;
 
   @ApiPropertyOptional({ nullable: true })
   notes!: string | null;
 
-  @ApiProperty({ type: Object, example: { ENERGY_KCAL: 597, PROTEIN: 73.06 } })
+  @ApiProperty({
+    type: Object,
+    example: { ENERGY_KCAL: 597, PROTEIN: 73.06 },
+    description: 'Nutrientes confirmados a partir de los snapshots de los alimentos consumidos.',
+  })
   totals!: Record<string, number>;
 
   @ApiProperty({ type: MealItemResponseDto, isArray: true })

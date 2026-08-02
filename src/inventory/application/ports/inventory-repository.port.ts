@@ -133,6 +133,14 @@ export interface InventorySyncOperationResult {
   householdId: string;
   inventoryItemId: string;
   status: InventorySyncStatus;
+  conflictCode?:
+    | 'INSUFFICIENT_BALANCE'
+    | 'ARCHIVED_ITEM'
+    | 'INCOMPATIBLE_UNIT'
+    | 'FORBIDDEN'
+    | 'RETRYABLE'
+    | null;
+  retryable?: boolean;
   reason: string | null;
   resultingVersion: number | null;
   snapshot: InventoryItemProps | null;

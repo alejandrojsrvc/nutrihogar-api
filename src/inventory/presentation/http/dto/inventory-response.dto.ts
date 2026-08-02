@@ -131,6 +131,15 @@ export class InventoryMovementListResponseDto {
 export class InventorySyncOperationResponseDto {
   @ApiProperty() operationId!: string;
   @ApiProperty({ enum: ['APPLIED', 'CONFLICT'] }) status!: 'APPLIED' | 'CONFLICT';
+  @ApiPropertyOptional({
+    enum: ['INSUFFICIENT_BALANCE', 'ARCHIVED_ITEM', 'INCOMPATIBLE_UNIT', 'FORBIDDEN', 'RETRYABLE'],
+    nullable: true,
+  })
+  conflictCode!: string | null;
+  @ApiProperty({
+    description: 'El cliente puede reintentar la operacion con el estado actualizado.',
+  })
+  retryable!: boolean;
   @ApiPropertyOptional({ nullable: true }) reason!: string | null;
   @ApiPropertyOptional({ nullable: true }) resultingVersion!: number | null;
   @ApiPropertyOptional({ type: InventoryItemResponseDto, nullable: true })

@@ -50,8 +50,10 @@ export class PrismaNutritionGoalMapper {
     };
   }
 
-  static snapshotToPrisma(snapshot: CalculationSnapshot): Prisma.InputJsonObject {
-    return structuredClone(snapshot);
+  static snapshotToPrisma(
+    snapshot: CalculationSnapshot | Prisma.JsonValue,
+  ): Prisma.InputJsonObject {
+    return structuredClone(toSnapshot(snapshot));
   }
 }
 

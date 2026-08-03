@@ -40,6 +40,10 @@ export class ListPurchasesQueryDto {
 export class ConfirmPurchaseRequestDto {
   @ApiPropertyOptional() @IsOptional() selections?: Record<string, string>;
 }
+export class CreatePurchaseFromReceiptRequestDto {
+  @ApiPropertyOptional({ example: 'EUR' }) @IsOptional() @IsString() currency?: string;
+  @ApiPropertyOptional({ example: 'es-ES' }) @IsOptional() @IsString() locale?: string;
+}
 export class ConvertShoppingListRequestDto extends CreatePurchaseRequestDto {
   @ApiProperty({ type: [String] }) @IsArray() @IsUUID(undefined, { each: true }) itemIds!: string[];
   @ApiPropertyOptional() quantities?: Record<string, number>;
@@ -48,6 +52,7 @@ export class ConvertShoppingListRequestDto extends CreatePurchaseRequestDto {
 export class PurchaseResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() status!: string;
+  @ApiProperty() source!: string;
   @ApiProperty() householdId!: string;
   @ApiProperty() total!: string;
   @ApiProperty() currency!: string;

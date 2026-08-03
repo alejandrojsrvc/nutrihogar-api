@@ -4,6 +4,8 @@ import {
   NotFoundException,
   ConflictException,
   InternalServerErrorException,
+  BadGatewayException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { Purchase } from '../../domain/entities/purchase';
 import {
@@ -16,6 +18,12 @@ import {
   PurchaseUnitConversionError,
 } from '../../application/errors/purchase-application.errors';
 import {
+  ReceiptOcrDataError,
+  ReceiptOcrConfigurationError,
+  ReceiptOcrFileError,
+  ReceiptOcrProcessingError,
+} from '../../application/errors/receipt-ocr.errors';
+import {
   InvalidPurchaseStateError,
   InvalidPurchaseError,
 } from '../../domain/errors/purchase.errors';
@@ -27,6 +35,7 @@ export function toPurchaseResponse(purchase: Purchase) {
     storeName: purchase.storeName,
     purchaseDate: purchase.purchaseDate.toISOString(),
     status: purchase.status,
+    source: purchase.toProps().source,
     currency: purchase.currency,
     total: purchase.total.toString(),
     idempotencyKey: purchase.toProps().idempotencyKey,
@@ -54,5 +63,10 @@ export function rethrowPurchaseHttpError(error: unknown): never {
   )
     throw new BadRequestException(error.message);
   if (error instanceof PurchaseIdempotencyConflictError) throw new ConflictException(error.message);
+  if (error instanceof ReceiptOcrFileError) throw new BadRequestException(error.message);
+  if (error instanceof ReceiptOcrDataError) throw new UnprocessableEntityException(error.message);
+  if (error instanceof ReceiptOcrConfigurationError)
+    throw new InternalServerErrorException(error.message);
+  if (error instanceof ReceiptOcrProcessingError) throw new BadGatewayException(error.message);
   throw new InternalServerErrorException();
 }

@@ -103,6 +103,10 @@ subirse al repositorio.
 | `SUPABASE_JWT_SECRET` | Secreto de validación JWT del proyecto | No; el guard valida mediante Supabase Auth |
 | `SUPABASE_STORAGE_BUCKET` | Bucket privado por defecto para archivos | No, valor por defecto `user-files` |
 | `FRONTEND_URL` | Origen permitido por CORS | No, valor por defecto `http://localhost:5173` |
+| `VERYFI_CLIENT_ID` | Identificador privado del cliente Veryfi | Sí para OCR |
+| `VERYFI_CLIENT_API_KEY` | API key privada de Veryfi | Sí para OCR |
+| `VERYFI_BASE_URL` | URL base del API Veryfi | No, valor por defecto `https://api.veryfi.com` |
+| `VERYFI_TIMEOUT_MS` | Timeout del procesamiento OCR en milisegundos | No, valor por defecto `120000` |
 
 No se deben subir archivos `.env` ni credenciales al repositorio.
 
@@ -267,6 +271,83 @@ Respuesta:
 
 - Swagger UI: `http://localhost:3000/api/docs`
 - Documento JSON: `http://localhost:3000/api/docs-json`
+
+### Crear compra desde ticket OCR
+
+```http
+POST /api/households/:householdId/purchases/ocr-draft
+Authorization: Bearer <access-token>
+Idempotency-Key: <unique-key>
+Content-Type: multipart/form-data
+```
+
+Campos multipart:
+
+| Campo | Tipo | Requerido | Descripción |
+| --- | --- | --- | --- |
+| `file` | File | Sí | Ticket en `jpg`, `jpeg`, `png`, `webp`, `heic` o `pdf` |
+| `currency` | string | No | Sobrescribe la moneda detectada por OCR |
+| `locale` | string | No | Locale informado por el frontend, por ejemplo `es-ES` |
+
+El archivo debe pesar entre 250 bytes y 20 MB. El backend lo guarda temporalmente en Supabase Storage, lo procesa
+con Veryfi y elimina el archivo temporal después del procesamiento. Las credenciales de Veryfi nunca se envían al
+frontend.
+
+Respuesta `201`:
+
+```json
+{
+  "id": "purchase-uuid",
+  "householdId": "household-uuid",
+  "status": "DRAFT",
+  "source": "OCR",
+  "storeName": "Supermercado Ejemplo",
+  "purchaseDate": "2026-08-03T18:30:00.000Z",
+  "currency": "EUR",
+  "total": "42.75",
+  "reviewRequired": true,
+  "items": [
+    {
+      "id": "purchase-item-uuid",
+      "foodId": null,
+      "inventoryItemId": null,
+      "nameSnapshot": "Leche entera",
+      "unit": "L",
+      "quantity": "2"
+    }
+  ],
+  "ocr": {
+    "provider": "VERYFI",
+    "confidence": 0.91,
+    "documentId": "veryfi-document-id",
+    "warnings": [],
+    "items": [
+      {
+        "name": "Leche entera",
+        "quantity": "2",
+        "unit": "L",
+        "confidence": 0.96,
+        "needsReview": false
+      }
+    ]
+  },
+  "receipt": {
+    "fileName": "ticket.jpg",
+    "contentType": "image/jpeg"
+  }
+}
+```
+
+La compra se crea siempre como `DRAFT`. El frontend debe permitir editar los datos y asociar cada ítem con un
+alimento o elemento de inventario. Después debe usar los endpoints existentes:
+
+```http
+PATCH /api/purchases/:purchaseId
+POST /api/purchases/:purchaseId/confirm
+```
+
+Solo `confirm` actualiza el inventario. Errores relevantes: `400` archivo inválido, `401` no autenticado, `403` sin
+acceso al hogar, `413` archivo demasiado grande, `422` ticket sin ítems y `502` error de Veryfi.
 
 ## Errores
 

@@ -41,6 +41,15 @@ import {
   UpdatePurchaseUseCase,
 } from './application/use-cases/purchase.use-cases';
 import { PurchaseController } from './presentation/http/purchase.controller';
+import { VeryfiReceiptOcrAdapter } from './infrastructure/ocr/veryfi-receipt-ocr.adapter';
+import { SupabaseReceiptStorage } from './infrastructure/storage/supabase-receipt.storage';
+import {
+  RECEIPT_OCR,
+  RECEIPT_STORAGE,
+  ReceiptOcrPort,
+  ReceiptStorage,
+} from './application/ports/receipt-ocr.port';
+import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/create-purchase-draft-from-receipt.use-case';
 
 @Module({
   imports: [
@@ -54,7 +63,11 @@ import { PurchaseController } from './presentation/http/purchase.controller';
   controllers: [PurchaseController],
   providers: [
     PrismaPurchaseRepository,
+    VeryfiReceiptOcrAdapter,
+    SupabaseReceiptStorage,
     { provide: PURCHASE_REPOSITORY, useExisting: PrismaPurchaseRepository },
+    { provide: RECEIPT_OCR, useExisting: VeryfiReceiptOcrAdapter },
+    { provide: RECEIPT_STORAGE, useExisting: SupabaseReceiptStorage },
     PrismaPurchaseInventoryUnitOfWork,
     { provide: PURCHASE_INVENTORY_UNIT_OF_WORK, useExisting: PrismaPurchaseInventoryUnitOfWork },
     {
@@ -68,6 +81,23 @@ import { PurchaseController } from './presentation/http/purchase.controller';
       inject: [HOUSEHOLD_REPOSITORY, PURCHASE_REPOSITORY],
       useFactory: (h: HouseholdRepository, p: PurchaseRepository) =>
         new UpdatePurchaseUseCase(h, p),
+    },
+    {
+      provide: 'CREATE_PURCHASE_DRAFT_FROM_RECEIPT_USE_CASE',
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        PURCHASE_REPOSITORY,
+        'CREATE_PURCHASE_USE_CASE',
+        RECEIPT_OCR,
+        RECEIPT_STORAGE,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        p: PurchaseRepository,
+        c: CreatePurchaseUseCase,
+        o: ReceiptOcrPort,
+        s: ReceiptStorage,
+      ) => new CreatePurchaseDraftFromReceiptUseCase(h, p, c, o, s),
     },
     {
       provide: 'GET_PURCHASE_QUERY',

@@ -12,8 +12,18 @@ import {
   Post,
   Query,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiHeader,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ParseUUIDPipe } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
@@ -27,14 +37,17 @@ import {
   ListPurchasesQuery,
   UpdatePurchaseUseCase,
 } from '../../application/use-cases/purchase.use-cases';
+import { CreatePurchaseDraftFromReceiptUseCase } from '../../application/use-cases/create-purchase-draft-from-receipt.use-case';
 import {
   ConfirmPurchaseRequestDto,
   ConvertShoppingListRequestDto,
+  CreatePurchaseFromReceiptRequestDto,
   CreatePurchaseRequestDto,
   ListPurchasesQueryDto,
   UpdatePurchaseRequestDto,
 } from './dto/purchase.dto';
 import { rethrowPurchaseHttpError, toPurchaseResponse } from './purchase-http.mapper';
+import { ReceiptOcrFileError } from '../../application/errors/receipt-ocr.errors';
 @ApiTags('purchases')
 @ApiBearerAuth()
 @UseGuards(SupabaseAuthGuard)
@@ -49,7 +62,143 @@ export class PurchaseController {
     @Inject('CANCEL_PURCHASE_USE_CASE') private readonly cancel: CancelPurchaseUseCase,
     @Inject('CREATE_PURCHASE_FROM_SHOPPING_LIST_USE_CASE')
     private readonly convert: CreatePurchaseFromShoppingListUseCase,
+    @Inject('CREATE_PURCHASE_DRAFT_FROM_RECEIPT_USE_CASE')
+    private readonly ocrDraft: CreatePurchaseDraftFromReceiptUseCase,
   ) {}
+  @Post('households/:householdId/purchases/ocr-draft')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'Clave para evitar crear dos drafts para el mismo documento.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        currency: { type: 'string', example: 'EUR' },
+        locale: { type: 'string', example: 'es-ES' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Compra creada como draft a partir del ticket procesado por Veryfi.',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        householdId: { type: 'string', format: 'uuid' },
+        registeredById: { type: 'string', format: 'uuid' },
+        status: { type: 'string', enum: ['DRAFT'] },
+        source: { type: 'string', enum: ['OCR'] },
+        storeName: { type: 'string', example: 'Supermercado Ejemplo' },
+        purchaseDate: { type: 'string', format: 'date-time' },
+        currency: { type: 'string', example: 'EUR' },
+        total: { type: 'string', example: '42.75' },
+        reviewRequired: { type: 'boolean', example: true },
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              foodId: { type: 'string', format: 'uuid', nullable: true },
+              inventoryItemId: { type: 'string', format: 'uuid', nullable: true },
+              sourceShoppingItemId: { type: 'string', format: 'uuid', nullable: true },
+              nameSnapshot: { type: 'string', example: 'Leche entera' },
+              unit: { type: 'string', example: 'L' },
+              quantity: { type: 'string', example: '2' },
+            },
+          },
+        },
+        ocr: {
+          type: 'object',
+          properties: {
+            provider: { type: 'string', enum: ['VERYFI'] },
+            confidence: { type: 'number', nullable: true, example: 0.91 },
+            documentId: { type: 'string', nullable: true },
+            warnings: { type: 'array', items: { type: 'string' } },
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  quantity: { type: 'string' },
+                  unit: { type: 'string' },
+                  confidence: { type: 'number', nullable: true },
+                  needsReview: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        receipt: {
+          type: 'object',
+          properties: {
+            fileName: { type: 'string' },
+            contentType: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Archivo inválido o faltante.' })
+  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Token ausente o inválido.' })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'El usuario no tiene acceso al hogar.',
+  })
+  @ApiResponse({ status: HttpStatus.PAYLOAD_TOO_LARGE, description: 'El archivo supera 20 MB.' })
+  @ApiResponse({
+    status: HttpStatus.UNPROCESSABLE_ENTITY,
+    description: 'El ticket no contiene ítems utilizables.',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_GATEWAY,
+    description: 'Veryfi no pudo procesar el documento.',
+  })
+  async createPurchaseDraftFromReceipt(
+    @Param('householdId', ParseUUIDPipe) householdId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() body: CreatePurchaseFromReceiptRequestDto,
+    @UploadedFile() file: UploadedReceiptFile | undefined,
+  ) {
+    try {
+      if (!file) throw new ReceiptOcrFileError('Receipt file is required.');
+      const result = await this.ocrDraft.execute({
+        actorId: user.id,
+        householdId,
+        content: file.buffer,
+        fileName: file.originalname,
+        contentType: file.mimetype,
+        idempotencyKey,
+        currency: body.currency,
+      });
+      return {
+        ...toPurchaseResponse(result.purchase),
+        reviewRequired: true,
+        ocr: {
+          provider: 'VERYFI',
+          confidence: result.ocr.confidence,
+          documentId: result.ocr.providerDocumentId,
+          warnings: result.ocr.warnings,
+          items: result.ocr.items,
+        },
+        receipt: {
+          fileName: file.originalname,
+          contentType: file.mimetype,
+        },
+      };
+    } catch (e) {
+      rethrowPurchaseHttpError(e);
+    }
+  }
   @Post('households/:householdId/purchases') async createPurchase(
     @Param('householdId', ParseUUIDPipe) householdId: string,
     @CurrentUser() user: CurrentUserModel,
@@ -155,4 +304,10 @@ export class PurchaseController {
       rethrowPurchaseHttpError(e);
     }
   }
+}
+
+interface UploadedReceiptFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
 }

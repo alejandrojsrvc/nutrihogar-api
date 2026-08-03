@@ -57,15 +57,12 @@ describe('S3CompatibleObjectStorageAdapter', () => {
 
   it('treats a missing object as nonexistent and deletes objects idempotently', async () => {
     const client = new S3Client({ region: options.region });
-    const send = jest.spyOn(client, 'send');
     const notFound = new Error('missing');
     notFound.name = 'NotFound';
-    let calls = 0;
-    send.mockImplementation(async () => {
-      calls += 1;
-      if (calls === 1) throw notFound;
-      return {} as never;
-    });
+    const send = jest
+      .spyOn(client, 'send')
+      .mockRejectedValueOnce(notFound)
+      .mockResolvedValueOnce({} as never);
     const storage = new S3CompatibleObjectStorageAdapter(options, client);
 
     await expect(storage.exists('households/household-id/receipts/missing.jpg')).resolves.toBe(

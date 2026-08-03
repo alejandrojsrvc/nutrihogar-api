@@ -13,7 +13,7 @@ import { PrismaInventoryRepository } from './prisma-inventory.repository';
 
 describe('PrismaInventoryRepository', () => {
   it('atomically creates an item with its initial movement and marks it persisted', async () => {
-    const create = jest.fn().mockResolvedValue(undefined);
+    const create = jest.fn<Promise<void>, [InventoryCreateInput]>().mockResolvedValue(undefined);
     const transactionClient = client({ inventoryItem: { create } });
     const transaction = jest.fn(async (work: (client: unknown) => Promise<void>) =>
       work(transactionClient),
@@ -34,6 +34,8 @@ describe('PrismaInventoryRepository', () => {
         },
       }),
     });
+    const createInput = create.mock.calls[0]?.[0];
+    expect(createInput?.data.movements.create[0]).not.toHaveProperty('itemId');
     expect(item.pendingMovements).toHaveLength(0);
     expect(item.isNew).toBe(false);
   });
@@ -164,6 +166,10 @@ describe('PrismaInventoryRepository', () => {
     });
   });
 });
+
+interface InventoryCreateInput {
+  data: { movements: { create: Array<Record<string, unknown>> } };
+}
 
 function newItem(): InventoryItem {
   const now = new Date('2026-07-31T12:00:00.000Z');

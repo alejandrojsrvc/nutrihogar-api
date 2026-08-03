@@ -339,7 +339,13 @@ export class PrismaInventoryRepository
           version: data.version,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
-          movements: { create: data.movements },
+          movements: {
+            create: data.movements.map((movement) => {
+              const { itemId, ...withoutItemId } = movement;
+              void itemId;
+              return withoutItemId;
+            }),
+          },
         },
       });
       item.markPersisted(data.version);

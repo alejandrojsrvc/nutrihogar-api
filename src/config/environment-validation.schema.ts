@@ -40,4 +40,8 @@ export const environmentValidationSchema = Joi.object({
   SUPABASE_JWT_SECRET: optionalString,
   SUPABASE_STORAGE_BUCKET: Joi.string().default('user-files'),
   FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
+  VERYFI_CLIENT_ID: optionalString,
+  VERYFI_CLIENT_API_KEY: optionalString,
+  VERYFI_BASE_URL: Joi.string().uri().default('https://api.veryfi.com'),
+  VERYFI_TIMEOUT_MS: Joi.number().integer().min(1000).default(120000),
 }).unknown(true);

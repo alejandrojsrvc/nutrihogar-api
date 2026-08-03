@@ -41,6 +41,7 @@ export interface CreatePurchaseCommand {
   currency?: string;
   items: PurchaseItemCommand[];
   idempotencyKey?: string | null;
+  source?: 'MANUAL' | 'SHOPPING_LIST' | 'OCR';
 }
 interface PurchaseListFilters {
   status?: 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
@@ -73,6 +74,7 @@ export class CreatePurchaseUseCase {
       currency: command.currency ?? access.household.currency,
       total: command.total,
       idempotencyKey: key,
+      source: command.source,
       items: command.items.map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
       createdAt: new Date(),
     });
@@ -311,6 +313,7 @@ export class CreatePurchaseFromShoppingListUseCase {
       total: input.total,
       items,
       idempotencyKey: input.idempotencyKey,
+      source: 'SHOPPING_LIST',
     });
   }
 }

@@ -28,6 +28,7 @@ export class Purchase {
       storeName: StoreName.from(input.storeName).value,
       purchaseDate: PurchaseDate.from(input.purchaseDate).value,
       status: 'DRAFT',
+      source: input.source ?? 'MANUAL',
       currency: Currency.from(input.currency).value,
       total: PurchaseTotal.from(input.total).toDecimal(),
       idempotencyKey: input.idempotencyKey?.trim() || null,
@@ -77,6 +78,9 @@ export class Purchase {
   }
   get status(): PurchaseStatus {
     return this.props.status;
+  }
+  get source() {
+    return this.props.source;
   }
   get currency() {
     return this.props.currency;

@@ -28,7 +28,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   REGISTER_MEAL_USE_CASE,
   RegisterMealUseCase,
@@ -62,7 +62,7 @@ import { rethrowMealHttpError, toMealResponse } from './meal-http.mapper';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @Controller()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class MealsController {
   constructor(
     @Inject(REGISTER_MEAL_USE_CASE)

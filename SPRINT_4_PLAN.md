@@ -408,7 +408,7 @@ No se crearán carpetas vacías ni abstracciones sin una responsabilidad requeri
 
 - Mappers y repositorios Prisma con dobles del cliente.
 - Transacciones, filtros, versionado, restricciones e idempotencia.
-- No ejecutar localmente pruebas que requieran PostgreSQL o Supabase.
+- No ejecutar localmente pruebas que requieran servicios externos.
 
 ### Presentación
 

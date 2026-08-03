@@ -20,25 +20,23 @@ import { seedNutritionCatalog } from '../../src/food-catalog/infrastructure/seed
 
 const testDatabaseUrl = process.env.DATABASE_URL_TEST;
 
-function pointsToLocalSupabase(databaseUrl: string | undefined): boolean {
+function pointsToLocalPostgres(databaseUrl: string | undefined): boolean {
   if (!databaseUrl) {
     return false;
   }
 
   try {
     const parsedUrl = new URL(databaseUrl);
-    return ['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) && parsedUrl.port === '54322';
+    return ['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) && parsedUrl.port === '5432';
   } catch {
     return false;
   }
 }
 
-const isLocalTestDatabase = pointsToLocalSupabase(testDatabaseUrl);
+const isLocalTestDatabase = pointsToLocalPostgres(testDatabaseUrl);
 
 if (testDatabaseUrl && !isLocalTestDatabase) {
-  throw new Error(
-    'DATABASE_URL_TEST debe apuntar al PostgreSQL local de Supabase en 127.0.0.1:54322.',
-  );
+  throw new Error('DATABASE_URL_TEST debe apuntar al PostgreSQL local en 127.0.0.1:5432.');
 }
 
 const databaseTests = isLocalTestDatabase ? describe : describe.skip;
@@ -52,7 +50,7 @@ async function runInRollback(
   callback: (transaction: Prisma.TransactionClient) => Promise<void>,
 ): Promise<void> {
   if (!prisma) {
-    throw new Error('DATABASE_URL_TEST no apunta a Supabase local.');
+    throw new Error('DATABASE_URL_TEST no apunta al PostgreSQL local.');
   }
 
   try {
@@ -76,13 +74,11 @@ databaseTests('Identity and household persistence', () => {
     await runInRollback(async (transaction) => {
       const creator = await transaction.user.create({
         data: {
-          authProviderId: `auth-${randomUUID()}`,
           email: `creator-${randomUUID()}@nutrihogar.local`,
         },
       });
       const member = await transaction.user.create({
         data: {
-          authProviderId: `auth-${randomUUID()}`,
           email: `member-${randomUUID()}@nutrihogar.local`,
         },
       });
@@ -147,7 +143,6 @@ databaseTests('Identity and household persistence', () => {
     await runInRollback(async (transaction) => {
       const user = await transaction.user.create({
         data: {
-          authProviderId: `auth-${randomUUID()}`,
           email: `duplicate-${randomUUID()}@nutrihogar.local`,
         },
       });
@@ -184,7 +179,6 @@ databaseTests('Identity and household persistence', () => {
     await runInRollback(async (transaction) => {
       const user = await transaction.user.create({
         data: {
-          authProviderId: `auth-${randomUUID()}`,
           email: `restricted-${randomUUID()}@nutrihogar.local`,
         },
       });
@@ -278,7 +272,6 @@ databaseTests('Identity and household persistence', () => {
     await runInRollback(async (transaction) => {
       const user = await transaction.user.create({
         data: {
-          authProviderId: `auth-${randomUUID()}`,
           email: `food-owner-${randomUUID()}@nutrihogar.local`,
         },
       });

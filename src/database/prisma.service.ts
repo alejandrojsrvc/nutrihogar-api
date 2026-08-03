@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 
-const testDatabaseUrl = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+const testDatabaseUrl = 'postgresql://postgres:postgres@127.0.0.1:5432/nutrihogar';
 
 @Injectable()
 export class PrismaService extends PrismaClient {
@@ -27,7 +27,7 @@ export class PrismaService extends PrismaClient {
       this.logger.log('Conexión con PostgreSQL establecida.');
     } catch {
       this.logger.error(
-        'No se pudo conectar con PostgreSQL. Revisa DATABASE_URL y que Supabase local esté iniciado.',
+        'No se pudo conectar con PostgreSQL. Revisa DATABASE_URL y que PostgreSQL esté iniciado.',
       );
       throw new Error('No se pudo establecer la conexión con PostgreSQL.');
     }

@@ -20,10 +20,14 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
     }),
   } as any;
   const storage = {
-    upload: jest
-      .fn()
-      .mockResolvedValue({ path: 'receipt/path', url: 'https://signed.test/receipt' }),
-    remove: jest.fn().mockResolvedValue(undefined),
+    upload: jest.fn().mockResolvedValue({
+      key: 'households/household-id/receipts/file-id.jpg',
+      contentType: 'image/jpeg',
+      size: 300,
+    }),
+    delete: jest.fn().mockResolvedValue(undefined),
+    exists: jest.fn(),
+    createSignedDownloadUrl: jest.fn().mockResolvedValue('https://signed.test/receipt'),
   } as any;
 
   beforeEach(() => jest.clearAllMocks());
@@ -45,7 +49,7 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
     const result = await useCase.execute({
       actorId: 'user-id',
       householdId: 'household-id',
-      content: Buffer.alloc(300),
+      content: validJpegContent(),
       fileName: 'receipt.jpg',
       contentType: 'image/jpeg',
       idempotencyKey: 'request-id',
@@ -55,9 +59,18 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
     expect(result.purchase.items[0]).toMatchObject({ nameSnapshot: 'Milk', unit: 'L' });
     expect(result.ocr.providerDocumentId).toBe('veryfi-id');
     expect(storage.upload).toHaveBeenCalledWith(
-      expect.objectContaining({ fileName: 'receipt.jpg' }),
+      expect.objectContaining({
+        key: expect.stringMatching(/^households\/household-id\/receipts\/.+\.jpg$/),
+        contentType: 'image/jpeg',
+        body: expect.any(Buffer),
+        metadata: { 'original-name': 'receipt.jpg' },
+      }),
     );
-    expect(storage.remove).toHaveBeenCalledWith('receipt/path');
+    expect(storage.createSignedDownloadUrl).toHaveBeenCalledWith(
+      'households/household-id/receipts/file-id.jpg',
+      600,
+    );
+    expect(storage.delete).toHaveBeenCalledWith('households/household-id/receipts/file-id.jpg');
     expect(purchases.save).toHaveBeenCalledTimes(1);
   });
 
@@ -89,7 +102,7 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
     const result = await useCase.execute({
       actorId: 'user-id',
       householdId: 'household-id',
-      content: Buffer.alloc(300),
+      content: validJpegContent(),
       fileName: 'receipt.jpg',
       contentType: 'image/jpeg',
       idempotencyKey: 'request-id',
@@ -114,11 +127,60 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
       useCase.execute({
         actorId: 'user-id',
         householdId: 'household-id',
-        content: Buffer.alloc(300),
+        content: validJpegContent(),
         fileName: 'receipt.txt',
         contentType: 'text/plain',
       }),
     ).rejects.toThrow('Unsupported receipt file type');
     expect(storage.upload).not.toHaveBeenCalled();
   });
+
+  it('rejects files above the configured limit before storage', async () => {
+    const purchases = { findByIdempotencyKey: jest.fn(), save: jest.fn() } as any;
+    const useCase = new CreatePurchaseDraftFromReceiptUseCase(
+      households,
+      purchases,
+      new CreatePurchaseUseCase(households, purchases),
+      ocr,
+      storage,
+      1024 * 1024,
+    );
+
+    await expect(
+      useCase.execute({
+        actorId: 'user-id',
+        householdId: 'household-id',
+        content: Buffer.alloc(1024 * 1024 + 1),
+        fileName: 'receipt.jpg',
+        contentType: 'image/jpeg',
+      }),
+    ).rejects.toThrow('Receipt file cannot exceed 1 MB.');
+    expect(storage.upload).not.toHaveBeenCalled();
+  });
+
+  it('rejects content whose signature does not match the declared MIME type', async () => {
+    const purchases = { findByIdempotencyKey: jest.fn(), save: jest.fn() } as any;
+    const useCase = new CreatePurchaseDraftFromReceiptUseCase(
+      households,
+      purchases,
+      new CreatePurchaseUseCase(households, purchases),
+      ocr,
+      storage,
+    );
+
+    await expect(
+      useCase.execute({
+        actorId: 'user-id',
+        householdId: 'household-id',
+        content: Buffer.alloc(300),
+        fileName: 'receipt.jpg',
+        contentType: 'image/jpeg',
+      }),
+    ).rejects.toThrow('Receipt file content does not match its MIME type.');
+    expect(storage.upload).not.toHaveBeenCalled();
+  });
 });
+
+function validJpegContent(): Buffer {
+  return Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(297)]);
+}

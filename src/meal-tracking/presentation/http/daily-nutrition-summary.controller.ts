@@ -12,7 +12,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   GET_DAILY_NUTRITION_SUMMARY_USE_CASE,
   GetDailyNutritionSummaryUseCase,
@@ -24,7 +24,7 @@ import { rethrowMealHttpError } from './meal-http.mapper';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @Controller('adult-profiles/:profileId/daily-nutrition-summary')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class DailyNutritionSummaryController {
   constructor(
     @Inject(GET_DAILY_NUTRITION_SUMMARY_USE_CASE)

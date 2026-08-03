@@ -23,7 +23,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   GET_NUTRITION_GOAL_REVIEW_QUERY,
   GetNutritionGoalReviewQuery,
@@ -60,7 +60,7 @@ import type {
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @Controller('adult-profiles/:adultProfileId/nutrition-goal-review')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class NutritionGoalReviewController {
   constructor(
     @Inject(GET_NUTRITION_GOAL_REVIEW_QUERY)

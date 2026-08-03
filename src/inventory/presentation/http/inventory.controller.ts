@@ -29,7 +29,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   GET_INVENTORY_ITEM_QUERY,
   GetInventoryItemQuery,
@@ -108,7 +108,7 @@ import {
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @Controller()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class InventoryController {
   constructor(
     @Inject(LIST_INVENTORY_ITEMS_QUERY) private readonly listItems: ListInventoryItemsQuery,

@@ -19,7 +19,7 @@ function extractBearerToken(authorization: string | undefined): string | null {
 }
 
 @Injectable()
-export class SupabaseAuthGuard implements CanActivate {
+export class JwtAuthGuard implements CanActivate {
   constructor(
     @Inject(GET_CURRENT_USER_USE_CASE)
     private readonly getCurrentUser: GetCurrentUserUseCase,

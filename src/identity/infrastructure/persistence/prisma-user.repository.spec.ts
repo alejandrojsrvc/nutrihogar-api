@@ -1,76 +1,51 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { EmailAlreadyRegisteredError } from '../../application/errors/authentication.errors';
 import { PrismaUserRepository } from './prisma-user.repository';
 
 describe('PrismaUserRepository', () => {
-  it('returns the concurrently created user when auth_provider_id is duplicated', async () => {
-    const duplicate = new Prisma.PrismaClientKnownRequestError('duplicate', {
-      code: 'P2002',
-      clientVersion: '6.19.3',
-      meta: { target: ['auth_provider_id'] },
-    });
-    const user = {
+  it('maps credentials without exposing unrelated user fields', async () => {
+    const findUnique = jest.fn().mockResolvedValue({
       id: 'local-user-id',
-      authProviderId: 'supabase-user-id',
       email: 'usuario@example.com',
-      displayName: 'Alejandro',
-      avatarUrl: null,
-      timezone: 'America/Argentina/Buenos_Aires',
-      locale: 'es-AR',
-      lastLoginAt: new Date('2026-08-02T12:41:49.000Z'),
-    };
-    const create = jest.fn().mockRejectedValue(duplicate);
-    const findUnique = jest.fn().mockResolvedValue(user);
+      passwordHash: '$argon2id$v=19$hash',
+    });
     const repository = new PrismaUserRepository({
-      user: { create, findUnique },
+      user: { findUnique },
     } as unknown as PrismaService);
 
-    const result = await repository.create({
-      authProviderId: user.authProviderId,
-      email: user.email,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      timezone: user.timezone,
-      locale: user.locale,
-      lastLoginAt: user.lastLoginAt,
+    await expect(repository.findCredentialsByEmail('usuario@example.com')).resolves.toEqual({
+      id: 'local-user-id',
+      email: 'usuario@example.com',
+      passwordHash: '$argon2id$v=19$hash',
     });
-
     expect(findUnique).toHaveBeenCalledWith({
-      where: { authProviderId: user.authProviderId },
-    });
-    expect(result).toEqual({
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      timezone: user.timezone,
-      locale: user.locale,
+      where: { email: 'usuario@example.com' },
+      select: { id: true, email: true, passwordHash: true },
     });
   });
 
-  it('rethrows duplicate errors for other unique fields', async () => {
+  it('maps a duplicate email to an application error', async () => {
     const duplicate = new Prisma.PrismaClientKnownRequestError('duplicate', {
       code: 'P2002',
       clientVersion: '6.19.3',
       meta: { target: ['email'] },
     });
     const create = jest.fn().mockRejectedValue(duplicate);
-    const findUnique = jest.fn();
     const repository = new PrismaUserRepository({
-      user: { create, findUnique },
+      user: { create },
     } as unknown as PrismaService);
 
     await expect(
       repository.create({
-        authProviderId: 'supabase-user-id',
         email: 'usuario@example.com',
+        passwordHash: '$argon2id$v=19$hash',
         displayName: 'Alejandro',
         avatarUrl: null,
         timezone: 'America/Argentina/Buenos_Aires',
         locale: 'es-AR',
-        lastLoginAt: new Date(),
+        lastLoginAt: null,
       }),
-    ).rejects.toBe(duplicate);
-    expect(findUnique).not.toHaveBeenCalled();
+    ).rejects.toBeInstanceOf(EmailAlreadyRegisteredError);
   });
 });

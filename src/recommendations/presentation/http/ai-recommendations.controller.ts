@@ -16,7 +16,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import { AiProviderError } from '../../application/errors/ai-provider.error';
 import { AiGeneratedProposalId } from '../../domain/value-objects/ai-recommendation.value-objects';
 import { AcceptAiWeeklyPlanProposalUseCase } from '../../application/use-cases/accept-ai-weekly-plan-proposal.use-case';
@@ -53,7 +53,7 @@ import {
 
 @ApiTags('ai-recommendations')
 @ApiBearerAuth()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class AiRecommendationsController {
   constructor(

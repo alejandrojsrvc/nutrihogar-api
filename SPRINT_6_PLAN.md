@@ -37,7 +37,7 @@ No se realizaran diagnosticos, recomendaciones clinicas ni inferencias causales.
 
 ## Dependencias disponibles
 
-- Autenticacion y guard de Supabase.
+- Autenticacion y guard JWT propio.
 - Hogares, membresias, roles y aislamiento por hogar.
 - Perfiles adultos.
 - `Clock` en el modulo de Nutrition.

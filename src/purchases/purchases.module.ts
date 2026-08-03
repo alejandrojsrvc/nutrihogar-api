@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DatabaseModule } from '../database/database.module';
 import { FoodCatalogModule } from '../food-catalog/food-catalog.module';
 import { HouseholdsModule } from '../households/households.module';
@@ -42,13 +43,9 @@ import {
 } from './application/use-cases/purchase.use-cases';
 import { PurchaseController } from './presentation/http/purchase.controller';
 import { VeryfiReceiptOcrAdapter } from './infrastructure/ocr/veryfi-receipt-ocr.adapter';
-import { SupabaseReceiptStorage } from './infrastructure/storage/supabase-receipt.storage';
-import {
-  RECEIPT_OCR,
-  RECEIPT_STORAGE,
-  ReceiptOcrPort,
-  ReceiptStorage,
-} from './application/ports/receipt-ocr.port';
+import { StorageModule } from '../storage/storage.module';
+import { RECEIPT_OCR, ReceiptOcrPort } from './application/ports/receipt-ocr.port';
+import { OBJECT_STORAGE, ObjectStorage } from '../storage/application/ports/object-storage.port';
 import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/create-purchase-draft-from-receipt.use-case';
 
 @Module({
@@ -59,15 +56,14 @@ import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/c
     IdentityModule,
     InventoryModule,
     ShoppingListModule,
+    StorageModule,
   ],
   controllers: [PurchaseController],
   providers: [
     PrismaPurchaseRepository,
     VeryfiReceiptOcrAdapter,
-    SupabaseReceiptStorage,
     { provide: PURCHASE_REPOSITORY, useExisting: PrismaPurchaseRepository },
     { provide: RECEIPT_OCR, useExisting: VeryfiReceiptOcrAdapter },
-    { provide: RECEIPT_STORAGE, useExisting: SupabaseReceiptStorage },
     PrismaPurchaseInventoryUnitOfWork,
     { provide: PURCHASE_INVENTORY_UNIT_OF_WORK, useExisting: PrismaPurchaseInventoryUnitOfWork },
     {
@@ -89,15 +85,25 @@ import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/c
         PURCHASE_REPOSITORY,
         'CREATE_PURCHASE_USE_CASE',
         RECEIPT_OCR,
-        RECEIPT_STORAGE,
+        OBJECT_STORAGE,
+        ConfigService,
       ],
       useFactory: (
         h: HouseholdRepository,
         p: PurchaseRepository,
         c: CreatePurchaseUseCase,
         o: ReceiptOcrPort,
-        s: ReceiptStorage,
-      ) => new CreatePurchaseDraftFromReceiptUseCase(h, p, c, o, s),
+        s: ObjectStorage,
+        config: ConfigService,
+      ) =>
+        new CreatePurchaseDraftFromReceiptUseCase(
+          h,
+          p,
+          c,
+          o,
+          s,
+          config.getOrThrow<number>('UPLOAD_MAX_FILE_SIZE_MB') * 1024 * 1024,
+        ),
     },
     {
       provide: 'GET_PURCHASE_QUERY',

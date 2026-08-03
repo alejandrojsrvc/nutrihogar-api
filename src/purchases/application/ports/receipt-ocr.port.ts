@@ -1,5 +1,4 @@
 export const RECEIPT_OCR = Symbol('RECEIPT_OCR');
-export const RECEIPT_STORAGE = Symbol('RECEIPT_STORAGE');
 
 export interface ReceiptOcrItem {
   name: string;
@@ -26,13 +25,4 @@ export interface ReceiptOcrPort {
     fileName: string;
     contentType: string;
   }): Promise<ReceiptOcrResult>;
-}
-
-export interface ReceiptStorage {
-  upload(input: {
-    content: Buffer;
-    contentType: string;
-    fileName: string;
-  }): Promise<{ path: string; url: string }>;
-  remove(path: string): Promise<void>;
 }

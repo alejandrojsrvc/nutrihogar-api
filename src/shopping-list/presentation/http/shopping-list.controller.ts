@@ -20,7 +20,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ParseUUIDPipe } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import {
@@ -46,7 +46,7 @@ import {
 
 @ApiTags('shopping-list')
 @ApiBearerAuth()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class ShoppingListController {
   constructor(

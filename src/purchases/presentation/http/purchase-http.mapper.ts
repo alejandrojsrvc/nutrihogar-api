@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ConflictException,
   InternalServerErrorException,
+  ServiceUnavailableException,
   BadGatewayException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -66,7 +67,7 @@ export function rethrowPurchaseHttpError(error: unknown): never {
   if (error instanceof ReceiptOcrFileError) throw new BadRequestException(error.message);
   if (error instanceof ReceiptOcrDataError) throw new UnprocessableEntityException(error.message);
   if (error instanceof ReceiptOcrConfigurationError)
-    throw new InternalServerErrorException(error.message);
+    throw new ServiceUnavailableException(error.message);
   if (error instanceof ReceiptOcrProcessingError) throw new BadGatewayException(error.message);
   throw new InternalServerErrorException();
 }

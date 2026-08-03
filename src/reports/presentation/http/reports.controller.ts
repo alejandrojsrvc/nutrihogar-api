@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import { HouseholdAccessDeniedError } from '../../../households/application/errors/household-access-denied.error';
 import {
   GET_INVENTORY_REPORT_QUERY,
@@ -36,7 +36,7 @@ import { OperationalReportQueryDto } from './dto/operational-report.dto';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @Controller('households/:householdId/reports')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class ReportsController {
   constructor(
     @Inject(GET_INVENTORY_REPORT_QUERY) private readonly inventory: GetInventoryReportQuery,

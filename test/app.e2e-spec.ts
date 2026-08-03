@@ -8,6 +8,10 @@ import { AppModule } from '../src/app.module';
 import { configureApplication } from '../src/configure-application';
 import { InvalidIdentityError } from '../src/identity/application/errors/invalid-identity.error';
 import { GET_CURRENT_USER_USE_CASE } from '../src/identity/application/use-cases/get-current-user.use-case';
+import { LOGIN_USE_CASE } from '../src/identity/application/use-cases/login.use-case';
+import { LOGOUT_USE_CASE } from '../src/identity/application/use-cases/logout.use-case';
+import { REFRESH_USE_CASE } from '../src/identity/application/use-cases/refresh.use-case';
+import { REGISTER_USE_CASE } from '../src/identity/application/use-cases/register.use-case';
 
 class ValidationRequestDto {
   @IsString()
@@ -24,6 +28,10 @@ interface OpenApiResponseBody {
     title: string;
   };
   paths: {
+    '/api/auth/register': unknown;
+    '/api/auth/login': unknown;
+    '/api/auth/refresh': unknown;
+    '/api/auth/logout': unknown;
     '/api/health': unknown;
     '/api/households': unknown;
     '/api/households/{householdId}/invitations': unknown;
@@ -87,6 +95,22 @@ describe('Application (e2e)', () => {
   const getCurrentUser = {
     execute: jest.fn(),
   };
+  const register = { execute: jest.fn() };
+  const login = { execute: jest.fn() };
+  const refresh = { execute: jest.fn() };
+  const logout = { execute: jest.fn() };
+  const authResponse = {
+    accessToken: 'access-token',
+    refreshToken: 'refresh-token',
+    user: {
+      id: 'local-user-id',
+      email: 'usuario@example.com',
+      displayName: 'Alejandro',
+      avatarUrl: null,
+      timezone: 'America/Argentina/Buenos_Aires',
+      locale: 'es-AR',
+    },
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -95,6 +119,14 @@ describe('Application (e2e)', () => {
     })
       .overrideProvider(GET_CURRENT_USER_USE_CASE)
       .useValue(getCurrentUser)
+      .overrideProvider(REGISTER_USE_CASE)
+      .useValue(register)
+      .overrideProvider(LOGIN_USE_CASE)
+      .useValue(login)
+      .overrideProvider(REFRESH_USE_CASE)
+      .useValue(refresh)
+      .overrideProvider(LOGOUT_USE_CASE)
+      .useValue(logout)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -108,6 +140,10 @@ describe('Application (e2e)', () => {
 
   beforeEach(() => {
     getCurrentUser.execute.mockReset();
+    register.execute.mockReset();
+    login.execute.mockReset();
+    refresh.execute.mockReset();
+    logout.execute.mockReset();
   });
 
   it('GET /api/health returns the service status', async () => {
@@ -127,6 +163,10 @@ describe('Application (e2e)', () => {
 
     expect(body.info.title).toBe('NutriHogar API');
     expect(body.paths['/api/health']).toBeDefined();
+    expect(body.paths['/api/auth/register']).toBeDefined();
+    expect(body.paths['/api/auth/login']).toBeDefined();
+    expect(body.paths['/api/auth/refresh']).toBeDefined();
+    expect(body.paths['/api/auth/logout']).toBeDefined();
     expect(body.paths['/api/households']).toBeDefined();
     expect(body.paths['/api/households/{householdId}/invitations']).toBeDefined();
     expect(body.paths['/api/household-invitations/{token}/accept']).toBeDefined();
@@ -155,13 +195,13 @@ describe('Application (e2e)', () => {
     ).toContain('EXPIRATION');
   });
 
-  it('rejects a request without a Supabase access token', async () => {
+  it('rejects a request without a JWT access token', async () => {
     await request(app.getHttpServer()).get('/api/users/me').expect(401);
 
     expect(getCurrentUser.execute).not.toHaveBeenCalled();
   });
 
-  it('rejects a request with an invalid Supabase access token', async () => {
+  it('rejects a request with an invalid JWT access token', async () => {
     getCurrentUser.execute.mockRejectedValue(new InvalidIdentityError());
 
     await request(app.getHttpServer())
@@ -192,6 +232,42 @@ describe('Application (e2e)', () => {
         timezone: 'America/Argentina/Buenos_Aires',
         locale: 'es-AR',
       });
+  });
+
+  it('supports the register, login, refresh and logout HTTP contracts', async () => {
+    register.execute.mockResolvedValue(authResponse);
+    login.execute.mockResolvedValue(authResponse);
+    refresh.execute.mockResolvedValue(authResponse);
+    logout.execute.mockResolvedValue(undefined);
+
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({ email: 'usuario@example.com', password: 'password-seguro', displayName: 'Alejandro' })
+      .expect(201)
+      .expect(authResponse);
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'usuario@example.com', password: 'password-seguro' })
+      .expect(200)
+      .expect(authResponse);
+    await request(app.getHttpServer())
+      .post('/api/auth/refresh')
+      .send({ refreshToken: 'refresh-token' })
+      .expect(200)
+      .expect(authResponse);
+    await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .send({ refreshToken: 'refresh-token' })
+      .expect(204);
+    expect(logout.execute).toHaveBeenCalledWith('refresh-token');
+  });
+
+  it('rejects invalid registration email and password DTOs', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({ email: 'not-an-email', password: 'short' })
+      .expect(400);
+    expect(register.execute).not.toHaveBeenCalled();
   });
 
   it('returns a consistent error for an invalid DTO', async () => {

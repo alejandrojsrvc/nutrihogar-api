@@ -22,7 +22,7 @@ import {
 import type { Response } from 'express';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import { ExportQueryDto } from './dto/export-query.dto';
 import {
   EXPORT_BODY_TRACKING_CSV_USE_CASE,
@@ -47,7 +47,7 @@ import {
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @ApiBadRequestResponse({ description: 'Invalid date range, timezone or locale.' })
 @Controller()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class ExportsController {
   constructor(
     @Inject(EXPORT_BODY_TRACKING_CSV_USE_CASE)

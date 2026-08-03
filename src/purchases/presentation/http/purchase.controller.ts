@@ -25,7 +25,7 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ParseUUIDPipe } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import {
@@ -50,7 +50,7 @@ import { rethrowPurchaseHttpError, toPurchaseResponse } from './purchase-http.ma
 import { ReceiptOcrFileError } from '../../application/errors/receipt-ocr.errors';
 @ApiTags('purchases')
 @ApiBearerAuth()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 @Controller()
 export class PurchaseController {
   constructor(
@@ -161,6 +161,10 @@ export class PurchaseController {
   @ApiResponse({
     status: HttpStatus.BAD_GATEWAY,
     description: 'Veryfi no pudo procesar el documento.',
+  })
+  @ApiResponse({
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    description: 'El almacenamiento de recibos no está disponible.',
   })
   async createPurchaseDraftFromReceipt(
     @Param('householdId', ParseUUIDPipe) householdId: string,

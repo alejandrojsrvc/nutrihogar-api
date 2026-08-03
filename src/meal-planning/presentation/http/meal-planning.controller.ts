@@ -23,7 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   ACTIVATE_WEEKLY_PLAN_USE_CASE,
   ActivateWeeklyPlanUseCase,
@@ -110,7 +110,7 @@ import type { WeeklyPlanListResponse, WeeklyPlanResponse } from './meal-planning
 @ApiTags('meal-planning')
 @ApiBearerAuth()
 @Controller()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class MealPlanningController {
   constructor(
     @Inject(CREATE_WEEKLY_PLAN_USE_CASE) private readonly createPlan: CreateWeeklyPlanUseCase,

@@ -46,7 +46,7 @@ La planificacion sera manual y determinista. La generacion autonoma mediante IA 
 
 ## Dependencias ya disponibles
 
-- Autenticacion y guard de Supabase.
+- Autenticacion y guard JWT propio.
 - Hogares, membresias y roles.
 - Perfiles adultos y metas nutricionales.
 - Catalogo de alimentos y equivalencias.

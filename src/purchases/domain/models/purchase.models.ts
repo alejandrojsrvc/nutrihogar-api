@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 
 export type PurchaseStatus = 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+export type PurchaseSource = 'MANUAL' | 'SHOPPING_LIST' | 'OCR';
 export type PurchaseUnit = 'GRAM' | 'MILLILITER' | 'UNIT' | 'KG' | 'G' | 'L' | 'ML' | 'EA';
 
 export interface PurchaseItemProps {
@@ -20,6 +21,7 @@ export interface PurchaseProps {
   storeName: string;
   purchaseDate: Date;
   status: PurchaseStatus;
+  source: PurchaseSource;
   currency: string;
   total: Decimal;
   idempotencyKey: string | null;
@@ -47,6 +49,7 @@ export interface CreatePurchaseInput {
   currency: string;
   total: Decimal.Value;
   idempotencyKey?: string | null;
+  source?: PurchaseSource;
   items: CreatePurchaseItemInput[];
   createdAt: Date;
 }

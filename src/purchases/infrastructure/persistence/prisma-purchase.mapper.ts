@@ -20,6 +20,7 @@ export interface PurchaseRecord {
   storeName: string;
   purchaseDate: Date;
   status: PurchaseProps['status'];
+  source?: PurchaseProps['source'];
   currency: string;
   total: { toString(): string };
   idempotencyKey?: string | null;
@@ -37,6 +38,7 @@ export class PrismaPurchaseMapper {
       storeName: record.storeName,
       purchaseDate: record.purchaseDate,
       status: record.status,
+      source: record.source ?? 'MANUAL',
       currency: record.currency,
       total: new Decimal(record.total.toString()),
       idempotencyKey: record.idempotencyKey ?? null,
@@ -63,6 +65,7 @@ export class PrismaPurchaseMapper {
       storeName: props.storeName,
       purchaseDate: props.purchaseDate,
       status: props.status,
+      source: props.source,
       currency: props.currency,
       total: props.total.toString(),
       idempotencyKey: props.idempotencyKey,

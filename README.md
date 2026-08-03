@@ -78,6 +78,9 @@ Prisma Studio continúa disponible con `npm run db:studio`.
 
 No se deben subir archivos `.env` ni credenciales al repositorio.
 
+La configuración completa de Neon, Render, Cloudflare R2, migraciones y el flujo de despliegue está en
+[doc/infrastructure.md](doc/infrastructure.md).
+
 ## Object Storage
 
 La aplicación depende del puerto agnóstico `ObjectStorage`. En desarrollo se conecta a MinIO y en producción a

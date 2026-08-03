@@ -14,29 +14,35 @@ export class PrismaHouseholdUnitOfWork implements HouseholdUnitOfWork {
   constructor(private readonly prisma: PrismaService) {}
 
   async createWithAdminMembership(input: CreateHouseholdInput): Promise<HouseholdView> {
-    const household = await this.prisma.$transaction(async (transaction) => {
-      const createdHousehold = await transaction.household.create({
-        data: {
-          name: input.name,
-          timezone: input.timezone,
-          currency: input.currency,
-          createdById: input.createdById,
-        },
-      });
+    const household = await this.prisma.$transaction(
+      async (transaction) => {
+        const createdHousehold = await transaction.household.create({
+          data: {
+            name: input.name,
+            timezone: input.timezone,
+            currency: input.currency,
+            createdById: input.createdById,
+          },
+        });
 
-      await transaction.householdMembership.create({
-        data: {
-          householdId: createdHousehold.id,
-          userId: input.createdById,
-          role: HouseholdMembershipRole.ADMIN,
-          status: HouseholdMembershipStatus.ACTIVE,
-        },
-      });
+        await transaction.householdMembership.create({
+          data: {
+            householdId: createdHousehold.id,
+            userId: input.createdById,
+            role: HouseholdMembershipRole.ADMIN,
+            status: HouseholdMembershipStatus.ACTIVE,
+          },
+        });
 
-      await seedStarterRecipes(transaction, createdHousehold.id, input.createdById);
+        await seedStarterRecipes(transaction, createdHousehold.id, input.createdById);
 
-      return createdHousehold;
-    });
+        return createdHousehold;
+      },
+      {
+        maxWait: 15_000,
+        timeout: 120_000,
+      },
+    );
 
     return PrismaHouseholdMapper.toView(household);
   }

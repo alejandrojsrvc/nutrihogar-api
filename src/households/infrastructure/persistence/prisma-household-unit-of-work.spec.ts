@@ -56,6 +56,10 @@ describe('PrismaHouseholdUnitOfWork', () => {
     });
 
     expect(transaction).toHaveBeenCalledTimes(1);
+    expect(transaction).toHaveBeenCalledWith(expect.any(Function), {
+      maxWait: 15_000,
+      timeout: 120_000,
+    });
     expect(transactionClient.household.create).toHaveBeenCalledWith({
       data: {
         name: 'Hogar Sojo',

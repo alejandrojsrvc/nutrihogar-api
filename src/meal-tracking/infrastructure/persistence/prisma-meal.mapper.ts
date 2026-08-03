@@ -2,8 +2,9 @@ import { Meal, MealItem, MealItemNutrientSnapshot } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { MealItemView, MealNutrientSnapshotView, MealView } from '../../domain/models/meal.models';
 
-type MealRecord = Meal & {
+export type MealRecord = Meal & {
   items: (MealItem & { nutrientSnapshots: MealItemNutrientSnapshot[] })[];
+  plannedMeals?: { id: string }[];
 };
 
 export class PrismaMealMapper {
@@ -22,6 +23,7 @@ export class PrismaMealMapper {
       updatedAt: record.updatedAt,
       deletedAt: record.deletedAt,
       items: record.items.map((item) => toItemView(item)),
+      plannedMealId: record.plannedMeals?.[0]?.id ?? null,
     };
   }
 }

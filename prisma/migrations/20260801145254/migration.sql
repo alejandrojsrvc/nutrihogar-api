@@ -1,0 +1,35 @@
+-- RenameForeignKey
+ALTER TABLE "prepared_batch_ingredient_nutrient_snapshots" RENAME CONSTRAINT "prepared_batch_ingredient_nutrient_snapshots_ingredient_id_fkey" TO "prepared_batch_ingredient_nutrient_snapshots_prepared_batc_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "prepared_batch_nutrient_snapshots" RENAME CONSTRAINT "prepared_batch_nutrient_snapshots_batch_id_fkey" TO "prepared_batch_nutrient_snapshots_prepared_batch_id_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "prepared_food_leftover_nutrient_snapshots" RENAME CONSTRAINT "prepared_food_leftover_nutrient_snapshots_leftover_id_fkey" TO "prepared_food_leftover_nutrient_snapshots_prepared_food_le_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "served_portion_nutrient_snapshots" RENAME CONSTRAINT "served_portion_nutrient_snapshots_portion_id_fkey" TO "served_portion_nutrient_snapshots_served_portion_id_fkey";
+
+-- RenameIndex
+ALTER INDEX "prepared_batch_ingredient_nutrient_snapshots_ingredient_id_code" RENAME TO "prepared_batch_ingredient_nutrient_snapshots_prepared_batch_key";
+
+-- RenameIndex
+ALTER INDEX "prepared_batch_ingredient_nutrient_snapshots_ingredient_id_idx" RENAME TO "prepared_batch_ingredient_nutrient_snapshots_prepared_batch_idx";
+
+-- RenameIndex
+ALTER INDEX "prepared_batch_nutrient_snapshots_batch_id_code_key" RENAME TO "prepared_batch_nutrient_snapshots_prepared_batch_id_nutrien_key";
+
+-- RenameIndex
+ALTER INDEX "prepared_batch_nutrient_snapshots_batch_id_idx" RENAME TO "prepared_batch_nutrient_snapshots_prepared_batch_id_idx";
+
+-- RenameIndex
+ALTER INDEX "prepared_food_leftover_nutrient_snapshots_leftover_id_code_key" RENAME TO "prepared_food_leftover_nutrient_snapshots_prepared_food_lef_key";
+
+-- RenameIndex
+ALTER INDEX "prepared_food_leftover_nutrient_snapshots_leftover_id_idx" RENAME TO "prepared_food_leftover_nutrient_snapshots_prepared_food_lef_idx";
+
+-- RenameIndex
+ALTER INDEX "served_portion_nutrient_snapshots_portion_id_code_key" RENAME TO "served_portion_nutrient_snapshots_served_portion_id_nutrien_key";
+
+-- RenameIndex
+ALTER INDEX "served_portion_nutrient_snapshots_portion_id_idx" RENAME TO "served_portion_nutrient_snapshots_served_portion_id_idx";

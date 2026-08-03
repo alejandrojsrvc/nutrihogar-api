@@ -1,21 +1,21 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+import { InvalidIdentityError } from '../errors/invalid-identity.error';
 import { AuthenticatedIdentity } from '../models/authenticated-identity';
 import { CurrentUser } from '../models/current-user';
 import { IdentityProvider } from '../ports/identity-provider.port';
-import { CreateUserInput, UserRepository } from '../ports/user-repository.port';
+import { UserRepository } from '../ports/user-repository.port';
 import { GetCurrentUserUseCase } from './get-current-user.use-case';
 
 const identity: AuthenticatedIdentity = {
-  authProviderId: 'supabase-user-id',
+  userId: 'local-user-id',
   email: 'usuario@example.com',
-  displayName: 'Alejandro',
-  avatarUrl: null,
 };
 
 const currentUser: CurrentUser = {
-  id: 'local-user-id',
+  id: identity.userId,
   email: identity.email,
-  displayName: identity.displayName,
-  avatarUrl: identity.avatarUrl,
+  displayName: 'Alejandro',
+  avatarUrl: null,
   timezone: 'America/Argentina/Buenos_Aires',
   locale: 'es-AR',
 };
@@ -26,51 +26,29 @@ describe('GetCurrentUserUseCase', () => {
   let useCase: GetCurrentUserUseCase;
 
   beforeEach(() => {
-    identityProvider = {
-      verifyAccessToken: jest.fn().mockResolvedValue(identity),
-    };
+    identityProvider = { verifyAccessToken: jest.fn().mockResolvedValue(identity) };
     userRepository = {
-      findByAuthProviderId: jest.fn(),
+      findById: jest.fn(),
+      findCredentialsByEmail: jest.fn(),
       create: jest.fn(),
       updateLastLogin: jest.fn(),
     };
     useCase = new GetCurrentUserUseCase(identityProvider, userRepository);
   });
 
-  it('creates the local user on first access', async () => {
-    userRepository.findByAuthProviderId.mockResolvedValue(null);
-    userRepository.create.mockResolvedValue(currentUser);
+  it('resolves an existing user from the JWT subject', async () => {
+    userRepository.findById.mockResolvedValue(currentUser);
 
-    const result = await useCase.execute('access-token');
-
-    expect(identityProvider.verifyAccessToken.mock.calls).toContainEqual(['access-token']);
-    const createInput = userRepository.create.mock.calls[0]?.[0];
-
-    expect(createInput).toEqual(
-      expect.objectContaining<Partial<CreateUserInput>>({
-        authProviderId: identity.authProviderId,
-        email: identity.email,
-        displayName: identity.displayName,
-        avatarUrl: identity.avatarUrl,
-        timezone: 'America/Argentina/Buenos_Aires',
-        locale: 'es-AR',
-      }),
-    );
-    expect(createInput?.lastLoginAt).toBeInstanceOf(Date);
-    expect(result).toEqual(currentUser);
+    await expect(useCase.execute('access-token')).resolves.toEqual(currentUser);
+    expect(userRepository.findById).toHaveBeenCalledWith(identity.userId);
+    expect(userRepository.create).not.toHaveBeenCalled();
+    expect(userRepository.updateLastLogin).not.toHaveBeenCalled();
   });
 
-  it('updates lastLoginAt for an existing local user', async () => {
-    userRepository.findByAuthProviderId.mockResolvedValue(currentUser);
-    userRepository.updateLastLogin.mockResolvedValue(currentUser);
+  it('rejects a validly signed token when the user no longer exists', async () => {
+    userRepository.findById.mockResolvedValue(null);
 
-    const result = await useCase.execute('access-token');
-
-    const updateLastLoginInput = userRepository.updateLastLogin.mock.calls[0];
-
-    expect(updateLastLoginInput?.[0]).toBe(currentUser.id);
-    expect(updateLastLoginInput?.[1]).toBeInstanceOf(Date);
-    expect(userRepository.create.mock.calls).toHaveLength(0);
-    expect(result).toEqual(currentUser);
+    await expect(useCase.execute('access-token')).rejects.toBeInstanceOf(InvalidIdentityError);
+    expect(userRepository.create).not.toHaveBeenCalled();
   });
 });

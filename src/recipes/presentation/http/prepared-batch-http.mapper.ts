@@ -62,7 +62,7 @@ export function toPreparedBatchResponse(
         ? toResponseNumber(ingredient.baseQuantity, preservePrecision, 2)
         : null,
       baseUnit: ingredient.baseUnit,
-      nutrients: toNutrientMap(ingredient.nutrients),
+      nutrients: toNutrientMap(ingredient.nutrients, preservePrecision),
     })),
     totalNutrients: toNutrientMap(batch.totalNutrients, preservePrecision),
     finalCookedWeight: batch.finalCookedWeight
@@ -117,7 +117,10 @@ export function rethrowPreparedBatchHttpError(error: unknown): never {
 function toNutrientMap(
   nutrients: Array<{
     code: string;
-    amount: { toDecimalPlaces: (places: number) => { toNumber: () => number } };
+    amount: {
+      toNumber: () => number;
+      toDecimalPlaces: (places: number) => { toNumber: () => number };
+    };
   }>,
   preservePrecision: boolean,
 ) {
@@ -132,7 +135,10 @@ function toNutrientMap(
 function nutrientsToResponse(
   nutrients: Record<
     string,
-    { toDecimalPlaces: (places: number) => { toNumber: () => number } }
+    {
+      toNumber: () => number;
+      toDecimalPlaces: (places: number) => { toNumber: () => number };
+    }
   > | null,
   preservePrecision: boolean,
 ) {

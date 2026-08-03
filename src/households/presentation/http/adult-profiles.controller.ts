@@ -14,7 +14,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   CREATE_ADULT_PROFILE_USE_CASE,
   CreateAdultProfileUseCase,
@@ -43,7 +43,7 @@ import { rethrowHouseholdHttpError } from './household-http-error.mapper';
   description: 'Missing, invalid or expired access token.',
 })
 @Controller()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class AdultProfilesController {
   constructor(
     @Inject(CREATE_ADULT_PROFILE_USE_CASE)

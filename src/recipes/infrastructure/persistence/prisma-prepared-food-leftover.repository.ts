@@ -55,7 +55,7 @@ export class PrismaPreparedFoodLeftoverRepository implements PreparedFoodLeftove
     const data = PrismaPreparedFoodLeftoverMapper.toPersistence(leftover);
     await this.prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw<{ id: string }[]>(
-        Prisma.sql`SELECT "id" FROM "prepared_batches" WHERE "id" = ${data.preparedBatchId} FOR UPDATE`,
+        Prisma.sql`SELECT "id" FROM "prepared_batches" WHERE "id" = CAST(${data.preparedBatchId} AS uuid) FOR UPDATE`,
       );
       const batch = await transaction.preparedBatch.findUnique({
         where: { id: data.preparedBatchId },

@@ -17,6 +17,14 @@ export class PrismaPreparedBatchRepository implements PreparedBatchRepository {
     return record ? PrismaPreparedBatchMapper.toDomain(record) : null;
   }
 
+  async findByPlannedMealId(plannedMealId: string): Promise<PreparedBatch | null> {
+    const record = await this.prisma.preparedBatch.findFirst({
+      where: { plannedMeals: { some: { id: plannedMealId } } },
+      include: preparedBatchInclude,
+    });
+    return record ? PrismaPreparedBatchMapper.toDomain(record) : null;
+  }
+
   async listAvailableByHousehold(householdId: string): Promise<PreparedBatch[]> {
     const records = await this.prisma.preparedBatch.findMany({
       where: { householdId, status: PreparedBatchStatus.FINALIZED },

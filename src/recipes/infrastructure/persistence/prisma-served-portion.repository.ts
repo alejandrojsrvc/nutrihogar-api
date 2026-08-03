@@ -115,7 +115,7 @@ export class PrismaServedPortionRepository
     const data = PrismaServedPortionMapper.toPersistence(portion);
     await this.prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw<{ id: string }[]>(
-        Prisma.sql`SELECT "id" FROM "served_portions" WHERE "id" = ${data.id} FOR UPDATE`,
+        Prisma.sql`SELECT "id" FROM "served_portions" WHERE "id" = CAST(${data.id} AS uuid) FOR UPDATE`,
       );
       const current = await transaction.servedPortion.findUnique({
         where: { id: data.id },
@@ -171,7 +171,7 @@ export class PrismaServedPortionRepository
   async saveMany(batchId: string, portions: ServedPortion[]): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
       await transaction.$queryRaw<{ id: string }[]>(
-        Prisma.sql`SELECT "id" FROM "prepared_batches" WHERE "id" = ${batchId} FOR UPDATE`,
+        Prisma.sql`SELECT "id" FROM "prepared_batches" WHERE "id" = CAST(${batchId} AS uuid) FOR UPDATE`,
       );
       const batch = await transaction.preparedBatch.findUnique({
         where: { id: batchId },

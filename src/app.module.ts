@@ -9,6 +9,14 @@ import { IdentityModule } from './identity/identity.module';
 import { NutritionModule } from './nutrition/nutrition.module';
 import { MealTrackingModule } from './meal-tracking/meal-tracking.module';
 import { RecipesModule } from './recipes/recipes.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ShoppingListModule } from './shopping-list/shopping-list.module';
+import { PurchasesModule } from './purchases/purchases.module';
+import { MealPlanningModule } from './meal-planning/meal-planning.module';
+import { HealthTrackingModule } from './health-tracking/health-tracking.module';
+import { ReportsModule } from './reports/reports.module';
+import { ExportsModule } from './exports/exports.module';
+import { RecommendationsModule } from './recommendations/recommendations.module';
 
 @Module({
   imports: [
@@ -28,6 +36,14 @@ import { RecipesModule } from './recipes/recipes.module';
     NutritionModule,
     MealTrackingModule,
     RecipesModule,
+    InventoryModule,
+    ShoppingListModule,
+    PurchasesModule,
+    MealPlanningModule,
+    HealthTrackingModule,
+    ReportsModule,
+    ExportsModule,
+    RecommendationsModule,
   ],
 })
 export class AppModule {}

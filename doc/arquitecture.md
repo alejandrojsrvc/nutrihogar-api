@@ -1,31 +1,32 @@
 Arquitectura Backend
 Plataforma de control nutricional familiar
-Stack inicial: NestJS, TypeScript, PostgreSQL, Prisma y Supabase Auth
+Stack inicial: NestJS, TypeScript, PostgreSQL, Prisma y JWT propio
 Enfoque: DDD pragmático, arquitectura hexagonal, Clean Architecture y monolito modular
+
 1. Propósito
-Este documento define la arquitectura que debe seguir el backend de la plataforma de control nutricional
-familiar.
-El objetivo es construir una aplicación:
-• Independiente de NestJS.
-• Independiente de Prisma.
-• Independiente de Supabase.
-• Independiente de proveedores de inteligencia artificial.
-• Organizada alrededor del dominio y sus casos de uso.
-• Fácil de probar sin base de datos ni servidor HTTP.
-• Preparada para sustituir infraestructura sin modificar las reglas de negocio.
-• Implementada inicialmente como monolito modular, no como microservicios.
-La regla principal es:
-El dominio y los casos de uso no conocen NestJS, Prisma,
-Supabase, HTTP, OpenAI ni ninguna infraestructura externa.
+   Este documento define la arquitectura que debe seguir el backend de la plataforma de control nutricional
+   familiar.
+   El objetivo es construir una aplicación:
+   • Independiente de NestJS.
+   • Independiente de Prisma.
+   • Independiente de cualquier proveedor de autenticación.
+   • Independiente de proveedores de inteligencia artificial.
+   • Organizada alrededor del dominio y sus casos de uso.
+   • Fácil de probar sin base de datos ni servidor HTTP.
+   • Preparada para sustituir infraestructura sin modificar las reglas de negocio.
+   • Implementada inicialmente como monolito modular, no como microservicios.
+   La regla principal es:
+   El dominio y los casos de uso no conocen NestJS, Prisma,
+   HTTP, OpenAI ni ninguna infraestructura externa.
 2. Estilo arquitectónico
-El backend seguirá una combinación de:
-• Domain-Driven Design.
-• Arquitectura hexagonal.
-• Clean Architecture.
-• CQRS ligero.
-• Monolito modular.
-La aplicación se dividirá por contextos funcionales y no únicamente por tipos técnicos.
-1
+   El backend seguirá una combinación de:
+   • Domain-Driven Design.
+   • Arquitectura hexagonal.
+   • Clean Architecture.
+   • CQRS ligero.
+   • Monolito modular.
+   La aplicación se dividirá por contextos funcionales y no únicamente por tipos técnicos.
+   1
 
 Dirección de dependencias
 Presentation
@@ -51,40 +52,40 @@ Domain Entity
 Use Case
 → NestJS Controller
 Domain Service
-→ Supabase Client
+→ External provider client
 2
 
 3. Monolito modular
-El sistema comenzará como una sola aplicación NestJS, pero estará dividido en contextos claramente
-delimitados.
-src/
-├── identity/
-├── households/
-├── food-catalog/
-├── nutrition/
-├── meal-tracking/
-├── recipes/
-├── inventory/
-├── meal-planning/
-├── health-tracking/
-├── notifications/
-└── shared/
-Cada contexto debe poder evolucionar con independencia razonable.
-No se crearán microservicios durante el MVP.
+   El sistema comenzará como una sola aplicación NestJS, pero estará dividido en contextos claramente
+   delimitados.
+   src/
+   ├── identity/
+   ├── households/
+   ├── food-catalog/
+   ├── nutrition/
+   ├── meal-tracking/
+   ├── recipes/
+   ├── inventory/
+   ├── meal-planning/
+   ├── health-tracking/
+   ├── notifications/
+   └── shared/
+   Cada contexto debe poder evolucionar con independencia razonable.
+   No se crearán microservicios durante el MVP.
 4. Bounded contexts
-Identity and Access
-Responsabilidades:
-• Identidad autenticada.
-• Usuarios.
-• Validación de tokens.
-• Sesiones externas.
-• Autorización general.
-Entidades y conceptos:
-• User.
-• AuthenticatedIdentity.
-• IdentityProvider.
-• AccessToken.
-3
+   Identity and Access
+   Responsabilidades:
+   • Identidad autenticada.
+   • Usuarios.
+   • Validación de tokens.
+   • Sesiones de autenticación.
+   • Autorización general.
+   Entidades y conceptos:
+   • User.
+   • AuthenticatedIdentity.
+   • IdentityProvider.
+   • AccessToken.
+   3
 
 Households
 Responsabilidades:
@@ -206,8 +207,7 @@ Responsabilidades:
 Entidades:
 • NotificationPreference.
 • PushSubscription.
-• NotificationDelivery.
-5. Estructura interna de cada contexto
+• NotificationDelivery. 5. Estructura interna de cada contexto
 Ejemplo para meal-tracking :
 src/meal-tracking/
 ├── domain/
@@ -233,14 +233,13 @@ src/meal-tracking/
 │ ├── controllers/
 7
 
-│       ├── request-dto/
-│       ├── response-dto/
-│       ├── mappers/
-│       └── presenters/
+│ ├── request-dto/
+│ ├── response-dto/
+│ ├── mappers/
+│ └── presenters/
 └── meal-tracking.module.ts
 No todos los contextos necesitarán todas las carpetas desde el primer día.
-Se crearán cuando exista una responsabilidad real.
-6. Capa Domain
+Se crearán cuando exista una responsabilidad real. 6. Capa Domain
 La capa de dominio contiene:
 • Entidades.
 • Aggregates.
@@ -253,70 +252,72 @@ No contiene:
 • Decoradores de NestJS.
 • DTO HTTP.
 • Prisma.
-• Supabase.
+• Proveedores externos concretos.
 • Swagger.
 • Variables de entorno.
 • Logging técnico.
 • Requests o responses.
 Ejemplo de entidad
-| export class Meal | {   |     |
-| ----------------- | --- | --- |
-private constructor(
-| public readonly     | id: MealId,     |                 |
-| ------------------- | --------------- | --------------- |
-| public readonly     | householdId:    | HouseholdId,    |
-| public readonly     | adultProfileId: | AdultProfileId, |
-| private type:       | MealType,       |                 |
-| private consumedAt: | Date,           |                 |
-| private items:      | MealItem[],     |                 |
-| private status:     | MealStatus,     |                 |
-) {}
-8
 
-| static create(props:        | CreateMealProps): | Meal { |
-| --------------------------- | ----------------- | ------ |
-| if (props.items.length      | === 0)            | {      |
-| throw new EmptyMealError(); |                   |        |
-}
-| return new Meal( |     |     |
-| ---------------- | --- | --- |
-props.id,
-props.householdId,
-props.adultProfileId,
-props.type,
-props.consumedAt,
-props.items,
-MealStatus.confirmed(),
-);
-}
-| replaceItems(items:         | MealItem[]): | void { |
-| --------------------------- | ------------ | ------ |
-| if (items.length            | === 0) {     |        |
-| throw new EmptyMealError(); |              |        |
-}
-| this.items = items; |     |     |
-| ------------------- | --- | --- |
-}
-| cancel(): void {                       |     |     |
-| -------------------------------------- | --- | --- |
-| if (this.status.isCancelled())         |     | {   |
-| throw new MealAlreadyCancelledError(); |     |     |
-}
-| this.status = | MealStatus.cancelled(); |     |
-| ------------- | ----------------------- | --- |
-}
-| calculateTotals(): | NutrientCollection | {   |
-| ------------------ | ------------------ | --- |
-return this.items.reduce(
-| (totals, item) | => totals.add(item.nutrients), |     |
-| -------------- | ------------------------------ | --- |
-NutrientCollection.empty(),
-);
-}
-}
+| export class Meal    | {               |                 |
+| -------------------- | --------------- | --------------- |
+| private constructor( |
+| public readonly      | id: MealId,     |                 |
+| -------------------  | --------------- | --------------- |
+| public readonly      | householdId:    | HouseholdId,    |
+| public readonly      | adultProfileId: | AdultProfileId, |
+| private type:        | MealType,       |                 |
+| private consumedAt:  | Date,           |                 |
+| private items:       | MealItem[],     |                 |
+| private status:      | MealStatus,     |                 |
+| ) {}                 |
+| 8                    |
+
+| static create(props:                   | CreateMealProps):              | Meal { |
+| -------------------------------------- | ------------------------------ | ------ |
+| if (props.items.length                 | === 0)                         | {      |
+| throw new EmptyMealError();            |                                |        |
+| }                                      |
+| return new Meal(                       |                                |        |
+| ----------------                       | ---                            | ---    |
+| props.id,                              |
+| props.householdId,                     |
+| props.adultProfileId,                  |
+| props.type,                            |
+| props.consumedAt,                      |
+| props.items,                           |
+| MealStatus.confirmed(),                |
+| );                                     |
+| }                                      |
+| replaceItems(items:                    | MealItem[]):                   | void { |
+| ---------------------------            | ------------                   | ------ |
+| if (items.length                       | === 0) {                       |        |
+| throw new EmptyMealError();            |                                |        |
+| }                                      |
+| this.items = items;                    |                                |        |
+| -------------------                    | ---                            | ---    |
+| }                                      |
+| cancel(): void {                       |                                |        |
+| -------------------------------------- | ---                            | ---    |
+| if (this.status.isCancelled())         |                                | {      |
+| throw new MealAlreadyCancelledError(); |                                |        |
+| }                                      |
+| this.status =                          | MealStatus.cancelled();        |        |
+| -------------                          | -----------------------        | ---    |
+| }                                      |
+| calculateTotals():                     | NutrientCollection             | {      |
+| ------------------                     | ------------------             | ---    |
+| return this.items.reduce(              |
+| (totals, item)                         | => totals.add(item.nutrients), |        |
+| --------------                         | ------------------------------ | ---    |
+| NutrientCollection.empty(),            |
+| );                                     |
+| }                                      |
+| }                                      |
+
 7. Value Objects
-Los valores relevantes del dominio no deben circular como números o strings sin significado.
-9
+   Los valores relevantes del dominio no deben circular como números o strings sin significado.
+   9
 
 Value Objects recomendados:
 HouseholdId
@@ -338,33 +339,33 @@ NutrientAmount
 NutrientCode
 DateRange
 Ejemplo:
-| export class                | Grams              | {                         |          |        |            |
-| --------------------------- | ------------------ | ------------------------- | -------- | ------ | ---------- |
-| private                     | constructor(public |                           | readonly | value: | number) {} |
-| static create(value:        |                    | number):                  | Grams    | {      |            |
-| if (!Number.isFinite(value) |                    |                           | ||       | value  | <= 0) {    |
-| throw                       | new                | InvalidGramsError(value); |          |        |            |
-}
-| return | new | Grams(value); |     |     |     |
-| ------ | --- | ------------- | --- | --- | --- |
-}
-| add(other: | Grams):                 | Grams | {   |                 |     |
-| ---------- | ----------------------- | ----- | --- | --------------- | --- |
-| return     | Grams.create(this.value |       |     | + other.value); |     |
-}
-| subtract(other: |        | Grams):                  | Grams {        |     |     |
-| --------------- | ------ | ------------------------ | -------------- | --- | --- |
-| const           | result | = this.value             | - other.value; |     |     |
-| if (result      |        | < 0) {                   |                |     |     |
-| throw           | new    | NegativeQuantityError(); |                |     |     |
-}
-10
+
+| export class                | Grams                   | {                         |                |                 |            |
+| --------------------------- | ----------------------- | ------------------------- | -------------- | --------------- | ---------- |
+| private                     | constructor(public      |                           | readonly       | value:          | number) {} |
+| static create(value:        |                         | number):                  | Grams          | {               |            |
+| if (!Number.isFinite(value) |                         |                           |                |                 |            | value | <= 0) { |
+| throw                       | new                     | InvalidGramsError(value); |                |                 |            |
+| }                           |
+| return                      | new                     | Grams(value);             |                |                 |            |
+| ------                      | ---                     | -------------             | ---            | ---             | ---        |
+| }                           |
+| add(other:                  | Grams):                 | Grams                     | {              |                 |            |
+| ----------                  | ----------------------- | -----                     | ---            | --------------- | ---        |
+| return                      | Grams.create(this.value |                           |                | + other.value); |            |
+| }                           |
+| subtract(other:             |                         | Grams):                   | Grams {        |                 |            |
+| ---------------             | ------                  | ------------------------  | -------------- | ---             | ---        |
+| const                       | result                  | = this.value              | - other.value; |                 |            |
+| if (result                  |                         | < 0) {                    |                |                 |            |
+| throw                       | new                     | NegativeQuantityError();  |                |                 |            |
+| }                           |
+| 10                          |
 
 return Grams.create(result);
 }
 }
-Las validaciones esenciales deben vivir aquí, no únicamente en los DTO HTTP.
-8. Aggregates
+Las validaciones esenciales deben vivir aquí, no únicamente en los DTO HTTP. 8. Aggregates
 No debe tratarse cada tabla de base de datos como un aggregate.
 Aggregates iniciales propuestos:
 Household
@@ -428,279 +429,294 @@ Responsable de:
 12
 
 9. Capa Application
-La capa de aplicación contiene:
-• Casos de uso.
-• Commands.
-• Queries.
-• Puertos.
-• Resultados.
-• Coordinación de transacciones.
-• Autorización específica de aplicación.
-• Orquestación entre aggregates.
-No contiene:
-• Controllers.
-• Prisma.
-• Requests HTTP.
-• Decoradores de framework.
-• Componentes externos concretos.
-Ejemplos de casos de uso
-CreateHouseholdUseCase
-InviteHouseholdMemberUseCase
-AcceptHouseholdInvitationUseCase
-CreateAdultProfileUseCase
-CreateCustomFoodUseCase
-GenerateNutritionGoalSuggestionUseCase
-ConfirmNutritionGoalUseCase
-RegisterMealUseCase
-UpdateMealUseCase
-CancelMealUseCase
-DuplicateMealUseCase
-GetDailyNutritionSummaryQuery
-CreateRecipeUseCase
-FinalizePreparedBatchUseCase
-RegisterServedPortionUseCase
-RegisterPurchaseUseCase
-AdjustInventoryUseCase
-GenerateWeeklyPlanUseCase
-13
+   La capa de aplicación contiene:
+   • Casos de uso.
+   • Commands.
+   • Queries.
+   • Puertos.
+   • Resultados.
+   • Coordinación de transacciones.
+   • Autorización específica de aplicación.
+   • Orquestación entre aggregates.
+   No contiene:
+   • Controllers.
+   • Prisma.
+   • Requests HTTP.
+   • Decoradores de framework.
+   • Componentes externos concretos.
+   Ejemplos de casos de uso
+   CreateHouseholdUseCase
+   InviteHouseholdMemberUseCase
+   AcceptHouseholdInvitationUseCase
+   CreateAdultProfileUseCase
+   CreateCustomFoodUseCase
+   GenerateNutritionGoalSuggestionUseCase
+   ConfirmNutritionGoalUseCase
+   RegisterMealUseCase
+   UpdateMealUseCase
+   CancelMealUseCase
+   DuplicateMealUseCase
+   GetDailyNutritionSummaryQuery
+   CreateRecipeUseCase
+   FinalizePreparedBatchUseCase
+   RegisterServedPortionUseCase
+   RegisterPurchaseUseCase
+   AdjustInventoryUseCase
+   GenerateWeeklyPlanUseCase
+   13
 
 10. Commands y Queries
-Se utilizará CQRS ligero.
-No es necesario introducir buses complejos durante el MVP.
-Commands
-Cambian estado.
-RegisterMealCommand
-CancelMealCommand
-CreateHouseholdCommand
-ConfirmNutritionGoalCommand
-AdjustInventoryCommand
-Queries
-Consultan información.
-GetMealQuery
-ListFoodsQuery
-GetDailyNutritionSummaryQuery
-GetCurrentInventoryQuery
-GetWeeklyPlanQuery
-Las queries pueden utilizar read models optimizados sin reconstruir aggregates cuando no se necesitan
-reglas de negocio.
+    Se utilizará CQRS ligero.
+    No es necesario introducir buses complejos durante el MVP.
+    Commands
+    Cambian estado.
+    RegisterMealCommand
+    CancelMealCommand
+    CreateHouseholdCommand
+    ConfirmNutritionGoalCommand
+    AdjustInventoryCommand
+    Queries
+    Consultan información.
+    GetMealQuery
+    ListFoodsQuery
+    GetDailyNutritionSummaryQuery
+    GetCurrentInventoryQuery
+    GetWeeklyPlanQuery
+    Las queries pueden utilizar read models optimizados sin reconstruir aggregates cuando no se necesitan
+    reglas de negocio.
 11. Ejemplo de caso de uso
-| export interface  | RegisterMealCommand | {   |
-| ----------------- | ------------------- | --- |
-| actorId: string;  |                     |     |
-| householdId:      | string;             |     |
-| adultProfileId:   | string;             |     |
-| mealType: string; |                     |     |
-| consumedAt:       | Date;               |     |
-items: Array<{
-| foodId: string; |         |     |
-| --------------- | ------- | --- |
-| quantity:       | number; |     |
-| unit: string;   |         |     |
-| servingId?:     | string; |     |
-14
+    | export interface | RegisterMealCommand | { |
+    | ----------------- | ------------------- | --- |
+    | actorId: string; | | |
+    | householdId: | string; | |
+    | adultProfileId: | string; | |
+    | mealType: string; | | |
+    | consumedAt: | Date; | |
+    items: Array<{
+    | foodId: string; | | |
+    | --------------- | ------- | --- |
+    | quantity: | number; | |
+    | unit: string; | | |
+    | servingId?: | string; | |
+    14
 
-| measurementMethod: |     | string; |     |     |
-| ------------------ | --- | ------- | --- | --- |
-}>;
-}
-| export | class RegisterMealUseCase |     | {   |     |
-| ------ | ------------------------- | --- | --- | --- |
-constructor(
-| private | readonly | authorization:         | HouseholdAuthorizationPort, |                      |
-| ------- | -------- | ---------------------- | --------------------------- | -------------------- |
-| private | readonly | adultProfiles:         | AdultProfileRepository,     |                      |
-| private | readonly | foods: FoodRepository, |                             |                      |
-| private | readonly | meals: MealRepository, |                             |                      |
-| private | readonly | nutritionCalculator:   |                             | NutritionCalculator, |
-| private | readonly | unitOfWork:            | UnitOfWork,                 |                      |
-| private | readonly | idGenerator:           | IdGenerator,                |                      |
-) {}
-| async    | execute(                         |     |     |     |
-| -------- | -------------------------------- | --- | --- | --- |
-| command: | RegisterMealCommand,             |     |     |     |
-| ):       | Promise<RegisterMealResult>      |     | {   |     |
-| await    | this.authorization.ensureMember( |     |     |     |
-command.actorId,
-command.householdId,
-);
-| const | profile | = await this.adultProfiles.findById( |     |     |
-| ----- | ------- | ------------------------------------ | --- | --- |
-AdultProfileId.create(command.adultProfileId),
-);
-if (!profile || profile.householdId.value !== command.householdId) {
-|     | throw new AdultProfileNotFoundError(); |     |     |     |
-| --- | -------------------------------------- | --- | --- | --- |
-}
-| const | foods = | await this.foods.findVisibleByIds( |     |     |
-| ----- | ------- | ---------------------------------- | --- | --- |
-HouseholdId.create(command.householdId),
-|     | command.items.map((item) |     | => FoodId.create(item.foodId)), |     |
-| --- | ------------------------ | --- | ------------------------------- | --- |
-);
-| const | mealItems   | = command.items.map((item) |     | => {             |
-| ----- | ----------- | -------------------------- | --- | ---------------- |
-|       | const food  | = foods.find(              |     |                  |
-|       | (candidate) | => candidate.id.value      |     | === item.foodId, |
-);
-|     | if (!food) | {                                   |     |     |
-| --- | ---------- | ----------------------------------- | --- | --- |
-|     | throw new  | FoodNotAvailableError(item.foodId); |     |     |
-}
-|     | return this.nutritionCalculator.createMealItem(food, |     |     | item); |
-| --- | ---------------------------------------------------- | --- | --- | ------ |
-});
-15
+| measurementMethod:                             |                                                      | string;                                              |                                 |                      |
+| ---------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------------- | -------------------- |
+| }>;                                            |
+| }                                              |
+| export                                         | class RegisterMealUseCase                            |                                                      | {                               |                      |
+| ------                                         | -------------------------                            | ---                                                  | ---                             | ---                  |
+| constructor(                                   |
+| private                                        | readonly                                             | authorization:                                       | HouseholdAuthorizationPort,     |                      |
+| -------                                        | --------                                             | ----------------------                               | ---------------------------     | -------------------- |
+| private                                        | readonly                                             | adultProfiles:                                       | AdultProfileRepository,         |                      |
+| private                                        | readonly                                             | foods: FoodRepository,                               |                                 |                      |
+| private                                        | readonly                                             | meals: MealRepository,                               |                                 |                      |
+| private                                        | readonly                                             | nutritionCalculator:                                 |                                 | NutritionCalculator, |
+| private                                        | readonly                                             | unitOfWork:                                          | UnitOfWork,                     |                      |
+| private                                        | readonly                                             | idGenerator:                                         | IdGenerator,                    |                      |
+| ) {}                                           |
+| async                                          | execute(                                             |                                                      |                                 |                      |
+| --------                                       | --------------------------------                     | ---                                                  | ---                             | ---                  |
+| command:                                       | RegisterMealCommand,                                 |                                                      |                                 |                      |
+| ):                                             | Promise<RegisterMealResult>                          |                                                      | {                               |                      |
+| await                                          | this.authorization.ensureMember(                     |                                                      |                                 |                      |
+| command.actorId,                               |
+| command.householdId,                           |
+| );                                             |
+| const                                          | profile                                              | = await this.adultProfiles.findById(                 |                                 |                      |
+| -----                                          | -------                                              | ------------------------------------                 | ---                             | ---                  |
+| AdultProfileId.create(command.adultProfileId), |
+| );                                             |
+| if (!profile                                   |                                                      | profile.householdId.value !== command.householdId) { |
+|                                                | throw new AdultProfileNotFoundError();               |                                                      |                                 |                      |
+| ---                                            | --------------------------------------               | ---                                                  | ---                             | ---                  |
+| }                                              |
+| const                                          | foods =                                              | await this.foods.findVisibleByIds(                   |                                 |                      |
+| -----                                          | -------                                              | ----------------------------------                   | ---                             | ---                  |
+| HouseholdId.create(command.householdId),       |
+|                                                | command.items.map((item)                             |                                                      | => FoodId.create(item.foodId)), |                      |
+| ---                                            | ------------------------                             | ---                                                  | ------------------------------- | ---                  |
+| );                                             |
+| const                                          | mealItems                                            | = command.items.map((item)                           |                                 | => {                 |
+| -----                                          | -----------                                          | --------------------------                           | ---                             | ----------------     |
+|                                                | const food                                           | = foods.find(                                        |                                 |                      |
+|                                                | (candidate)                                          | => candidate.id.value                                |                                 | === item.foodId,     |
+| );                                             |
+|                                                | if (!food)                                           | {                                                    |                                 |                      |
+| ---                                            | ----------                                           | -----------------------------------                  | ---                             | ---                  |
+|                                                | throw new                                            | FoodNotAvailableError(item.foodId);                  |                                 |                      |
+| }                                              |
+|                                                | return this.nutritionCalculator.createMealItem(food, |                                                      |                                 | item);               |
+| ---                                            | ---------------------------------------------------- | ---                                                  | ---                             | ------               |
+| });                                            |
+| 15                                             |
 
-| const meal                                      | = Meal.create({                                |     |     |
-| ----------------------------------------------- | ---------------------------------------------- | --- | --- |
-| id: MealId.create(this.idGenerator.generate()), |                                                |     |     |
-| householdId:                                    | HouseholdId.create(command.householdId),       |     |     |
-| adultProfileId:                                 | AdultProfileId.create(command.adultProfileId), |     |     |
-| type:                                           | MealType.create(command.mealType),             |     |     |
-| consumedAt:                                     | command.consumedAt,                            |     |     |
-| items:                                          | mealItems,                                     |     |     |
-});
-| await this.unitOfWork.execute(async |                        | () => | {   |
-| ----------------------------------- | ---------------------- | ----- | --- |
-| await                               | this.meals.save(meal); |       |     |
-});
-| return { |                                        |     |     |
-| -------- | -------------------------------------- | --- | --- |
-| mealId:  | meal.id.value,                         |     |     |
-| totals:  | meal.calculateTotals().toPrimitives(), |     |     |
-};
-}
-}
+| const meal                                      | = Meal.create({                                |       |     |
+| ----------------------------------------------- | ---------------------------------------------- | ----- | --- |
+| id: MealId.create(this.idGenerator.generate()), |                                                |       |     |
+| householdId:                                    | HouseholdId.create(command.householdId),       |       |     |
+| adultProfileId:                                 | AdultProfileId.create(command.adultProfileId), |       |     |
+| type:                                           | MealType.create(command.mealType),             |       |     |
+| consumedAt:                                     | command.consumedAt,                            |       |     |
+| items:                                          | mealItems,                                     |       |     |
+| });                                             |
+| await this.unitOfWork.execute(async             |                                                | () => | {   |
+| -----------------------------------             | ----------------------                         | ----- | --- |
+| await                                           | this.meals.save(meal);                         |       |     |
+| });                                             |
+| return {                                        |                                                |       |     |
+| --------                                        | --------------------------------------         | ---   | --- |
+| mealId:                                         | meal.id.value,                                 |       |     |
+| totals:                                         | meal.calculateTotals().toPrimitives(),         |       |     |
+| };                                              |
+| }                                               |
+| }                                               |
+
 12. Puertos
-Los casos de uso dependen de abstracciones.
-Repositorios
-| export interface | MealRepository        | {        |     |
-| ---------------- | --------------------- | -------- | --- |
-| findById(id:     | MealId): Promise<Meal | | null>; |     |
-| save(meal:       | Meal): Promise<void>; |          |     |
-}
-| export interface | FoodRepository | {   |     |
-| ---------------- | -------------- | --- | --- |
-findVisibleByIds(
-| householdId: | HouseholdId, |     |     |
-| ------------ | ------------ | --- | --- |
-| foodIds:     | FoodId[],    |     |     |
-): Promise<Food[]>;
-}
-| export interface | HouseholdRepository | {                 |          |
-| ---------------- | ------------------- | ----------------- | -------- |
-| findById(id:     | HouseholdId):       | Promise<Household | | null>; |
-| save(household:  | Household):         | Promise<void>;    |          |
-}
-16
+    Los casos de uso dependen de abstracciones.
+    Repositorios
+    | export interface | MealRepository | { | |
+    | ---------------- | --------------------- | -------- | --- |
+    | findById(id: | MealId): Promise<Meal | | null>; | |
+    | save(meal: | Meal): Promise<void>; | | |
+    }
+    | export interface | FoodRepository | { | |
+    | ---------------- | -------------- | --- | --- |
+    findVisibleByIds(
+    | householdId: | HouseholdId, | | |
+    | ------------ | ------------ | --- | --- |
+    | foodIds: | FoodId[], | | |
+    ): Promise<Food[]>;
+    }
+    | export interface | HouseholdRepository | { | |
+    | ---------------- | ------------------- | ----------------- | -------- |
+    | findById(id: | HouseholdId): | Promise<Household | | null>; |
+    | save(household: | Household): | Promise<void>; | |
+    }
+    16
 
 Transacciones
-| export interface     | UnitOfWork |     | {               |     |             |
-| -------------------- | ---------- | --- | --------------- | --- | ----------- |
-| execute<T>(callback: |            | ()  | => Promise<T>): |     | Promise<T>; |
-}
-Identidad
-| export interface | IdentityProvider |     |     | {   |     |
-| ---------------- | ---------------- | --- | --- | --- | --- |
-verifyAccessToken(token: string): Promise<AuthenticatedIdentity>;
-}
-Inteligencia artificial
-| export interface | WeeklyPlanGenerator |     |     |     | {   |
-| ---------------- | ------------------- | --- | --- | --- | --- |
-generate(
-| input: WeeklyPlanGenerationInput, |     |     |     |     |     |
-| --------------------------------- | --- | --- | --- | --- | --- |
-): Promise<WeeklyPlanProposal>;
-}
-Notificaciones
-| export interface | PushNotificationSender |     |                |     | {   |
-| ---------------- | ---------------------- | --- | -------------- | --- | --- |
-| send(message:    | PushMessage):          |     | Promise<void>; |     |     |
-}
-Tiempo e IDs
-| export interface | Clock | {   |     |     |     |
-| ---------------- | ----- | --- | --- | --- | --- |
-| now(): Date;     |       |     |     |     |     |
-}
-| export interface | IdGenerator |     | {   |     |     |
-| ---------------- | ----------- | --- | --- | --- | --- |
-| generate():      | string;     |     |     |     |     |
-}
-Esto permite probar casos de uso con dobles de prueba.
-17
+
+| export interface                                                  | UnitOfWork             |     | {               |     |             |
+| ----------------------------------------------------------------- | ---------------------- | --- | --------------- | --- | ----------- |
+| execute<T>(callback:                                              |                        | ()  | => Promise<T>): |     | Promise<T>; |
+| }                                                                 |
+| Identidad                                                         |
+| export interface                                                  | IdentityProvider       |     |                 | {   |             |
+| ----------------                                                  | ----------------       | --- | ---             | --- | ---         |
+| verifyAccessToken(token: string): Promise<AuthenticatedIdentity>; |
+| }                                                                 |
+| Almacenamiento de objetos                                         |
+| export interface                                                  | ObjectStorage          |     |                 | {   |
+| ----------------                                                  | -------------          | --- | ---             | --- |
+| upload(input: UploadObjectInput):                                 | Promise<StoredObject>; |     |                 |     |
+| delete(key: string):                                              | Promise<void>;         |     |                 |     |
+| exists(key: string):                                              | Promise<boolean>;      |     |                 |     |
+| createSignedDownloadUrl(key: string, expiresInSeconds: number):   | Promise<string>;       |     |                 |     |
+| }                                                                 |
+| Inteligencia artificial                                           |
+| export interface                                                  | WeeklyPlanGenerator    |     |                 |     | {           |
+| ----------------                                                  | -------------------    | --- | ---             | --- | ---         |
+| generate(                                                         |
+| input: WeeklyPlanGenerationInput,                                 |                        |     |                 |     |             |
+| ---------------------------------                                 | ---                    | --- | ---             | --- | ---         |
+| ): Promise<WeeklyPlanProposal>;                                   |
+| }                                                                 |
+| Notificaciones                                                    |
+| export interface                                                  | PushNotificationSender |     |                 |     | {           |
+| ----------------                                                  | ---------------------- | --- | --------------  | --- | ---         |
+| send(message:                                                     | PushMessage):          |     | Promise<void>;  |     |             |
+| }                                                                 |
+| Tiempo e IDs                                                      |
+| export interface                                                  | Clock                  | {   |                 |     |             |
+| ----------------                                                  | -----                  | --- | ---             | --- | ---         |
+| now(): Date;                                                      |                        |     |                 |     |             |
+| }                                                                 |
+| export interface                                                  | IdGenerator            |     | {               |     |             |
+| ----------------                                                  | -----------            | --- | ---             | --- | ---         |
+| generate():                                                       | string;                |     |                 |     |             |
+| }                                                                 |
+| Esto permite probar casos de uso con dobles de prueba.            |
+| 17                                                                |
 
 13. Capa Infrastructure
-Contiene implementaciones concretas de los puertos.
-infrastructure/
-├── persistence/
-│ └── prisma/
-├── authentication/
-│ └── supabase/
-├── ai/
-│ └── openai/
-├── notifications/
-├── clock/
-└── identifiers/
-Ejemplos:
-PrismaMealRepository
-PrismaFoodRepository
-PrismaHouseholdRepository
-PrismaUnitOfWork
-SupabaseIdentityProvider
-OpenAiWeeklyPlanGenerator
-WebPushNotificationSender
-SystemClock
-UuidGenerator
+    Contiene implementaciones concretas de los puertos.
+    infrastructure/
+    ├── persistence/
+    │ └── prisma/
+    ├── authentication/
+    │ └── jwt/
+    ├── storage/
+    │ └── s3-compatible/
+    ├── ai/
+    │ └── openai/
+    ├── notifications/
+    ├── clock/
+    └── identifiers/
+    Ejemplos:
+    PrismaMealRepository
+    PrismaFoodRepository
+    PrismaHouseholdRepository
+    PrismaUnitOfWork
+    JwtTokenProvider
+    S3CompatibleObjectStorageAdapter
+    OpenAiWeeklyPlanGenerator
+    WebPushNotificationSender
+    SystemClock
+    UuidGenerator
 14. Prisma como adaptador
-Prisma no representa el modelo de dominio.
-Sus modelos representan persistencia.
-model Meal {
-id String @id @db.Uuid
-householdId String @db.Uuid
-adultProfileId String @db.Uuid
-mealType String
-consumedAt DateTime
-status String
-18
+    Prisma no representa el modelo de dominio.
+    Sus modelos representan persistencia.
+    model Meal {
+    id String @id @db.Uuid
+    householdId String @db.Uuid
+    adultProfileId String @db.Uuid
+    mealType String
+    consumedAt DateTime
+    status String
+    18
 
-  items          MealItem[]
+items MealItem[]
 }
 El repositorio debe convertir entre persistencia y dominio.
 Mapper
-| export class     | PrismaMealMapper                                 | {   |     |
-| ---------------- | ------------------------------------------------ | --- | --- |
-| static toDomain( |                                                  |     |     |
-| record:          | MealWithItemsPersistence,                        |     |     |
-| ): Meal          | {                                                |     |     |
-| return           | Meal.restore({                                   |     |     |
-| id:              | MealId.create(record.id),                        |     |     |
-| householdId:     | HouseholdId.create(record.householdId),          |     |     |
-| adultProfileId:  | AdultProfileId.create(record.adultProfileId),    |     |     |
-| type:            | MealType.create(record.mealType),                |     |     |
-| consumedAt:      | record.consumedAt,                               |     |     |
-| status:          | MealStatus.create(record.status),                |     |     |
-| items:           | record.items.map(PrismaMealItemMapper.toDomain), |     |     |
-});
-}
-| static toPersistence(meal: |                            | Meal): MealPersistenceData | {   |
-| -------------------------- | -------------------------- | -------------------------- | --- |
-| return                     | {                          |                            |     |
-| id:                        | meal.id.value,             |                            |     |
-| householdId:               | meal.householdId.value,    |                            |     |
-| adultProfileId:            | meal.adultProfileId.value, |                            |     |
-| mealType:                  | meal.type.value,           |                            |     |
-| consumedAt:                | meal.consumedAt,           |                            |     |
-| status:                    | meal.status.value,         |                            |     |
-};
-}
-}
-Nunca se deben devolver modelos Prisma desde los repositorios.
+
+| export class                                                   | PrismaMealMapper                                 | {                          |     |
+| -------------------------------------------------------------- | ------------------------------------------------ | -------------------------- | --- |
+| static toDomain(                                               |                                                  |                            |     |
+| record:                                                        | MealWithItemsPersistence,                        |                            |     |
+| ): Meal                                                        | {                                                |                            |     |
+| return                                                         | Meal.restore({                                   |                            |     |
+| id:                                                            | MealId.create(record.id),                        |                            |     |
+| householdId:                                                   | HouseholdId.create(record.householdId),          |                            |     |
+| adultProfileId:                                                | AdultProfileId.create(record.adultProfileId),    |                            |     |
+| type:                                                          | MealType.create(record.mealType),                |                            |     |
+| consumedAt:                                                    | record.consumedAt,                               |                            |     |
+| status:                                                        | MealStatus.create(record.status),                |                            |     |
+| items:                                                         | record.items.map(PrismaMealItemMapper.toDomain), |                            |     |
+| });                                                            |
+| }                                                              |
+| static toPersistence(meal:                                     |                                                  | Meal): MealPersistenceData | {   |
+| --------------------------                                     | --------------------------                       | -------------------------- | --- |
+| return                                                         | {                                                |                            |     |
+| id:                                                            | meal.id.value,                                   |                            |     |
+| householdId:                                                   | meal.householdId.value,                          |                            |     |
+| adultProfileId:                                                | meal.adultProfileId.value,                       |                            |     |
+| mealType:                                                      | meal.type.value,                                 |                            |     |
+| consumedAt:                                                    | meal.consumedAt,                                 |                            |     |
+| status:                                                        | meal.status.value,                               |                            |     |
+| };                                                             |
+| }                                                              |
+| }                                                              |
+| Nunca se deben devolver modelos Prisma desde los repositorios. |
+
 15. Capa Presentation
-NestJS se utilizará como adaptador de entrada HTTP y composition root.
-La capa HTTP contiene:
-• Controllers.
-• DTO de request.
-19
+    NestJS se utilizará como adaptador de entrada HTTP y composition root.
+    La capa HTTP contiene:
+    • Controllers.
+    • DTO de request.
+    19
 
 • DTO de response.
 • Guards.
@@ -710,80 +726,83 @@ La capa HTTP contiene:
 • Documentación Swagger.
 Controller
 @Controller('households/:householdId/meals')
-| export class | RegisterMealController |     | {   |
-| ------------ | ---------------------- | --- | --- |
-constructor(
-| private | readonly registerMeal: |     | RegisterMealUseCase, |
-| ------- | ---------------------- | --- | -------------------- |
-) {}
-@Post()
-| async execute(                       |                                |                             |         |
-| ------------------------------------ | ------------------------------ | --------------------------- | ------- |
-| @Param('householdId')                |                                | householdId:                | string, |
-| @Body()                              | body: RegisterMealHttpRequest, |                             |         |
-| @CurrentUser()                       | user:                          | AuthenticatedUserHttp,      |         |
-| ): Promise<RegisterMealHttpResponse> |                                |                             | {       |
-| const                                | result = await                 | this.registerMeal.execute({ |         |
-| actorId:                             | user.id,                       |                             |         |
-householdId,
-| adultProfileId: | body.adultProfileId,                                  |     |     |
-| --------------- | ----------------------------------------------------- | --- | --- |
-| mealType:       | body.mealType,                                        |     |     |
-| consumedAt:     | new Date(body.consumedAt),                            |     |     |
-| items:          | body.items.map(RegisterMealHttpMapper.toCommandItem), |     |     |
-});
-| return | RegisterMealHttpPresenter.present(result); |     |     |
-| ------ | ------------------------------------------ | --- | --- |
-}
-}
-El controller no debe:
-• Consultar Prisma.
-• Calcular nutrientes.
-• Aplicar reglas de negocio.
-• Crear entidades directamente.
-• Manejar transacciones.
+
+| export class                         | RegisterMealController                                |                             | {                    |
+| ------------------------------------ | ----------------------------------------------------- | --------------------------- | -------------------- |
+| constructor(                         |
+| private                              | readonly registerMeal:                                |                             | RegisterMealUseCase, |
+| -------                              | ----------------------                                | ---                         | -------------------- |
+| ) {}                                 |
+| @Post()                              |
+| async execute(                       |                                                       |                             |                      |
+| ------------------------------------ | ------------------------------                        | --------------------------- | -------              |
+| @Param('householdId')                |                                                       | householdId:                | string,              |
+| @Body()                              | body: RegisterMealHttpRequest,                        |                             |                      |
+| @CurrentUser()                       | user:                                                 | AuthenticatedUserHttp,      |                      |
+| ): Promise<RegisterMealHttpResponse> |                                                       |                             | {                    |
+| const                                | result = await                                        | this.registerMeal.execute({ |                      |
+| actorId:                             | user.id,                                              |                             |                      |
+| householdId,                         |
+| adultProfileId:                      | body.adultProfileId,                                  |                             |                      |
+| ---------------                      | ----------------------------------------------------- | ---                         | ---                  |
+| mealType:                            | body.mealType,                                        |                             |                      |
+| consumedAt:                          | new Date(body.consumedAt),                            |                             |                      |
+| items:                               | body.items.map(RegisterMealHttpMapper.toCommandItem), |                             |                      |
+| });                                  |
+| return                               | RegisterMealHttpPresenter.present(result);            |                             |                      |
+| ------                               | ------------------------------------------            | ---                         | ---                  |
+| }                                    |
+| }                                    |
+| El controller no debe:               |
+| • Consultar Prisma.                  |
+| • Calcular nutrientes.               |
+| • Aplicar reglas de negocio.         |
+| • Crear entidades directamente.      |
+| • Manejar transacciones.             |
+
 16. Tipos de DTO
-Se distinguirán tres tipos.
-20
+    Se distinguirán tres tipos.
+    20
 
 DTO HTTP
-| Pertenece a  | presentation | .   |     |
-| ------------ | ------------ | --- | --- |
-Puede utilizar:
-| •  class-validator   |     | .   |     |
-| -------------------- | --- | --- | --- |
-| •  class-transformer |     | .   |     |
-• Swagger.
-| export | class RegisterMealHttpRequest |     | {   |
-| ------ | ----------------------------- | --- | --- |
-@IsUUID()
-| adultProfileId!: |     | string; |     |
-| ---------------- | --- | ------- | --- |
-@IsString()
-| mealType!: | string; |     |     |
-| ---------- | ------- | --- | --- |
-@IsISO8601()
-| consumedAt!:      |                                | string;    |     |
-| ----------------- | ------------------------------ | ---------- | --- |
-| @ValidateNested({ |                                | each: true | })  |
-| items!:           | RegisterMealItemHttpRequest[]; |            |     |
-}
-Command de aplicación
-| Pertenece a  | application | .   |     |
-| ------------ | ----------- | --- | --- |
-No usa decoradores.
-| export          | interface                  | RegisterMealCommand | {   |
-| --------------- | -------------------------- | ------------------- | --- |
-| actorId:        | string;                    |                     |     |
-| householdId:    |                            | string;             |     |
-| adultProfileId: |                            | string;             |     |
-| mealType:       | string;                    |                     |     |
-| consumedAt:     |                            | Date;               |     |
-| items:          | RegisterMealItemCommand[]; |                     |     |
-}
-Result de aplicación
-También es independiente del framework.
-21
+
+| Pertenece a                             | presentation                   | .                   |     |
+| --------------------------------------- | ------------------------------ | ------------------- | --- |
+| Puede utilizar:                         |
+| • class-validator                       |                                | .                   |     |
+| --------------------                    | ---                            | ---                 | --- |
+| • class-transformer                     |                                | .                   |     |
+| • Swagger.                              |
+| export                                  | class RegisterMealHttpRequest  |                     | {   |
+| ------                                  | -----------------------------  | ---                 | --- |
+| @IsUUID()                               |
+| adultProfileId!:                        |                                | string;             |     |
+| ----------------                        | ---                            | -------             | --- |
+| @IsString()                             |
+| mealType!:                              | string;                        |                     |     |
+| ----------                              | -------                        | ---                 | --- |
+| @IsISO8601()                            |
+| consumedAt!:                            |                                | string;             |     |
+| -----------------                       | ------------------------------ | ----------          | --- |
+| @ValidateNested({                       |                                | each: true          | })  |
+| items!:                                 | RegisterMealItemHttpRequest[]; |                     |     |
+| }                                       |
+| Command de aplicación                   |
+| Pertenece a                             | application                    | .                   |     |
+| ------------                            | -----------                    | ---                 | --- |
+| No usa decoradores.                     |
+| export                                  | interface                      | RegisterMealCommand | {   |
+| ---------------                         | --------------------------     | ------------------- | --- |
+| actorId:                                | string;                        |                     |     |
+| householdId:                            |                                | string;             |     |
+| adultProfileId:                         |                                | string;             |     |
+| mealType:                               | string;                        |                     |     |
+| consumedAt:                             |                                | Date;               |     |
+| items:                                  | RegisterMealItemCommand[];     |                     |     |
+| }                                       |
+| Result de aplicación                    |
+| También es independiente del framework. |
+| 21                                      |
 
 export interface RegisterMealResult {
 mealId: string;
@@ -791,8 +810,7 @@ totals: Record<string, number>;
 }
 Response DTO
 Pertenece a presentation .
-Adapta el resultado para HTTP.
-17. Errores
+Adapta el resultado para HTTP. 17. Errores
 Errores de dominio
 Ejemplos:
 EmptyMealError
@@ -814,33 +832,33 @@ ForbiddenException .
 22
 
 18. Eventos de dominio
-Los eventos se utilizarán cuando exista una consecuencia clara.
-Ejemplos:
-MealRegistered
-MealCancelled
-PreparedBatchFinalized
-PurchaseRegistered
-InventoryAdjusted
-NutritionGoalConfirmed
-No es necesario introducir un broker durante el MVP.
-Inicialmente pueden publicarse mediante un dispatcher en memoria después de confirmar la transacción.
-Ejemplo:
-MealRegistered
-→ actualizar proyección diaria
-→ evaluar recordatorio pendiente
+    Los eventos se utilizarán cuando exista una consecuencia clara.
+    Ejemplos:
+    MealRegistered
+    MealCancelled
+    PreparedBatchFinalized
+    PurchaseRegistered
+    InventoryAdjusted
+    NutritionGoalConfirmed
+    No es necesario introducir un broker durante el MVP.
+    Inicialmente pueden publicarse mediante un dispatcher en memoria después de confirmar la transacción.
+    Ejemplo:
+    MealRegistered
+    → actualizar proyección diaria
+    → evaluar recordatorio pendiente
 19. Transacciones
-Los casos de uso que cambien varios registros deben usar UnitOfWork .
-Ejemplos:
-• Crear hogar y membresía administrativa.
-• Confirmar una meta y cerrar la anterior.
-• Registrar comida y snapshots.
-• Finalizar preparación y crear sobrante.
-• Registrar compra y movimientos de inventario.
-La implementación Prisma debe mantener el mismo contexto transaccional para todos los repositorios
-utilizados.
+    Los casos de uso que cambien varios registros deben usar UnitOfWork .
+    Ejemplos:
+    • Crear hogar y membresía administrativa.
+    • Confirmar una meta y cerrar la anterior.
+    • Registrar comida y snapshots.
+    • Finalizar preparación y crear sobrante.
+    • Registrar compra y movimientos de inventario.
+    La implementación Prisma debe mantener el mismo contexto transaccional para todos los repositorios
+    utilizados.
 20. Lecturas y proyecciones
-No todas las consultas necesitan aggregates completos.
-23
+    No todas las consultas necesitan aggregates completos.
+    23
 
 Para reportes y listados se permiten read repositories.
 export interface DailyNutritionSummaryReadRepository {
@@ -850,11 +868,10 @@ date: LocalDate,
 ): Promise<DailyNutritionSummaryReadModel>;
 }
 Estos repositorios pueden consultar Prisma directamente y devolver read models.
-No deben devolver entidades de dominio cuando la consulta solo requiere presentación.
-21. Autorización
+No deben devolver entidades de dominio cuando la consulta solo requiere presentación. 21. Autorización
 Habrá dos niveles.
 Autenticación técnica
-La capa de infraestructura valida el token de Supabase.
+La capa de infraestructura valida el JWT propio.
 Autorización funcional
 Los casos de uso verifican:
 • Pertenencia al hogar.
@@ -863,8 +880,7 @@ Los casos de uso verifican:
 • Visibilidad de alimentos.
 • Capacidad para modificar recursos.
 No debe depender exclusivamente de guards HTTP, porque los casos de uso podrían ejecutarse desde
-workers o CLI.
-22. Cálculos nutricionales
+workers o CLI. 22. Cálculos nutricionales
 El motor nutricional será código determinista y agnóstico.
 No dependerá de IA.
 Responsabilidades:
@@ -881,8 +897,7 @@ CalculateBmr
 CalculateTdee
 CalculateNutritionGoal
 Los cálculos deberán usar precisión decimal.
-Los valores se redondearán únicamente para presentación.
-23. IA como adaptador externo
+Los valores se redondearán únicamente para presentación. 23. IA como adaptador externo
 La IA nunca será fuente de verdad para calorías o macros.
 La IA podrá proponer:
 • Planes semanales.
@@ -902,42 +917,41 @@ Después, los cálculos nutricionales se realizan mediante el dominio.
 25
 
 24. Pruebas
-Domain
-Pruebas unitarias puras.
-Sin NestJS, Prisma ni base de datos.
-Ejemplos:
-• Crear comida válida.
-• Rechazar comida vacía.
-• Calcular consumo real.
-• Calcular densidad de receta.
-• Rechazar cantidad negativa.
-• Versionar meta.
-Application
-Pruebas de casos de uso con repositorios en memoria o mocks.
-Ejemplos:
-• Registrar comida.
-• Verificar permisos.
-• Confirmar meta.
-• Cancelar comida.
-• Registrar compra.
-Infrastructure
-Pruebas de integración.
-Ejemplos:
-• Repositorio Prisma.
-• Mapper Prisma.
-• Transacciones.
-• Validación de token de Supabase.
-Presentation
-Pruebas e2e HTTP.
-Ejemplos:
-• Requests válidos.
-26
+    Domain
+    Pruebas unitarias puras.
+    Sin NestJS, Prisma ni base de datos.
+    Ejemplos:
+    • Crear comida válida.
+    • Rechazar comida vacía.
+    • Calcular consumo real.
+    • Calcular densidad de receta.
+    • Rechazar cantidad negativa.
+    • Versionar meta.
+    Application
+    Pruebas de casos de uso con repositorios en memoria o mocks.
+    Ejemplos:
+    • Registrar comida.
+    • Verificar permisos.
+    • Confirmar meta.
+    • Cancelar comida.
+    • Registrar compra.
+    Infrastructure
+    Pruebas de integración.
+    Ejemplos:
+    • Repositorio Prisma.
+    • Mapper Prisma.
+    • Transacciones.
+    • Validación de access token y sesiones de refresh.
+    Presentation
+    Pruebas e2e HTTP.
+    Ejemplos:
+    • Requests válidos.
+    26
 
 • DTO inválido.
 • 401 .
 • 403 .
-• Respuestas y códigos HTTP.
-25. Composition root
+• Respuestas y códigos HTTP. 25. Composition root
 NestJS será responsable de conectar interfaces con implementaciones.
 Ejemplo conceptual:
 {
@@ -946,13 +960,13 @@ useClass: PrismaMealRepository,
 }
 {
 provide: IdentityProviderToken,
-useClass: SupabaseIdentityProvider,
+useClass: JwtTokenProvider,
 }
 Los casos de uso reciben los puertos mediante inyección.
 Los tokens de dependencia se definirán en application o en un módulo de composición, no dentro del
-dominio.
-26. Reglas para Codex
+dominio. 26. Reglas para Codex
 Cada tarea de backend deberá respetar:
+
 1. Identificar el bounded context afectado.
 2. No colocar lógica de negocio en controllers.
 3. No colocar lógica de negocio en repositorios Prisma.
@@ -965,23 +979,23 @@ Cada tarea de backend deberá respetar:
 10. Probar dominio y casos de uso sin NestJS.
 11. Mantener transacciones en UnitOfWork .
 12. No importar infraestructura desde domain o application.
-27
+    27
 
 13. No crear abstracciones sin una necesidad real.
 14. No implementar funcionalidades fuera del issue.
 15. Ejecutar lint, tests y build.
-27. Definición de terminado
-Una tarea backend está terminada cuando:
-• El dominio expresa las reglas.
-• Existe un caso de uso explícito.
-• Los puertos necesarios están definidos.
-• Prisma está encapsulado en infraestructura.
-• NestJS está limitado a presentación y composición.
-• Los DTO HTTP no llegan directamente al dominio.
-• Existen pruebas unitarias del dominio.
-• Existen pruebas del caso de uso.
-• Existen pruebas de integración cuando se agrega infraestructura.
-• Swagger está actualizado.
-• Las migraciones son reproducibles.
-• No se rompen lint, test ni build.
-28
+16. Definición de terminado
+    Una tarea backend está terminada cuando:
+    • El dominio expresa las reglas.
+    • Existe un caso de uso explícito.
+    • Los puertos necesarios están definidos.
+    • Prisma está encapsulado en infraestructura.
+    • NestJS está limitado a presentación y composición.
+    • Los DTO HTTP no llegan directamente al dominio.
+    • Existen pruebas unitarias del dominio.
+    • Existen pruebas del caso de uso.
+    • Existen pruebas de integración cuando se agrega infraestructura.
+    • Swagger está actualizado.
+    • Las migraciones son reproducibles.
+    • No se rompen lint, test ni build.
+    28

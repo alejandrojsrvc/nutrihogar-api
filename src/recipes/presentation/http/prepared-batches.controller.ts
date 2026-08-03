@@ -28,7 +28,7 @@ import {
 } from '@nestjs/swagger';
 import type { CurrentUser as CurrentUserModel } from '../../../identity/application/models/current-user';
 import { CurrentUser } from '../../../identity/presentation/http/current-user.decorator';
-import { SupabaseAuthGuard } from '../../../identity/presentation/http/supabase-auth.guard';
+import { JwtAuthGuard } from '../../../identity/presentation/http/jwt-auth.guard';
 import {
   CANCEL_PREPARED_BATCH_USE_CASE,
   CancelPreparedBatchUseCase,
@@ -74,7 +74,7 @@ import { toPreparedBatchDetailsResponse } from './prepared-batch-details-http.ma
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing, invalid or expired access token.' })
 @Controller()
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class PreparedBatchesController {
   constructor(
     @Inject(START_PREPARED_BATCH_USE_CASE)

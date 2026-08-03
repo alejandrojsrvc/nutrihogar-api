@@ -12,7 +12,7 @@ Work only in this repository and follow `AGENTS.md`; do not inspect or modify th
 1. Fetch every requested issue as readable Markdown with `gh issue view <number> --repo alejandrojsrvc/nutrihogar-api` and confirm it is open. Do not request JSON or create temporary files.
 2. Inspect Git once and preserve unrelated changes.
 3. Run `git fetch origin main`, then create one branch for the whole request directly from `origin/main`. Do not switch to or pull local `main`.
-4. Read affected code and tests. Read architecture, sprint, or PDR only when needed to resolve ambiguity.
+4. Search code locally with Glob and Grep, then read affected code and tests. Never use `gh api search/code`; inspect history only for explicit regressions or referenced commits. Read architecture, sprint, or PDR only when needed to resolve ambiguity.
 5. Present at most five plan points and implement only the requested scope.
 6. Create or update meaningful unit and integration tests for acceptance criteria, observable behavior, errors, and invariants. Never add trivial tests or weaken existing coverage.
 7. After all changes, run lint and targeted tests once. Run integration or e2e only when they terminate in process and require no external service.

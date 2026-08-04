@@ -14,7 +14,11 @@ import { PrismaInventoryRepository } from './prisma-inventory.repository';
 describe('PrismaInventoryRepository', () => {
   it('atomically creates an item with its initial movement and marks it persisted', async () => {
     const create = jest.fn().mockResolvedValue(undefined);
-    const transactionClient = client({ inventoryItem: { create } });
+    const createMany = jest.fn().mockResolvedValue({ count: 1 });
+    const transactionClient = client({
+      inventoryItem: { create },
+      inventoryMovement: { createMany },
+    });
     const transaction = jest.fn(async (work: (client: unknown) => Promise<void>) =>
       work(transactionClient),
     );
@@ -29,10 +33,19 @@ describe('PrismaInventoryRepository', () => {
     expect(create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         id: item.id,
-        movements: {
-          create: [expect.objectContaining({ type: 'MANUAL_ENTRY', quantity: '2.5' })],
-        },
+        nameSnapshot: 'Rice',
+        currentQuantity: '2.5',
+        unit: 'GRAM',
       }),
+    });
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          itemId: item.id,
+          type: 'MANUAL_ENTRY',
+          quantity: '2.5',
+        }),
+      ],
     });
     expect(item.pendingMovements).toHaveLength(0);
     expect(item.isNew).toBe(false);

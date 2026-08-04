@@ -339,9 +339,11 @@ export class PrismaInventoryRepository
           version: data.version,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
-          movements: { create: data.movements },
         },
       });
+      if (data.movements.length > 0) {
+        await client.inventoryMovement.createMany({ data: data.movements });
+      }
       item.markPersisted(data.version);
       return;
     }

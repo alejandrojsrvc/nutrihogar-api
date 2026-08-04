@@ -7,7 +7,6 @@ import {
 } from '../../application/ports/household-unit-of-work.port';
 import { HouseholdView } from '../../application/models/household-view';
 import { PrismaHouseholdMapper } from './prisma-household.mapper';
-import { seedStarterRecipes } from '../../../recipes/infrastructure/seed/starter-recipes.seeder';
 
 @Injectable()
 export class PrismaHouseholdUnitOfWork implements HouseholdUnitOfWork {
@@ -32,8 +31,6 @@ export class PrismaHouseholdUnitOfWork implements HouseholdUnitOfWork {
           status: HouseholdMembershipStatus.ACTIVE,
         },
       });
-
-      await seedStarterRecipes(transaction, createdHousehold.id, input.createdById);
 
       return createdHousehold;
     });

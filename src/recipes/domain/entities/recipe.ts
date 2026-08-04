@@ -19,7 +19,10 @@ export class Recipe {
   private constructor(private readonly props: RecipeProps) {}
 
   static create(
-    input: Omit<RecipeProps, 'status' | 'deletedAt'> & { status?: RecipeStatus },
+    input: Omit<RecipeProps, 'status' | 'deletedAt' | 'isGlobal'> & {
+      status?: RecipeStatus;
+      isGlobal?: boolean;
+    },
   ): Recipe {
     const name = requiredName(input.name);
     const ingredients = normalizeIngredients(input.ingredients);
@@ -39,6 +42,7 @@ export class Recipe {
       instructions: normalizeInstructions(input.instructions),
       tags: normalizeTags(input.tags),
       status: input.status ?? 'ACTIVE',
+      isGlobal: input.isGlobal ?? false,
       deletedAt: null,
     });
   }
@@ -53,12 +57,16 @@ export class Recipe {
     return this.props.id;
   }
 
-  get householdId(): string {
+  get householdId(): string | null {
     return this.props.householdId;
   }
 
-  get createdById(): string {
+  get createdById(): string | null {
     return this.props.createdById;
+  }
+
+  get isGlobal(): boolean {
+    return this.props.isGlobal;
   }
 
   get name(): string {

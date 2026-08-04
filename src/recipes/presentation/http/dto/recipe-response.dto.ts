@@ -38,11 +38,11 @@ export class RecipeResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ format: 'uuid' })
-  householdId!: string;
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  householdId!: string | null;
 
-  @ApiProperty({ format: 'uuid' })
-  createdById!: string;
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  createdById!: string | null;
 
   @ApiProperty({ example: 'Arroz con pollo' })
   name!: string;
@@ -64,6 +64,9 @@ export class RecipeResponseDto {
 
   @ApiProperty({ example: 'ACTIVE' })
   status!: string;
+
+  @ApiProperty({ example: false })
+  isGlobal!: boolean;
 
   @ApiProperty({ type: RecipeIngredientResponseDto, isArray: true })
   ingredients!: RecipeIngredientResponseDto[];

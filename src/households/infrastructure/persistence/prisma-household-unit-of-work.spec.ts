@@ -22,19 +22,6 @@ describe('PrismaHouseholdUnitOfWork', () => {
       householdMembership: {
         create: jest.fn().mockResolvedValue({}),
       },
-      food: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'food-id',
-          servings: [
-            { id: 'egg-serving-id', name: 'Huevo grande' },
-            { id: 'oil-serving-id', name: '3 ml' },
-          ],
-        }),
-      },
-      recipe: {
-        findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue({}),
-      },
     };
     const transaction = jest.fn(
       async (callback: (client: typeof transactionClient) => Promise<PrismaHousehold>) =>

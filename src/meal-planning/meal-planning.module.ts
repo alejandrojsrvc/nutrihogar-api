@@ -10,6 +10,10 @@ import {
   InventoryItemRepository,
 } from '../inventory/application/ports/inventory-repository.port';
 import {
+  NUTRITION_ENGINE_SERVICE,
+  NutritionEngineService,
+} from '../nutrition/application/nutrition-engine.service';
+import {
   NUTRITION_GOAL_REPOSITORY,
   NutritionGoalRepository,
 } from '../nutrition/application/ports/nutrition-goal-repository.port';
@@ -182,15 +186,33 @@ import {
     },
     {
       provide: ADD_PLANNED_MEAL_USE_CASE,
-      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
-      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
-        new AddPlannedMealUseCase({ households: h, plans: p, recipes: r }),
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        WEEKLY_PLAN_REPOSITORY,
+        RECIPE_REPOSITORY,
+        NUTRITION_ENGINE_SERVICE,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        p: WeeklyPlanRepository,
+        r: RecipeRepository,
+        n: NutritionEngineService,
+      ) => new AddPlannedMealUseCase({ households: h, plans: p, recipes: r }, n),
     },
     {
       provide: UPDATE_PLANNED_MEAL_USE_CASE,
-      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
-      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
-        new UpdatePlannedMealUseCase({ households: h, plans: p, recipes: r }),
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        WEEKLY_PLAN_REPOSITORY,
+        RECIPE_REPOSITORY,
+        NUTRITION_ENGINE_SERVICE,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        p: WeeklyPlanRepository,
+        r: RecipeRepository,
+        n: NutritionEngineService,
+      ) => new UpdatePlannedMealUseCase({ households: h, plans: p, recipes: r }, n),
     },
     {
       provide: REMOVE_PLANNED_MEAL_USE_CASE,
@@ -200,9 +222,18 @@ import {
     },
     {
       provide: REPLACE_PLANNED_MEAL_USE_CASE,
-      inject: [HOUSEHOLD_REPOSITORY, WEEKLY_PLAN_REPOSITORY, RECIPE_REPOSITORY],
-      useFactory: (h: HouseholdRepository, p: WeeklyPlanRepository, r: RecipeRepository) =>
-        new ReplacePlannedMealUseCase({ households: h, plans: p, recipes: r }),
+      inject: [
+        HOUSEHOLD_REPOSITORY,
+        WEEKLY_PLAN_REPOSITORY,
+        RECIPE_REPOSITORY,
+        NUTRITION_ENGINE_SERVICE,
+      ],
+      useFactory: (
+        h: HouseholdRepository,
+        p: WeeklyPlanRepository,
+        r: RecipeRepository,
+        n: NutritionEngineService,
+      ) => new ReplacePlannedMealUseCase({ households: h, plans: p, recipes: r }, n),
     },
     {
       provide: ASSIGN_PLANNED_MEAL_PARTICIPANTS_USE_CASE,

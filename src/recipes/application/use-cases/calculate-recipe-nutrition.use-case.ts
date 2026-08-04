@@ -2,7 +2,8 @@ import Decimal from 'decimal.js';
 import { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import { NutritionEngineService } from '../../../nutrition/application/nutrition-engine.service';
 import { RecipeRepository } from '../ports/recipe-repository.port';
-import { RecipeAccessDeniedError, RecipeNotFoundError } from '../errors/recipe-application.errors';
+import { RecipeNotFoundError } from '../errors/recipe-application.errors';
+import { resolveRecipeAccessContext } from '../services/resolve-recipe-access';
 import {
   RecipeNutritionIngredient,
   RecipeNutritionResult,
@@ -22,13 +23,12 @@ export class CalculateRecipeNutritionUseCase {
     const recipe = await this.recipes.findById(recipeId);
     if (!recipe) throw new RecipeNotFoundError();
 
-    const access = await this.households.findAccess(actorId, recipe.householdId);
-    if (!access || access.status !== 'ACTIVE') throw new RecipeAccessDeniedError();
+    const { householdId } = await resolveRecipeAccessContext(this.households, actorId, recipe);
 
     const calculation = await this.nutritionEngine.calculateMany(
       recipe.ingredients.map((ingredient) => ({
         actorId,
-        householdId: recipe.householdId,
+        householdId,
         foodId: ingredient.foodId,
         quantity: ingredient.quantity,
         unit: ingredient.unit,

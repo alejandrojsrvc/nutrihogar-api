@@ -2,6 +2,9 @@ import type { AdultProfileView } from '../../../households/application/adult-pro
 import type { AdultProfileRepository } from '../../../households/application/adult-profile-ports/adult-profile-repository.port';
 import type { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import type { RecipeRepository } from '../../../recipes/application/ports/recipe-repository.port';
+import { resolveRecipeAccessContext } from '../../../recipes/application/services/resolve-recipe-access';
+import type { NutritionEngineService } from '../../../nutrition/application/nutrition-engine.service';
+import Decimal from 'decimal.js';
 import { PlannedMealSource, PlannedMealType } from '../../domain/value-objects/planned-meal';
 import { WeeklyPlan } from '../../domain/entities/weekly-plan';
 import type { WeeklyPlanRepository } from '../ports/weekly-plan-repository.port';
@@ -36,20 +39,40 @@ type Dependencies = {
 type ActorInput = { actorId: string; planId?: string };
 
 export class AddPlannedMealUseCase {
-  constructor(private readonly d: Dependencies) {}
+  constructor(
+    private readonly d: Dependencies,
+    private readonly nutritionEngine: NutritionEngineService,
+  ) {}
   async execute(
     input: Omit<ActorInput, 'planId'> & { planId: string } & PlannedMealInput,
   ): Promise<WeeklyPlan> {
     const plan = await requirePlan(this.d.plans, input.planId);
     await requireAccess(this.d.households, input.actorId, plan.householdId);
     await validateRecipe(this.d.recipes, input.source, input.recipeId, plan.householdId);
-    plan.addMeal({ ...input, id: crypto.randomUUID(), occurredAt: new Date() });
+    const nutritionSnapshot = await resolveMealNutritionSnapshot(
+      this.d,
+      this.nutritionEngine,
+      input.actorId,
+      input.source,
+      input.recipeId,
+      plan.householdId,
+      undefined,
+    );
+    plan.addMeal({
+      ...input,
+      id: crypto.randomUUID(),
+      occurredAt: new Date(),
+      nutritionSnapshot,
+    });
     await this.d.plans.save(plan);
     return plan;
   }
 }
 export class UpdatePlannedMealUseCase {
-  constructor(private readonly d: Dependencies) {}
+  constructor(
+    private readonly d: Dependencies,
+    private readonly nutritionEngine: NutritionEngineService,
+  ) {}
   async execute(
     input: ActorInput & {
       mealId: string;
@@ -64,13 +87,23 @@ export class UpdatePlannedMealUseCase {
     const plan = await planForMeal(this.d.plans, input.planId, input.mealId);
     await requireAccess(this.d.households, input.actorId, plan.householdId);
     const meal = findMeal(plan, input.mealId);
-    await validateRecipe(
-      this.d.recipes,
-      input.source ?? meal.source,
-      input.recipeId === undefined ? meal.recipeId : input.recipeId,
+    const source = input.source ?? meal.source;
+    const recipeId = input.recipeId === undefined ? meal.recipeId : input.recipeId;
+    await validateRecipe(this.d.recipes, source, recipeId, plan.householdId);
+    const nutritionSnapshot = await resolveMealNutritionSnapshot(
+      this.d,
+      this.nutritionEngine,
+      input.actorId,
+      source,
+      recipeId,
       plan.householdId,
+      input.recipeId === undefined ? meal.nutritionSnapshot : undefined,
     );
-    plan.updateMeal(input.mealId, { ...input, occurredAt: new Date() });
+    plan.updateMeal(input.mealId, {
+      ...input,
+      occurredAt: new Date(),
+      nutritionSnapshot,
+    });
     await this.d.plans.save(plan);
     return plan;
   }
@@ -87,7 +120,10 @@ export class RemovePlannedMealUseCase {
   }
 }
 export class ReplacePlannedMealUseCase {
-  constructor(private readonly d: Dependencies) {}
+  constructor(
+    private readonly d: Dependencies,
+    private readonly nutritionEngine: NutritionEngineService,
+  ) {}
   async execute(
     input: ActorInput & { mealId: string } & Partial<PlannedMealInput> & { reason?: string | null },
   ): Promise<WeeklyPlan> {
@@ -96,6 +132,15 @@ export class ReplacePlannedMealUseCase {
     const meal = findMeal(plan, input.mealId);
     const source = input.source ?? PlannedMealSource.FREE_MEAL;
     await validateRecipe(this.d.recipes, source, input.recipeId, plan.householdId);
+    const nutritionSnapshot = await resolveMealNutritionSnapshot(
+      this.d,
+      this.nutritionEngine,
+      input.actorId,
+      source,
+      input.recipeId,
+      plan.householdId,
+      undefined,
+    );
     plan.replaceMeal(input.mealId, {
       ...input,
       source,
@@ -104,6 +149,7 @@ export class ReplacePlannedMealUseCase {
       notes: input.reason ?? input.notes,
       id: crypto.randomUUID(),
       occurredAt: new Date(),
+      nutritionSnapshot,
     });
     await this.d.plans.save(plan);
     return plan;
@@ -261,6 +307,61 @@ async function validateRecipe(
   const recipe = recipeId && (await recipes.findByIdForHousehold(recipeId, householdId));
   if (!recipe || recipe.status !== 'ACTIVE')
     throw new PlannedMealNotFoundError('Recipe is not available for this household.');
+}
+
+async function resolveMealNutritionSnapshot(
+  d: Dependencies,
+  nutritionEngine: NutritionEngineService,
+  actorId: string,
+  source: PlannedMealSource,
+  recipeId: string | null | undefined,
+  householdId: string,
+  fallback: Record<string, unknown> | null | undefined,
+): Promise<Record<string, unknown> | null> {
+  if (source !== PlannedMealSource.RECIPE || !recipeId) return fallback ?? null;
+  const recipe = await d.recipes.findByIdForHousehold(recipeId, householdId);
+  if (!recipe || recipe.status !== 'ACTIVE') return null;
+  try {
+    const { householdId: contextHouseholdId } = await resolveRecipeAccessContext(
+      d.households,
+      actorId,
+      recipe,
+    );
+    const calculation = await nutritionEngine.calculateMany(
+      recipe.ingredients.map((ingredient) => ({
+        actorId,
+        householdId: contextHouseholdId,
+        foodId: ingredient.foodId,
+        quantity: ingredient.quantity,
+        unit: ingredient.unit,
+        servingId: ingredient.servingId ?? undefined,
+      })),
+    );
+    const perServing = divideNutrients(calculation.nutrients, recipe.defaultServings);
+    return {
+      energyKcal: snapshotValue(perServing, 'ENERGY_KCAL'),
+      protein: snapshotValue(perServing, 'PROTEIN'),
+      carbohydrate: snapshotValue(perServing, 'CARBOHYDRATE'),
+      fat: snapshotValue(perServing, 'FAT'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function snapshotValue(nutrients: Record<string, Decimal>, code: string): number {
+  const amount = nutrients[code];
+  return amount ? amount.toDecimalPlaces(2).toNumber() : 0;
+}
+
+function divideNutrients(
+  nutrients: Record<string, Decimal>,
+  servings: number,
+): Record<string, Decimal> {
+  const divisor = new Decimal(servings);
+  return Object.fromEntries(
+    Object.entries(nutrients).map(([code, amount]) => [code, amount.div(divisor)]),
+  );
 }
 async function requireProfile(
   profiles: AdultProfileRepository,

@@ -46,6 +46,10 @@ import {
   GetRecipeUseCase,
 } from '../../application/use-cases/get-recipe.use-case';
 import {
+  IMPORT_RECIPE_USE_CASE,
+  ImportRecipeUseCase,
+} from '../../application/use-cases/import-recipe.use-case';
+import {
   LIST_RECIPES_USE_CASE,
   ListRecipesUseCase,
 } from '../../application/use-cases/list-recipes.use-case';
@@ -53,7 +57,11 @@ import {
   UPDATE_RECIPE_USE_CASE,
   UpdateRecipeUseCase,
 } from '../../application/use-cases/update-recipe.use-case';
-import { CreateRecipeRequestDto, UpdateRecipeRequestDto } from './dto/recipe-request.dto';
+import {
+  CreateRecipeRequestDto,
+  ImportRecipeRequestDto,
+  UpdateRecipeRequestDto,
+} from './dto/recipe-request.dto';
 import { RecipeQueryDto } from './dto/recipe-query.dto';
 import { RecipeListResponseDto, RecipeResponseDto } from './dto/recipe-response.dto';
 import { RecipeNutritionResponseDto } from './dto/recipe-nutrition-response.dto';
@@ -76,6 +84,7 @@ export class RecipesController {
     @Inject(GET_RECIPE_USE_CASE) private readonly getRecipe: GetRecipeUseCase,
     @Inject(LIST_RECIPES_USE_CASE) private readonly listRecipes: ListRecipesUseCase,
     @Inject(ARCHIVE_RECIPE_USE_CASE) private readonly archiveRecipe: ArchiveRecipeUseCase,
+    @Inject(IMPORT_RECIPE_USE_CASE) private readonly importRecipe: ImportRecipeUseCase,
     @Inject(CALCULATE_RECIPE_NUTRITION_USE_CASE)
     private readonly calculateRecipeNutrition: CalculateRecipeNutritionUseCase,
   ) {}
@@ -105,6 +114,31 @@ export class RecipesController {
           tags: body.tags,
           ingredients: body.ingredients,
           instructions: body.instructions,
+        }),
+      );
+    } catch (error) {
+      rethrowRecipeHttpError(error);
+    }
+  }
+
+  @Post('households/:householdId/recipes/import')
+  @ApiOperation({ summary: 'Importa una receta global al hogar como copia editable' })
+  @ApiParam({ name: 'householdId', format: 'uuid' })
+  @ApiCreatedResponse({ type: RecipeResponseDto })
+  @ApiConflictResponse({ description: 'Ya existe una receta con ese nombre en el hogar.' })
+  @ApiForbiddenResponse({ description: 'El usuario no puede importar al hogar.' })
+  @ApiNotFoundResponse({ description: 'La receta no existe.' })
+  async import(
+    @Param('householdId') householdId: string,
+    @CurrentUser() user: CurrentUserModel,
+    @Body() body: ImportRecipeRequestDto,
+  ): Promise<RecipeResponseDto> {
+    try {
+      return toRecipeResponse(
+        await this.importRecipe.execute({
+          actorId: user.id,
+          householdId,
+          recipeId: body.recipeId,
         }),
       );
     } catch (error) {

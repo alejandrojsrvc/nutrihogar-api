@@ -5,10 +5,11 @@ import { RecipeRepository } from '../ports/recipe-repository.port';
 import { RecipeIngredientCommand, RecipeInstructionCommand } from '../models/recipe-command.models';
 import { ensureRecipeFoodsVisible } from '../services/ensure-recipe-foods';
 import {
-  RecipeAccessDeniedError,
+  RecipeGlobalReadOnlyError,
   RecipeNameConflictError,
   RecipeNotFoundError,
 } from '../errors/recipe-application.errors';
+import { resolveRecipeAccessContext } from '../services/resolve-recipe-access';
 
 export const UPDATE_RECIPE_USE_CASE = Symbol('UpdateRecipeUseCase');
 
@@ -35,11 +36,15 @@ export class UpdateRecipeUseCase {
   async execute(command: UpdateRecipeCommand) {
     const recipe = await this.recipes.findById(command.recipeId);
     if (!recipe) throw new RecipeNotFoundError();
-    const access = await this.households.findAccess(command.actorId, recipe.householdId);
-    if (!access || access.status !== 'ACTIVE') throw new RecipeAccessDeniedError();
+    if (recipe.isGlobal) throw new RecipeGlobalReadOnlyError();
+    const { householdId } = await resolveRecipeAccessContext(
+      this.households,
+      command.actorId,
+      recipe,
+    );
     if (
       command.name !== undefined &&
-      (await this.recipes.existsByName(recipe.householdId, command.name, recipe.id))
+      (await this.recipes.existsByName(householdId, command.name, recipe.id))
     ) {
       throw new RecipeNameConflictError();
     }
@@ -47,7 +52,7 @@ export class UpdateRecipeUseCase {
       await ensureRecipeFoodsVisible(
         this.nutritionEngine,
         command.actorId,
-        recipe.householdId,
+        householdId,
         command.ingredients,
       );
     }

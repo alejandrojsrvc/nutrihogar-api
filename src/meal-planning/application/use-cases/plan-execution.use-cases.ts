@@ -9,6 +9,7 @@ import type { PreparedBatchRepository } from '../../../recipes/application/ports
 import type { StartPreparedBatchUseCase } from '../../../recipes/application/use-cases/start-prepared-batch.use-case';
 import type { MealRepository } from '../../../meal-tracking/application/ports/meal-repository.port';
 import type { WeeklyPlan } from '../../domain/entities/weekly-plan';
+import { participantQuantity } from '../services/quantity-suggestion.service';
 
 export const START_PREPARATION_FROM_PLANNED_MEAL_USE_CASE = Symbol(
   'StartPreparationFromPlannedMealUseCase',
@@ -251,12 +252,27 @@ function nutritionValue(snapshot: Record<string, unknown> | null, key: string): 
 }
 function sumPlannedNutrition(meals: ReturnType<WeeklyPlan['toProps']>['meals']) {
   return meals.reduce(
-    (sum, meal) => ({
-      calories: sum.calories.plus(nutritionValue(meal.nutritionSnapshot, 'calories')),
-      protein: sum.protein.plus(nutritionValue(meal.nutritionSnapshot, 'protein')),
-    }),
+    (sum, meal) => {
+      const servings = plannedMealServings(meal);
+      return {
+        calories: sum.calories.plus(
+          nutritionValue(meal.nutritionSnapshot, 'calories').times(servings),
+        ),
+        protein: sum.protein.plus(
+          nutritionValue(meal.nutritionSnapshot, 'protein').times(servings),
+        ),
+      };
+    },
     { calories: new Decimal(0), protein: new Decimal(0) },
   );
+}
+function plannedMealServings(meal: ReturnType<WeeklyPlan['toProps']>['meals'][number]): Decimal {
+  if (meal.participants.length === 0) return new Decimal(1);
+  return meal.participants.reduce((sum, participant) => {
+    const quantity = participantQuantity(participant);
+    if (quantity && quantity.unit === 'SERVING') return sum.plus(quantity.quantity);
+    return sum.plus(1);
+  }, new Decimal(0));
 }
 function sumConsumedNutrition(meals: Awaited<ReturnType<MealRepository['list']>>['items']) {
   return meals.reduce(

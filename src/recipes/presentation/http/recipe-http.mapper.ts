@@ -23,6 +23,7 @@ import {
 import {
   RecipeAccessDeniedError,
   RecipeArchiveAccessDeniedError,
+  RecipeGlobalReadOnlyError,
   RecipeNameConflictError,
   RecipeNotFoundError,
 } from '../../application/errors/recipe-application.errors';
@@ -44,6 +45,7 @@ export function toRecipeResponse(recipe: Recipe): RecipeResponseDto {
     estimatedPreparationMinutes: props.estimatedPreparationMinutes,
     tags: props.tags,
     status: props.status,
+    isGlobal: props.isGlobal,
     ingredients: props.ingredients.map((ingredient) => ({
       ...ingredient,
       quantity: ingredient.quantity.toNumber(),
@@ -113,7 +115,11 @@ export function rethrowRecipeHttpError(error: unknown): never {
   if (error instanceof RecipeArchivedError || error instanceof RecipeNameConflictError) {
     throw new ConflictException(error.message);
   }
-  if (error instanceof RecipeAccessDeniedError || error instanceof RecipeArchiveAccessDeniedError) {
+  if (
+    error instanceof RecipeAccessDeniedError ||
+    error instanceof RecipeArchiveAccessDeniedError ||
+    error instanceof RecipeGlobalReadOnlyError
+  ) {
     throw new ForbiddenException(error.message);
   }
   if (error instanceof RecipeNotFoundError || error instanceof FoodNotAvailableError) {

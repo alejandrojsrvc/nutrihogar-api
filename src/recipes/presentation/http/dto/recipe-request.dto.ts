@@ -128,6 +128,12 @@ export class CreateRecipeRequestDto {
   instructions?: RecipeInstructionRequestDto[];
 }
 
+export class ImportRecipeRequestDto {
+  @ApiProperty({ format: 'uuid', description: 'Receta global o del hogar a importar.' })
+  @IsUUID()
+  recipeId!: string;
+}
+
 export class UpdateRecipeRequestDto {
   @ApiPropertyOptional({ example: 'Arroz con pollo', maxLength: 150 })
   @IsOptional()

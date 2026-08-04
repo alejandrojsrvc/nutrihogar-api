@@ -7,9 +7,9 @@ import { PreparedBatchRepository } from '../ports/prepared-batch-repository.port
 import { PreparedBatch } from '../../domain/entities/prepared-batch';
 import { RecipeArchivedError } from '../../domain/errors/recipe.errors';
 import { RecipeNotFoundError } from '../errors/recipe-application.errors';
-import { RecipeAccessDeniedError } from '../errors/recipe-application.errors';
 import { StartPreparedBatchCommand } from '../models/prepared-batch-command.models';
 import { ensureRecipeFoodsVisible } from '../services/ensure-recipe-foods';
+import { resolveRecipeAccessContext } from '../services/resolve-recipe-access';
 
 export const START_PREPARED_BATCH_USE_CASE = Symbol('StartPreparedBatchUseCase');
 
@@ -27,12 +27,15 @@ export class StartPreparedBatchUseCase {
     if (!recipe) throw new RecipeNotFoundError();
     if (recipe.status === 'ARCHIVED') throw new RecipeArchivedError();
 
-    const access = await this.households.findAccess(command.actorId, recipe.householdId);
-    if (!access || access.status !== 'ACTIVE') throw new RecipeAccessDeniedError();
+    const { householdId } = await resolveRecipeAccessContext(
+      this.households,
+      command.actorId,
+      recipe,
+    );
     await ensureRecipeFoodsVisible(
       this.nutritionEngine,
       command.actorId,
-      recipe.householdId,
+      householdId,
       recipe.ingredients.map((ingredient) => ({
         id: ingredient.id,
         foodId: ingredient.foodId,
@@ -47,7 +50,7 @@ export class StartPreparedBatchUseCase {
     const now = this.clock.now();
     const batch = PreparedBatch.start({
       id: crypto.randomUUID(),
-      householdId: recipe.householdId,
+      householdId,
       recipeId: recipe.id,
       recipeNameSnapshot: recipe.name,
       preparedAt: command.preparedAt ?? now,

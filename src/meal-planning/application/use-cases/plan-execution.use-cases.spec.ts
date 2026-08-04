@@ -133,4 +133,67 @@ describe('plan execution use cases', () => {
     expect(result.nutrition.plannedCalories).toBe('500');
     expect(result.nutrition.consumedCalories).toBe('450');
   });
+
+  it('scales planned nutrition by confirmed servings per participant', async () => {
+    const plan = WeeklyPlan.create({
+      id: 'plan',
+      householdId: 'home',
+      weekStart: '2026-08-03',
+      createdBy: 'user',
+      createdAt: new Date('2026-08-03'),
+    });
+    plan.addMeal({
+      id: 'planned',
+      date: '2026-08-03',
+      type: PlannedMealType.LUNCH,
+      source: PlannedMealSource.RECIPE,
+      recipeId: 'recipe',
+      position: 0,
+      occurredAt: new Date('2026-08-03'),
+    });
+    plan.assignParticipant('planned', {
+      id: 'participant-1',
+      adultProfileId: 'adult-1',
+      occurredAt: new Date('2026-08-03'),
+    });
+    plan.assignParticipant('planned', {
+      id: 'participant-2',
+      adultProfileId: 'adult-2',
+      occurredAt: new Date('2026-08-03'),
+    });
+    plan.activate(new Date('2026-08-03'));
+    plan.confirmParticipantQuantity(
+      'planned',
+      'participant-1',
+      2,
+      'SERVING',
+      'user',
+      new Date('2026-08-03T10:00:00Z'),
+    );
+    plan.confirmParticipantQuantity(
+      'planned',
+      'participant-2',
+      1,
+      'SERVING',
+      'user',
+      new Date('2026-08-03T10:00:00Z'),
+    );
+
+    const props = plan.toProps();
+    props.meals[0].nutritionSnapshot = { energyKcal: '500', protein: '30' };
+    props.meals[0].status = PlannedMealStatus.CONSUMED;
+    props.meals[0].mealId = 'meal';
+    const rebuilt = WeeklyPlan.reconstitute(props);
+    const plans = {
+      findById: jest.fn().mockResolvedValue(rebuilt),
+    } as unknown as WeeklyPlanRepository;
+    const meals = {
+      list: jest.fn().mockResolvedValue({ items: [], page: 1, limit: 10000, total: 0 }),
+    } as unknown as MealRepository;
+    const result = await new CalculateWeeklyAdherenceUseCase(access, plans, meals).execute('user', {
+      weeklyPlanId: 'plan',
+    });
+    expect(result.nutrition.plannedCalories).toBe('1500');
+    expect(result.nutrition.plannedProtein).toBe('90');
+  });
 });

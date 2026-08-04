@@ -25,3 +25,10 @@ export class RecipeNameConflictError extends Error {
     this.name = RecipeNameConflictError.name;
   }
 }
+
+export class RecipeGlobalReadOnlyError extends Error {
+  constructor() {
+    super('Global recipes are read-only and cannot be modified.');
+    this.name = RecipeGlobalReadOnlyError.name;
+  }
+}

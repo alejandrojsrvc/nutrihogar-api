@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { seedNutritionCatalog } from '../src/food-catalog/infrastructure/seed/nutrition-catalog.seeder';
+import { seedGlobalRecipes } from '../src/recipes/infrastructure/seed/global-recipes.seeder';
 
 const prisma = new PrismaClient();
 
@@ -12,6 +13,7 @@ async function main(): Promise<void> {
         create: { key: 'local-environment' },
       });
       await seedNutritionCatalog(transaction);
+      await seedGlobalRecipes(transaction);
     },
     {
       maxWait: 15_000,

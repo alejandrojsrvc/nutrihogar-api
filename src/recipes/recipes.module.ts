@@ -12,6 +12,10 @@ import {
   CalculateRecipeNutritionUseCase,
 } from './application/use-cases/calculate-recipe-nutrition.use-case';
 import {
+  IMPORT_RECIPE_USE_CASE,
+  ImportRecipeUseCase,
+} from './application/use-cases/import-recipe.use-case';
+import {
   PREPARED_BATCH_REPOSITORY,
   PreparedBatchRepository,
 } from './application/ports/prepared-batch-repository.port';
@@ -186,6 +190,12 @@ import {
         recipes: RecipeRepository,
         nutritionEngine: NutritionEngineService,
       ) => new CalculateRecipeNutritionUseCase(households, recipes, nutritionEngine),
+    },
+    {
+      provide: IMPORT_RECIPE_USE_CASE,
+      inject: [HOUSEHOLD_REPOSITORY, RECIPE_REPOSITORY, CLOCK],
+      useFactory: (households: HouseholdRepository, recipes: RecipeRepository, clock: Clock) =>
+        new ImportRecipeUseCase(households, recipes, clock),
     },
     {
       provide: START_PREPARED_BATCH_USE_CASE,

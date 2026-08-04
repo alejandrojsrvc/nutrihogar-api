@@ -1,6 +1,7 @@
 import { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import { RecipeRepository } from '../ports/recipe-repository.port';
-import { RecipeAccessDeniedError, RecipeNotFoundError } from '../errors/recipe-application.errors';
+import { RecipeNotFoundError } from '../errors/recipe-application.errors';
+import { resolveRecipeAccessContext } from '../services/resolve-recipe-access';
 
 export const GET_RECIPE_USE_CASE = Symbol('GetRecipeUseCase');
 
@@ -13,8 +14,7 @@ export class GetRecipeUseCase {
   async execute(actorId: string, recipeId: string) {
     const recipe = await this.recipes.findById(recipeId);
     if (!recipe) throw new RecipeNotFoundError();
-    const access = await this.households.findAccess(actorId, recipe.householdId);
-    if (!access || access.status !== 'ACTIVE') throw new RecipeAccessDeniedError();
+    await resolveRecipeAccessContext(this.households, actorId, recipe);
     return recipe;
   }
 }

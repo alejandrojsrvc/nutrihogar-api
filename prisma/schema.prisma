@@ -987,7 +987,7 @@ model MealItemNutrientSnapshot {
 
 model Recipe {
   id                          String              @id @default(uuid()) @db.Uuid
-  householdId                 String              @map("household_id") @db.Uuid
+  householdId                 String?             @map("household_id") @db.Uuid
   name                        String              @db.VarChar(150)
   description                 String?             @db.Text
   category                    String?             @db.VarChar(50)
@@ -995,18 +995,20 @@ model Recipe {
   estimatedPreparationMinutes Int?                @map("estimated_preparation_minutes")
   tags                        String[]            @default([])
   status                      RecipeStatus        @default(ACTIVE)
-  createdById                 String              @map("created_by_id") @db.Uuid
+  isGlobal                    Boolean             @default(false) @map("is_global")
+  createdById                 String?             @map("created_by_id") @db.Uuid
   createdAt                   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                   DateTime?           @map("deleted_at") @db.Timestamptz(6)
-  household                   Household           @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  createdBy                   User                @relation("RecipeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  household                   Household?          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy                   User?               @relation("RecipeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   plannedMeals                PlannedMeal[]
   ingredients                 RecipeIngredient[]
   instructions                RecipeInstruction[]
   preparedBatches             PreparedBatch[]
 
   @@index([householdId, status, name])
+  @@index([isGlobal, status, name])
   @@index([createdById])
   @@index([deletedAt])
   @@map("recipes")

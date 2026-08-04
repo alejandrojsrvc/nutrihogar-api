@@ -20,7 +20,7 @@ export class PrismaRecipeRepository implements RecipeRepository {
 
   async findByIdForHousehold(id: string, householdId: string): Promise<Recipe | null> {
     const record = await this.prisma.recipe.findFirst({
-      where: { id, householdId },
+      where: { id, OR: [{ isGlobal: true }, { householdId }] },
       include: recipeInclude,
     });
     return record ? PrismaRecipeMapper.toDomain(record) : null;
@@ -30,6 +30,7 @@ export class PrismaRecipeRepository implements RecipeRepository {
     const record = await this.prisma.recipe.findFirst({
       where: {
         householdId,
+        isGlobal: false,
         name: { equals: name, mode: 'insensitive' },
         ...(excludeId ? { id: { not: excludeId } } : {}),
       },
@@ -43,7 +44,7 @@ export class PrismaRecipeRepository implements RecipeRepository {
     criteria: RecipeListCriteria,
   ): Promise<RecipeListResult> {
     const where: Prisma.RecipeWhereInput = {
-      householdId,
+      OR: [{ isGlobal: true }, { householdId }],
       status: 'ACTIVE',
       ...(criteria.query ? { name: { contains: criteria.query, mode: 'insensitive' } } : {}),
     };
@@ -83,6 +84,7 @@ export class PrismaRecipeRepository implements RecipeRepository {
         estimatedPreparationMinutes: data.estimatedPreparationMinutes,
         tags: data.tags,
         status: data.status,
+        isGlobal: data.isGlobal,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
         deletedAt: data.deletedAt,

@@ -21,8 +21,8 @@ export interface RecipeInstructionProps {
 
 export interface RecipeProps {
   id: string;
-  householdId: string;
-  createdById: string;
+  householdId: string | null;
+  createdById: string | null;
   name: string;
   description: string | null;
   category: string | null;
@@ -32,6 +32,7 @@ export interface RecipeProps {
   instructions: RecipeInstructionProps[];
   tags: string[];
   status: RecipeStatus;
+  isGlobal: boolean;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;

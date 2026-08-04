@@ -1,3 +1,4 @@
+import Decimal from 'decimal.js';
 import { CreateWeeklyPlanUseCase } from './weekly-plan.use-cases';
 import { AddPlannedMealUseCase } from './planned-meal.use-cases';
 import { PlannedMealSource, PlannedMealType } from '../../domain/value-objects/planned-meal';
@@ -5,6 +6,8 @@ import { WeeklyPlanStatus } from '../../domain/value-objects/weekly-plan-status'
 import type { HouseholdAccess } from '../../../households/application/models/household-access';
 import type { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import type { RecipeRepository } from '../../../recipes/application/ports/recipe-repository.port';
+import { Recipe } from '../../../recipes/domain/entities/recipe';
+import type { NutritionEngineService } from '../../../nutrition/application/nutrition-engine.service';
 import type { WeeklyPlanRepository } from '../ports/weekly-plan-repository.port';
 
 describe('meal planning use cases', () => {
@@ -43,6 +46,10 @@ describe('meal planning use cases', () => {
     existsByName: jest.fn(),
     listByHousehold: jest.fn(),
   };
+  const nutritionEngine = {
+    calculate: jest.fn(),
+    calculateMany: jest.fn(),
+  } as unknown as jest.Mocked<NutritionEngineService>;
 
   it('uses household currency and rejects an active duplicate week', async () => {
     plans.findByHouseholdAndWeek.mockResolvedValueOnce(null);
@@ -73,7 +80,7 @@ describe('meal planning use cases', () => {
     plans.findById.mockResolvedValue(plan);
     recipes.findByIdForHousehold.mockResolvedValue(null);
     await expect(
-      new AddPlannedMealUseCase({ households, plans, recipes }).execute({
+      new AddPlannedMealUseCase({ households, plans, recipes }, nutritionEngine).execute({
         actorId: 'user',
         planId: plan.id,
         date: '2026-08-10',
@@ -83,5 +90,70 @@ describe('meal planning use cases', () => {
         position: 0,
       }),
     ).rejects.toThrow('Recipe');
+  });
+
+  it('stores a per-serving nutrition snapshot for recipe meals', async () => {
+    const plan = await new CreateWeeklyPlanUseCase(households, plans).execute({
+      actorId: 'user',
+      householdId: 'home',
+      weekStart: '2026-08-17',
+    });
+    plans.findById.mockResolvedValue(plan);
+    recipes.findByIdForHousehold.mockResolvedValue(
+      Recipe.create({
+        id: 'recipe',
+        householdId: 'home',
+        createdById: 'user',
+        name: 'Arroz con pollo',
+        description: null,
+        category: 'LUNCH',
+        defaultServings: 4,
+        estimatedPreparationMinutes: 60,
+        tags: [],
+        ingredients: [
+          {
+            id: 'ingredient-1',
+            foodId: 'food-id',
+            quantity: new Decimal(600),
+            unit: 'GRAM',
+            servingId: null,
+            position: 1,
+            notes: null,
+          },
+        ],
+        instructions: [],
+        createdAt: new Date('2026-08-03'),
+        updatedAt: new Date('2026-08-03'),
+      }),
+    );
+    nutritionEngine.calculateMany.mockResolvedValue({
+      items: [],
+      nutrients: {
+        ENERGY_KCAL: new Decimal(2000),
+        PROTEIN: new Decimal(120),
+        CARBOHYDRATE: new Decimal(200),
+        FAT: new Decimal(60),
+      },
+    });
+
+    const updated = await new AddPlannedMealUseCase(
+      { households, plans, recipes },
+      nutritionEngine,
+    ).execute({
+      actorId: 'user',
+      planId: plan.id,
+      date: '2026-08-17',
+      type: PlannedMealType.LUNCH,
+      source: PlannedMealSource.RECIPE,
+      recipeId: 'recipe',
+      position: 0,
+    });
+
+    expect(updated.meals[0].nutritionSnapshot).toEqual({
+      energyKcal: 500,
+      protein: 30,
+      carbohydrate: 50,
+      fat: 15,
+    });
   });
 });

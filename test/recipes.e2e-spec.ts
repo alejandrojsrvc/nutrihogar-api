@@ -13,6 +13,7 @@ import { CREATE_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/cre
 import { GET_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/get-recipe.use-case';
 import { LIST_RECIPES_USE_CASE } from '../src/recipes/application/use-cases/list-recipes.use-case';
 import { UPDATE_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/update-recipe.use-case';
+import { IMPORT_RECIPE_USE_CASE } from '../src/recipes/application/use-cases/import-recipe.use-case';
 import { Recipe } from '../src/recipes/domain/entities/recipe';
 
 describe('Recipes HTTP API (e2e)', () => {
@@ -24,6 +25,7 @@ describe('Recipes HTTP API (e2e)', () => {
   const listRecipes = { execute: jest.fn() };
   const archiveRecipe = { execute: jest.fn() };
   const calculateRecipeNutrition = { execute: jest.fn() };
+  const importRecipe = { execute: jest.fn() };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] })
@@ -41,6 +43,8 @@ describe('Recipes HTTP API (e2e)', () => {
       .useValue(archiveRecipe)
       .overrideProvider(CALCULATE_RECIPE_NUTRITION_USE_CASE)
       .useValue(calculateRecipeNutrition)
+      .overrideProvider(IMPORT_RECIPE_USE_CASE)
+      .useValue(importRecipe)
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -60,6 +64,7 @@ describe('Recipes HTTP API (e2e)', () => {
       .mockResolvedValue({ items: [recipe], page: 1, limit: 20, total: 1 });
     archiveRecipe.execute.mockReset().mockResolvedValue(undefined);
     calculateRecipeNutrition.execute.mockReset().mockResolvedValue(recipeNutrition);
+    importRecipe.execute.mockReset().mockResolvedValue(importedRecipe);
   });
 
   it('creates, lists, updates and archives recipes', async () => {
@@ -112,6 +117,23 @@ describe('Recipes HTTP API (e2e)', () => {
       .set('Authorization', 'Bearer valid-token')
       .expect(204);
   });
+
+  it('imports a global recipe as an editable household copy', async () => {
+    await request(app.getHttpServer())
+      .post('/api/households/household-id/recipes/import')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ recipeId: '00000000-0000-4000-8000-000000000001' })
+      .expect(201)
+      .expect((response) => {
+        expect(response.body).toHaveProperty('name', 'Arroz con pollo');
+        expect(response.body).toHaveProperty('isGlobal', false);
+      });
+    expect(importRecipe.execute).toHaveBeenCalledWith({
+      actorId: 'user-id',
+      householdId: 'household-id',
+      recipeId: '00000000-0000-4000-8000-000000000001',
+    });
+  });
 });
 
 const currentUser: CurrentUser = {
@@ -136,6 +158,32 @@ const recipe = Recipe.create({
   ingredients: [
     {
       id: 'ingredient-id',
+      foodId: 'food-id',
+      quantity: 600,
+      unit: 'GRAM',
+      servingId: null,
+      position: 1,
+      notes: null,
+    },
+  ],
+  instructions: [],
+  createdAt: new Date('2026-07-30T12:00:00.000Z'),
+  updatedAt: new Date('2026-07-30T12:00:00.000Z'),
+});
+
+const importedRecipe = Recipe.create({
+  id: 'imported-recipe-id',
+  householdId: 'household-id',
+  createdById: 'user-id',
+  name: 'Arroz con pollo',
+  description: null,
+  category: 'LUNCH',
+  defaultServings: 4,
+  estimatedPreparationMinutes: 60,
+  tags: ['imported'],
+  ingredients: [
+    {
+      id: 'imported-ingredient-id',
       foodId: 'food-id',
       quantity: 600,
       unit: 'GRAM',

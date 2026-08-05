@@ -2,9 +2,12 @@ import Decimal from 'decimal.js';
 import { ReceiptOcrDataError } from '../../application/errors/receipt-ocr.errors';
 import { ReceiptOcrItem, ReceiptOcrResult } from '../../application/ports/receipt-ocr.port';
 import {
+  RECEIPT_LEGACY_SCHEMA_VERSION,
   ReceiptStructuredItem,
   ReceiptStructuredPayload,
   RECEIPT_SCHEMA_VERSION,
+  ReceiptItemType,
+  ReceiptSchemaVersion,
 } from '../../application/models/receipt-structured.models';
 
 const RECEIPT_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -31,14 +34,30 @@ const RECEIPT_KEYS = [
   'requires_review',
 ] as const;
 const STORE_KEYS = ['name', 'branch', 'cuit'] as const;
-const ITEM_KEYS = ['description', 'quantity', 'unit', 'unit_price', 'discount', 'total'] as const;
+const ITEM_KEYS = [
+  'item_type',
+  'description',
+  'quantity',
+  'unit',
+  'unit_price',
+  'discount',
+  'total',
+] as const;
+const LEGACY_ITEM_KEYS = [
+  'description',
+  'quantity',
+  'unit',
+  'unit_price',
+  'discount',
+  'total',
+] as const;
 
 export function parseReceiptStructuredPayload(text: string): ReceiptStructuredPayload {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text) as unknown;
   } catch {
-    throw new ReceiptOcrDataError('Gemini returned invalid receipt JSON.');
+    throw new ReceiptOcrDataError('Structured content returned invalid receipt JSON.');
   }
   return readReceipt(parsed);
 }
@@ -46,6 +65,7 @@ export function parseReceiptStructuredPayload(text: string): ReceiptStructuredPa
 export function mapReceiptToOcrResult(
   payload: ReceiptStructuredPayload,
   currencyHint?: string,
+  provider = 'UNKNOWN',
 ): ReceiptOcrResult {
   const storeName = requiredValue(payload.store.name, 'Receipt store name');
   const currency = requiredCurrency(payload.currency ?? currencyHint ?? null);
@@ -54,12 +74,22 @@ export function mapReceiptToOcrResult(
   if (payload.items.length === 0)
     throw new ReceiptOcrDataError('The receipt contains no purchase items.');
 
-  const items = payload.items.map((item) => mapItem(item));
+  const mappedItems = payload.items.map((item) => mapItem(item));
+  const items = mappedItems.filter((item) => item.itemType === 'FOOD');
+  const nonFoodItems = mappedItems.filter((item) => item.itemType === 'NON_FOOD');
   const arithmeticWarnings = findArithmeticWarnings(payload);
-  const missingEssentials = payload.items.some(
-    (item) => item.total === null || item.unit_price === null,
+  const missingUnitsWarnings = payload.items.flatMap((item, index) =>
+    item.unit === null
+      ? [`Receipt item ${index + 1} unit was not identified; defaulted to UNIT.`]
+      : [],
   );
-  const warnings = appendWarnings(payload.warnings, arithmeticWarnings);
+  const missingEssentials = payload.items.some(
+    (item) => item.unit === null || item.total === null || item.unit_price === null,
+  );
+  const warnings = appendWarnings(payload.warnings, [
+    ...arithmeticWarnings,
+    ...missingUnitsWarnings,
+  ]);
   const reviewRequired =
     missingEssentials ||
     payload.confidence === null ||
@@ -67,8 +97,8 @@ export function mapReceiptToOcrResult(
     warnings.length > 0;
 
   return {
-    provider: 'GEMINI',
-    schemaVersion: RECEIPT_SCHEMA_VERSION,
+    provider,
+    schemaVersion: payload.schema_version,
     structuredPayload: payload,
     storeName,
     purchaseDate,
@@ -77,6 +107,7 @@ export function mapReceiptToOcrResult(
     confidence: payload.confidence,
     warnings,
     items,
+    nonFoodItems,
     providerDocumentId: null,
     reviewRequired,
   };
@@ -85,18 +116,22 @@ export function mapReceiptToOcrResult(
 function readReceipt(value: unknown): ReceiptStructuredPayload {
   const record = exactRecord(value, 'Receipt');
   ensureKeys(record, RECEIPT_KEYS, 'Receipt');
-  if (record.schema_version !== RECEIPT_SCHEMA_VERSION)
+  if (
+    record.schema_version !== RECEIPT_SCHEMA_VERSION &&
+    record.schema_version !== RECEIPT_LEGACY_SCHEMA_VERSION
+  )
     throw new ReceiptOcrDataError('Receipt schema version is not supported.');
 
   const store = exactRecord(record.store, 'Receipt store');
   ensureKeys(store, STORE_KEYS, 'Receipt store');
-  const items = readItems(record.items);
+  const schemaVersion = record.schema_version;
+  const items = readItems(record.items, schemaVersion);
   const currency = nullableString(record.currency, 'Receipt currency');
   if (currency !== null && !/^[A-Z]{3}$/.test(currency))
     throw new ReceiptOcrDataError('Receipt currency must be an uppercase ISO 4217 code.');
 
   return {
-    schema_version: RECEIPT_SCHEMA_VERSION,
+    schema_version: schemaVersion,
     store: {
       name: nullableString(store.name, 'Receipt store name'),
       branch: nullableString(store.branch, 'Receipt store branch'),
@@ -118,12 +153,17 @@ function readReceipt(value: unknown): ReceiptStructuredPayload {
   };
 }
 
-function readItems(value: unknown): ReceiptStructuredItem[] {
+function readItems(value: unknown, schemaVersion: ReceiptSchemaVersion): ReceiptStructuredItem[] {
   if (!Array.isArray(value)) throw new ReceiptOcrDataError('Receipt items must be an array.');
+  const itemKeys = schemaVersion === RECEIPT_SCHEMA_VERSION ? ITEM_KEYS : LEGACY_ITEM_KEYS;
   return value.map((item, index) => {
     const record = exactRecord(item, `Receipt item ${index}`);
-    ensureKeys(record, ITEM_KEYS, `Receipt item ${index}`);
+    ensureKeys(record, itemKeys, `Receipt item ${index}`);
     return {
+      item_type:
+        schemaVersion === RECEIPT_SCHEMA_VERSION
+          ? readItemType(record.item_type, `Receipt item ${index} item_type`)
+          : ('FOOD' as const),
       description: nullableString(record.description, `Receipt item ${index} description`),
       quantity: nullableAmount(record.quantity, `Receipt item ${index} quantity`),
       unit: nullableString(record.unit, `Receipt item ${index} unit`),
@@ -137,22 +177,42 @@ function readItems(value: unknown): ReceiptStructuredItem[] {
 function mapItem(item: ReceiptStructuredItem): ReceiptOcrItem {
   const name = requiredValue(item.description, 'Receipt item description');
   const quantity = requiredAmount(item.quantity, 'Receipt item quantity');
-  const unit = requiredValue(item.unit, 'Receipt item unit');
+  const unit = item.unit ?? 'UNIT';
   if (!SUPPORTED_UNITS.has(unit.toUpperCase()))
     throw new ReceiptOcrDataError(`Receipt item unit is not supported: ${unit}.`);
   if (new Decimal(quantity).lte(0))
     throw new ReceiptOcrDataError('Receipt item quantity must be positive.');
 
   return {
+    itemType: item.item_type,
     name,
     quantity: String(quantity),
     unit,
     unitPrice: amountString(item.unit_price),
     discount: amountString(item.discount),
-    total: amountString(item.total),
+    total: netAmount(item),
     confidence: null,
-    needsReview: item.unit_price === null || item.discount === null || item.total === null,
+    needsReview:
+      item.unit === null ||
+      item.unit_price === null ||
+      item.discount === null ||
+      item.total === null,
   };
+}
+
+function readItemType(value: unknown, label: string): ReceiptItemType {
+  if (value !== 'FOOD' && value !== 'NON_FOOD')
+    throw new ReceiptOcrDataError(`${label} must be FOOD or NON_FOOD.`);
+  return value;
+}
+
+function netAmount(item: ReceiptStructuredItem): string | null {
+  if (item.total === null) return null;
+  if (item.discount === null || item.unit_price === null) return String(item.total);
+
+  const gross = new Decimal(item.quantity ?? 0).times(item.unit_price);
+  const net = gross.minus(item.discount);
+  return String(net);
 }
 
 function toPurchaseDate(date: string | null, time: string | null): Date {
@@ -189,14 +249,13 @@ function toPurchaseDate(date: string | null, time: string | null): Date {
 function findArithmeticWarnings(payload: ReceiptStructuredPayload): string[] {
   const warnings: string[] = [];
   for (const [index, item] of payload.items.entries()) {
-    if (
-      item.quantity !== null &&
-      item.unit_price !== null &&
-      item.discount !== null &&
-      item.total !== null
-    ) {
-      const expected = new Decimal(item.quantity).times(item.unit_price).minus(item.discount);
-      if (differentEnough(expected, new Decimal(item.total)))
+    if (item.quantity !== null && item.unit_price !== null && item.total !== null) {
+      const gross = new Decimal(item.quantity).times(item.unit_price);
+      const net = item.discount === null ? gross : gross.minus(item.discount);
+      if (
+        differentEnough(gross, new Decimal(item.total)) &&
+        differentEnough(net, new Decimal(item.total))
+      )
         warnings.push(`Receipt item ${index + 1} arithmetic is inconsistent.`);
     }
   }
@@ -213,12 +272,16 @@ function findArithmeticWarnings(payload: ReceiptStructuredPayload): string[] {
 
   if (
     payload.subtotal !== null &&
-    payload.discounts !== null &&
-    payload.taxes !== null &&
     payload.total !== null &&
-    differentEnough(
-      new Decimal(payload.subtotal).minus(payload.discounts).plus(payload.taxes),
-      new Decimal(payload.total),
+    ![
+      new Decimal(payload.subtotal),
+      payload.discounts === null ? null : new Decimal(payload.subtotal).minus(payload.discounts),
+      payload.taxes === null ? null : new Decimal(payload.subtotal).plus(payload.taxes),
+      payload.discounts === null || payload.taxes === null
+        ? null
+        : new Decimal(payload.subtotal).minus(payload.discounts).plus(payload.taxes),
+    ].some(
+      (candidate) => candidate !== null && !differentEnough(candidate, new Decimal(payload.total!)),
     )
   )
     warnings.push('Receipt total is inconsistent with subtotal, discounts, and taxes.');

@@ -9,7 +9,16 @@ import { PurchaseRepository } from '../ports/purchase-repository.port';
 import { CreatePurchaseUseCase } from './purchase.use-cases';
 import { ReceiptOcrPort, ReceiptOcrResult } from '../ports/receipt-ocr.port';
 import { Purchase } from '../../domain/entities/purchase';
+import { PurchaseOcrMetadata } from '../../domain/models/purchase.models';
+import {
+  RECEIPT_LEGACY_SCHEMA_VERSION,
+  RECEIPT_SCHEMA_VERSION,
+} from '../../application/models/receipt-structured.models';
 import { ReceiptOcrDataError, ReceiptOcrFileError } from '../errors/receipt-ocr.errors';
+import {
+  mapReceiptToOcrResult,
+  parseReceiptStructuredPayload,
+} from '../../infrastructure/ocr/receipt-structured.validator';
 
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SIGNED_URL_EXPIRATION_SECONDS = 600;
@@ -44,6 +53,8 @@ export class CreatePurchaseDraftFromReceiptUseCase {
     const access = await this.households.findAccess(input.actorId, input.householdId);
     if (!access || access.status !== 'ACTIVE')
       throw new ReceiptOcrFileError('Household access denied.');
+    const currencyHint =
+      normalizeCurrency(input.currency) ?? normalizeCurrency(access.household.currency) ?? 'ARS';
     validateFile(input.content, input.fileName, input.contentType, this.maxFileSizeBytes);
     const idempotencyKey =
       input.idempotencyKey?.trim() ||
@@ -53,10 +64,12 @@ export class CreatePurchaseDraftFromReceiptUseCase {
       : null;
     if (existing) {
       const metadata = existing.ocrMetadata;
+      const restored = restoreReceiptOcr(metadata, existing.currency);
       const payload = metadata?.payload as
         | {
             schema_version?: string;
             items?: Array<{
+              item_type?: 'FOOD' | 'NON_FOOD';
               description: string | null;
               quantity: number | null;
               unit: string | null;
@@ -66,45 +79,54 @@ export class CreatePurchaseDraftFromReceiptUseCase {
             }>;
           }
         | undefined;
+      const fallbackItems = payload?.items?.length
+        ? payload.items
+            .filter((item) => item.item_type !== 'NON_FOOD')
+            .map((item) => ({
+              itemType: 'FOOD' as const,
+              name: item.description ?? 'Unknown item',
+              quantity: String(item.quantity ?? 0),
+              unit: item.unit ?? 'UNIT',
+              unitPrice: item.unit_price === null ? null : String(item.unit_price),
+              discount: item.discount === null ? null : String(item.discount),
+              total: item.total === null ? null : String(item.total),
+              confidence: null,
+              needsReview:
+                item.description === null || item.quantity === null || item.total === null,
+            }))
+        : existing.items.map((item) => ({
+            itemType: 'FOOD' as const,
+            name: item.nameSnapshot,
+            quantity: item.quantity.toString(),
+            unit: item.unit,
+            unitPrice: null,
+            discount: null,
+            total: null,
+            confidence: null,
+            needsReview: true,
+          }));
       return {
         purchase: existing,
         ocr: {
-          provider: metadata?.provider ?? 'GEMINI',
-          schemaVersion: metadata?.schemaVersion ?? null,
-          structuredPayload: metadata?.payload as ReceiptOcrResult['structuredPayload'],
+          provider: restored?.provider ?? metadata?.provider ?? 'UNKNOWN',
+          schemaVersion: restored?.schemaVersion ?? metadata?.schemaVersion ?? null,
+          structuredPayload:
+            restored?.structuredPayload ??
+            ((metadata?.payload ?? null) as unknown as ReceiptOcrResult['structuredPayload']),
           storeName: existing.storeName,
           purchaseDate: existing.purchaseDate,
           total: existing.total.toString(),
           currency: existing.currency,
           confidence: metadata?.confidence ?? null,
-          warnings: [
+          warnings: uniqueWarnings([
             ...(metadata?.warnings ?? []),
+            ...(restored?.warnings ?? []),
             'An existing draft was returned for this document.',
-          ],
-          items: payload?.items?.length
-            ? payload.items.map((item) => ({
-                name: item.description ?? 'Unknown item',
-                quantity: String(item.quantity ?? 0),
-                unit: item.unit ?? 'UNIT',
-                unitPrice: item.unit_price === null ? null : String(item.unit_price),
-                discount: item.discount === null ? null : String(item.discount),
-                total: item.total === null ? null : String(item.total),
-                confidence: null,
-                needsReview:
-                  item.description === null || item.quantity === null || item.total === null,
-              }))
-            : existing.items.map((item) => ({
-                name: item.nameSnapshot,
-                quantity: item.quantity.toString(),
-                unit: item.unit,
-                unitPrice: null,
-                discount: null,
-                total: null,
-                confidence: null,
-                needsReview: true,
-              })),
+          ]),
+          items: restored?.items ?? fallbackItems,
+          nonFoodItems: restored?.nonFoodItems ?? [],
           providerDocumentId: null,
-          reviewRequired: metadata?.requiresReview ?? true,
+          reviewRequired: metadata?.requiresReview ?? restored?.reviewRequired ?? true,
         },
       };
     }
@@ -128,7 +150,7 @@ export class CreatePurchaseDraftFromReceiptUseCase {
         fileName: input.fileName,
         contentType: input.contentType,
         content: input.content,
-        currencyHint: input.currency,
+        currencyHint,
         locale: input.locale,
       });
     } finally {
@@ -142,7 +164,7 @@ export class CreatePurchaseDraftFromReceiptUseCase {
       storeName: result.storeName,
       purchaseDate: result.purchaseDate,
       total: result.total,
-      currency: input.currency?.trim() || result.currency,
+      currency: normalizeCurrency(input.currency) ?? result.currency,
       source: 'OCR',
       idempotencyKey,
       items: result.items.map((item) => ({
@@ -153,7 +175,7 @@ export class CreatePurchaseDraftFromReceiptUseCase {
       ocrMetadata: result.structuredPayload
         ? {
             provider: result.provider,
-            schemaVersion: result.schemaVersion ?? 'receipt.v1',
+            schemaVersion: result.schemaVersion ?? RECEIPT_SCHEMA_VERSION,
             payload: result.structuredPayload as unknown as Record<string, unknown>,
             confidence: result.confidence,
             warnings: result.warnings,
@@ -171,7 +193,8 @@ function validateOcrResult(result: ReceiptOcrResult): void {
   if (
     typeof result.provider !== 'string' ||
     !result.provider.trim() ||
-    result.schemaVersion !== 'receipt.v1'
+    (result.schemaVersion !== RECEIPT_SCHEMA_VERSION &&
+      result.schemaVersion !== RECEIPT_LEGACY_SCHEMA_VERSION)
   )
     throw new ReceiptOcrDataError('Receipt OCR provider data is invalid.');
   if (
@@ -189,6 +212,8 @@ function validateOcrResult(result: ReceiptOcrResult): void {
   assertDecimal(result.total, 'Receipt total', false);
   if (!Array.isArray(result.items) || result.items.length === 0)
     throw new ReceiptOcrDataError('The receipt contains no purchase items.');
+  if (!Array.isArray(result.nonFoodItems))
+    throw new ReceiptOcrDataError('Receipt non-food items are invalid.');
   if (
     result.confidence !== null &&
     (!Number.isFinite(result.confidence) || result.confidence < 0 || result.confidence > 1)
@@ -201,9 +226,10 @@ function validateOcrResult(result: ReceiptOcrResult): void {
     throw new ReceiptOcrDataError('Receipt warnings are invalid.');
   if (typeof result.reviewRequired !== 'boolean')
     throw new ReceiptOcrDataError('Receipt review flag is invalid.');
-  for (const item of result.items) {
+  for (const item of [...result.items, ...result.nonFoodItems]) {
     if (
       !item ||
+      (item.itemType !== 'FOOD' && item.itemType !== 'NON_FOOD') ||
       typeof item.name !== 'string' ||
       typeof item.unit !== 'string' ||
       !item.name.trim() ||
@@ -227,6 +253,28 @@ function assertDecimal(value: string, label: string, mustBePositive: boolean): v
   }
   if (!decimal.isFinite() || (mustBePositive ? decimal.lte(0) : decimal.isNegative()))
     throw new ReceiptOcrDataError(`${label} is invalid.`);
+}
+
+function normalizeCurrency(value: string | undefined): string | null {
+  const normalized = value?.trim().toUpperCase();
+  return normalized && /^[A-Z]{3}$/.test(normalized) ? normalized : null;
+}
+
+function restoreReceiptOcr(
+  metadata: PurchaseOcrMetadata | null,
+  currencyHint: string,
+): ReceiptOcrResult | null {
+  if (!metadata?.payload) return null;
+  try {
+    const payload = parseReceiptStructuredPayload(JSON.stringify(metadata.payload));
+    return mapReceiptToOcrResult(payload, currencyHint, metadata.provider);
+  } catch {
+    return null;
+  }
+}
+
+function uniqueWarnings(warnings: string[]): string[] {
+  return [...new Set(warnings)];
 }
 
 function validateFile(

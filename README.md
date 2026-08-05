@@ -71,10 +71,10 @@ Prisma Studio continúa disponible con `npm run db:studio`.
 | `R2_BUCKET`                        | Bucket privado de R2                                        | Sí con `r2`                                     |
 | `UPLOAD_MAX_FILE_SIZE_MB`          | Tamaño máximo de uploads                                    | No, `10`                                        |
 | `FRONTEND_URL`                     | Origen permitido por CORS                                   | No, `http://localhost:5173`                     |
-| `GEMINI_API_KEY`                   | API key privada de Gemini                                   | Sí para OCR                                     |
-| `GEMINI_BASE_URL`                  | URL base de Gemini                                          | No, `https://generativelanguage.googleapis.com` |
+| `GEMINI_API_KEY`                   | API key privada del adapter Gemini                          | Sí para OCR                                     |
+| `GEMINI_BASE_URL`                  | URL base del adapter Gemini                                 | No, `https://generativelanguage.googleapis.com` |
 | `GEMINI_MODEL`                     | Modelo para extracción estructurada                         | No, `gemini-2.5-flash`                          |
-| `GEMINI_TIMEOUT_MS`                | Timeout de Gemini en milisegundos                           | No, `120000`                                    |
+| `GEMINI_TIMEOUT_MS`                | Timeout del adapter Gemini en milisegundos                   | No, `120000`                                    |
 | `NUTRITION_LABEL_MAX_FILE_SIZE_MB` | Tamaño máximo de etiquetas                                  | No, `10`                                        |
 
 No se deben subir archivos `.env` ni credenciales al repositorio.
@@ -178,8 +178,9 @@ DATABASE_URL_TEST=postgresql://postgres:postgres@127.0.0.1:5432/nutrihogar npm r
 ## OCR de recibos y etiquetas nutricionales
 
 El endpoint existente `POST /api/households/:householdId/purchases/ocr-draft` utiliza Storage temporal, envía la imagen o
-PDF a Gemini con `responseMimeType=application/json` y un `responseSchema` versionado, y elimina el objeto después del
-procesamiento. El payload estructurado de la factura se conserva en el borrador para revisión.
+PDF al puerto neutral de contenido estructurado y elimina el objeto después del procesamiento. Actualmente Gemini es el
+único adapter configurado y usa la API de Interactions con `store=false`, `application/json` y un JSON Schema versionado.
+El payload estructurado de la factura se conserva en el borrador para revisión.
 
 Los endpoints de etiquetas son:
 
@@ -191,7 +192,8 @@ POST /api/households/:householdId/foods/nutrition-label-drafts/:draftId/confirm
 
 La extracción devuelve siempre el contrato `nutrition-label.v1`. La confirmación permite crear un alimento comercial o
 usar `targetFoodId` para actualizar un alimento `CUSTOM` o `COMMERCIAL` perteneciente al hogar. Los alimentos globales
-no se modifican. Gemini transcribe valores declarados; el backend normaliza nutrientes y calcula los resultados.
+no se modifican. El adapter configurado transcribe valores declarados; el backend normaliza nutrientes y calcula los
+resultados.
 
 No se modifican las reglas de negocio de compras, inventario ni hogares.
 

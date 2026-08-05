@@ -14,12 +14,13 @@ import {
 import { IdentityModule } from '../identity/identity.module';
 import { StorageModule } from '../storage/storage.module';
 import { OBJECT_STORAGE, ObjectStorage } from '../storage/application/ports/object-storage.port';
-import { GeminiModule } from '../gemini/gemini.module';
 import {
-  GEMINI_CONTENT_CLIENT,
-  GeminiContentClient,
-  GeminiJsonSchema,
-} from '../gemini/application/ports/gemini-content.port';
+  STRUCTURED_CONTENT_OPTIONS,
+  STRUCTURED_CONTENT_PROVIDER,
+  StructuredContentOptions,
+  StructuredContentProvider,
+} from '../ai/application/ports/structured-content-provider.port';
+import { StructuredContentModule } from '../ai/structured-content.module';
 import {
   NUTRITION_LABEL_DRAFT_REPOSITORY,
   NutritionLabelDraftRepository,
@@ -38,10 +39,7 @@ import {
   GET_NUTRITION_LABEL_DRAFT_USE_CASE,
   GetNutritionLabelDraftUseCase,
 } from './application/use-cases/get-nutrition-label-draft.use-case';
-import {
-  GeminiNutritionLabelExtractionAdapter,
-  StructuredGenerationClient,
-} from './infrastructure/extraction/gemini-nutrition-label-extraction.adapter';
+import { StructuredNutritionLabelExtractionAdapter } from './infrastructure/extraction/structured-nutrition-label-extraction.adapter';
 import { PrismaNutritionLabelDraftRepository } from './infrastructure/persistence/prisma-nutrition-label-draft.repository';
 import { PrismaNutritionLabelConfirmationAdapter } from './infrastructure/persistence/prisma-nutrition-label-confirmation.adapter';
 import { NutritionLabelsController } from './presentation/http/nutrition-labels.controller';
@@ -50,7 +48,7 @@ import { NutritionLabelsController } from './presentation/http/nutrition-labels.
   imports: [
     DatabaseModule,
     FoodCatalogModule,
-    GeminiModule,
+    StructuredContentModule,
     HouseholdsModule,
     IdentityModule,
     StorageModule,
@@ -69,12 +67,9 @@ import { NutritionLabelsController } from './presentation/http/nutrition-labels.
     },
     {
       provide: NUTRITION_LABEL_EXTRACTION,
-      inject: [GEMINI_CONTENT_CLIENT, ConfigService],
-      useFactory: (client: GeminiContentClient, config: ConfigService) =>
-        new GeminiNutritionLabelExtractionAdapter(bridgeGeminiContentClient(client), {
-          model: config.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash',
-          timeoutMs: config.get<number>('GEMINI_TIMEOUT_MS'),
-        }),
+      inject: [STRUCTURED_CONTENT_PROVIDER, STRUCTURED_CONTENT_OPTIONS],
+      useFactory: (provider: StructuredContentProvider, options: StructuredContentOptions) =>
+        new StructuredNutritionLabelExtractionAdapter(provider, options),
     },
     {
       provide: 'CREATE_NUTRITION_LABEL_DRAFT',
@@ -118,23 +113,3 @@ import { NutritionLabelsController } from './presentation/http/nutrition-labels.
   ],
 })
 export class NutritionLabelsModule {}
-
-function bridgeGeminiContentClient(client: GeminiContentClient): StructuredGenerationClient {
-  return {
-    generateStructured: async (input) => {
-      const response = await client.generateStructuredContent({
-        model: input.model,
-        timeoutMs: input.timeoutMs ?? 120000,
-        systemInstruction: input.systemInstruction,
-        prompt: input.prompt,
-        media: { mimeType: input.contentType, bytes: input.content },
-        responseSchema: input.responseSchema as GeminiJsonSchema,
-      });
-      try {
-        return JSON.parse(response) as unknown;
-      } catch {
-        return response;
-      }
-    },
-  };
-}

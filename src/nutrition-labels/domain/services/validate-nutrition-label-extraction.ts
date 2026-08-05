@@ -228,7 +228,7 @@ function sanitizeNutrients(
         warnings,
       ),
     ]),
-  ) as StructuredNutritionLabelNutrients;
+  ) as unknown as StructuredNutritionLabelNutrients;
 }
 
 function sanitizeConfidence(value: unknown, warnings: string[]): number | null {

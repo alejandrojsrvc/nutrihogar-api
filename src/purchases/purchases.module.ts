@@ -47,11 +47,13 @@ import { RECEIPT_OCR, ReceiptOcrPort } from './application/ports/receipt-ocr.por
 import { OBJECT_STORAGE, ObjectStorage } from '../storage/application/ports/object-storage.port';
 import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/create-purchase-draft-from-receipt.use-case';
 import {
-  GEMINI_CONTENT_CLIENT,
-  GeminiContentClient,
-} from '../gemini/application/ports/gemini-content.port';
-import { GeminiModule } from '../gemini/gemini.module';
-import { GeminiReceiptOcrAdapter } from './infrastructure/ocr/gemini-receipt-ocr.adapter';
+  STRUCTURED_CONTENT_OPTIONS,
+  STRUCTURED_CONTENT_PROVIDER,
+  StructuredContentOptions,
+  StructuredContentProvider,
+} from '../ai/application/ports/structured-content-provider.port';
+import { StructuredContentModule } from '../ai/structured-content.module';
+import { StructuredReceiptOcrAdapter } from './infrastructure/ocr/structured-receipt-ocr.adapter';
 
 @Module({
   imports: [
@@ -62,22 +64,19 @@ import { GeminiReceiptOcrAdapter } from './infrastructure/ocr/gemini-receipt-ocr
     InventoryModule,
     ShoppingListModule,
     StorageModule,
-    GeminiModule,
+    StructuredContentModule,
   ],
   controllers: [PurchaseController],
   providers: [
     PrismaPurchaseRepository,
     {
-      provide: GeminiReceiptOcrAdapter,
-      inject: [GEMINI_CONTENT_CLIENT, ConfigService],
-      useFactory: (client: GeminiContentClient, config: ConfigService) =>
-        new GeminiReceiptOcrAdapter(client, {
-          model: config.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash',
-          timeoutMs: config.get<number>('GEMINI_TIMEOUT_MS') ?? 120000,
-        }),
+      provide: StructuredReceiptOcrAdapter,
+      inject: [STRUCTURED_CONTENT_PROVIDER, STRUCTURED_CONTENT_OPTIONS],
+      useFactory: (provider: StructuredContentProvider, options: StructuredContentOptions) =>
+        new StructuredReceiptOcrAdapter(provider, options),
     },
     { provide: PURCHASE_REPOSITORY, useExisting: PrismaPurchaseRepository },
-    { provide: RECEIPT_OCR, useExisting: GeminiReceiptOcrAdapter },
+    { provide: RECEIPT_OCR, useExisting: StructuredReceiptOcrAdapter },
     PrismaPurchaseInventoryUnitOfWork,
     { provide: PURCHASE_INVENTORY_UNIT_OF_WORK, useExisting: PrismaPurchaseInventoryUnitOfWork },
     {

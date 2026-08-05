@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { NutritionLabelExtractionProcessingError } from '../../application/errors/nutrition-label.errors';
 import {
-  GeminiNutritionLabelExtractionAdapter,
+  StructuredNutritionLabelExtractionAdapter,
   NUTRITION_LABEL_RESPONSE_SCHEMA,
-} from './gemini-nutrition-label-extraction.adapter';
+} from './structured-nutrition-label-extraction.adapter';
 
 const validResponse = {
   schema_version: 'nutrition-label.v1',
@@ -35,10 +35,12 @@ const validResponse = {
   requires_review: false,
 };
 
-describe('GeminiNutritionLabelExtractionAdapter', () => {
+describe('StructuredNutritionLabelExtractionAdapter', () => {
   it('requests deterministic JSON structured output and validates the response', async () => {
-    const client = { generateStructured: jest.fn().mockResolvedValue(validResponse) };
-    const adapter = new GeminiNutritionLabelExtractionAdapter(client, {
+    const provider = {
+      generateStructuredContent: jest.fn().mockResolvedValue(JSON.stringify(validResponse)),
+    };
+    const adapter = new StructuredNutritionLabelExtractionAdapter(provider, {
       model: 'gemini-test',
       timeoutMs: 5000,
     });
@@ -49,25 +51,29 @@ describe('GeminiNutritionLabelExtractionAdapter', () => {
       schema_version: 'nutrition-label.v1',
       requires_review: false,
     });
-    expect(client.generateStructured).toHaveBeenCalledWith(
+    expect(provider.generateStructuredContent).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gemini-test',
-        content: Buffer.from('image'),
-        contentType: 'image/png',
+        media: { bytes: Buffer.from('image'), mimeType: 'image/png' },
         responseSchema: NUTRITION_LABEL_RESPONSE_SCHEMA,
       }),
     );
-    const request = client.generateStructured.mock.calls[0]?.[0];
+    const request = provider.generateStructuredContent.mock.calls[0]?.[0];
     expect(request.systemInstruction).toContain('application/json');
-    expect(request.systemInstruction).toContain('temperature 0');
     expect(request.responseSchema.required).toEqual(
       expect.arrayContaining(['schema_version', 'requires_review']),
     );
   });
 
   it('rejects a provider response that does not match the versioned contract', async () => {
-    const client = { generateStructured: jest.fn().mockResolvedValue({ schema_version: 'v0' }) };
-    const adapter = new GeminiNutritionLabelExtractionAdapter(client, { model: 'gemini-test' });
+    const provider = {
+      generateStructuredContent: jest
+        .fn()
+        .mockResolvedValue(JSON.stringify({ schema_version: 'v0' })),
+    };
+    const adapter = new StructuredNutritionLabelExtractionAdapter(provider, {
+      model: 'gemini-test',
+    });
 
     await expect(
       adapter.extract({ content: Buffer.from('image'), contentType: 'image/png' }),

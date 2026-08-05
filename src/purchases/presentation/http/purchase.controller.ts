@@ -79,14 +79,14 @@ export class PurchaseController {
       required: ['file'],
       properties: {
         file: { type: 'string', format: 'binary' },
-        currency: { type: 'string', example: 'EUR' },
+        currency: { type: 'string', example: 'ARS' },
         locale: { type: 'string', example: 'es-ES' },
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Compra creada como draft a partir del ticket procesado por Gemini.',
+    description: 'Compra creada como draft a partir del ticket procesado por el proveedor OCR.',
     schema: {
       type: 'object',
       properties: {
@@ -97,7 +97,7 @@ export class PurchaseController {
         source: { type: 'string', enum: ['OCR'] },
         storeName: { type: 'string', example: 'Supermercado Ejemplo' },
         purchaseDate: { type: 'string', format: 'date-time' },
-        currency: { type: 'string', example: 'EUR' },
+        currency: { type: 'string', example: 'ARS' },
         total: { type: 'string', example: '42.75' },
         reviewRequired: { type: 'boolean', example: true },
         items: {
@@ -118,7 +118,7 @@ export class PurchaseController {
         ocr: {
           type: 'object',
           properties: {
-            provider: { type: 'string', enum: ['GEMINI'] },
+            provider: { type: 'string', example: 'GEMINI' },
             schemaVersion: { type: 'string', example: 'receipt.v1', nullable: true },
             confidence: { type: 'number', nullable: true, example: 0.91 },
             documentId: { type: 'string', nullable: true },
@@ -126,13 +126,14 @@ export class PurchaseController {
             structuredPayload: {
               type: 'object',
               nullable: true,
-              description: 'Payload receipt.v1 original devuelto por Gemini.',
+              description: 'Payload receipt.v1 original devuelto por el proveedor OCR.',
             },
             items: {
               type: 'array',
               items: {
                 type: 'object',
                 properties: {
+                  itemType: { type: 'string', enum: ['FOOD', 'NON_FOOD'] },
                   name: { type: 'string' },
                   quantity: { type: 'string' },
                   unit: { type: 'string' },
@@ -143,6 +144,16 @@ export class PurchaseController {
                   needsReview: { type: 'boolean' },
                 },
               },
+            },
+            foodItems: {
+              type: 'array',
+              description: 'Ítems alimentarios incluidos en la compra y elegibles para inventario.',
+              items: { type: 'object' },
+            },
+            nonFoodItems: {
+              type: 'array',
+              description: 'Ítems no alimentarios detectados y excluidos del inventario.',
+              items: { type: 'object' },
             },
           },
         },
@@ -169,7 +180,7 @@ export class PurchaseController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_GATEWAY,
-    description: 'Gemini no pudo procesar el documento.',
+    description: 'El proveedor OCR no pudo procesar el documento.',
   })
   @ApiResponse({
     status: HttpStatus.SERVICE_UNAVAILABLE,
@@ -205,6 +216,8 @@ export class PurchaseController {
           warnings: result.ocr.warnings,
           structuredPayload: result.ocr.structuredPayload,
           items: result.ocr.items,
+          foodItems: result.ocr.items,
+          nonFoodItems: result.ocr.nonFoodItems,
         },
         receipt: {
           fileName: file.originalname,
@@ -215,6 +228,7 @@ export class PurchaseController {
       rethrowPurchaseHttpError(e);
     }
   }
+
   @Post('households/:householdId/purchases') async createPurchase(
     @Param('householdId', ParseUUIDPipe) householdId: string,
     @CurrentUser() user: CurrentUserModel,

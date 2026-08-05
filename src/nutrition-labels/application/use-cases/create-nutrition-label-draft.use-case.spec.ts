@@ -44,7 +44,7 @@ describe('CreateNutritionLabelDraftUseCase', () => {
     requires_review: false,
   };
 
-  it('persists Gemini structured data and always deletes the temporary object', async () => {
+  it('persists structured data and always deletes the temporary object', async () => {
     const households = {
       findAccess: jest.fn().mockResolvedValue(access),
     } as unknown as HouseholdRepository;

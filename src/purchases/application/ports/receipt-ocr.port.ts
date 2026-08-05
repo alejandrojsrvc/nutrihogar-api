@@ -3,6 +3,7 @@ import { ReceiptStructuredPayload } from '../models/receipt-structured.models';
 export const RECEIPT_OCR = Symbol('RECEIPT_OCR');
 
 export interface ReceiptOcrItem {
+  itemType: 'FOOD' | 'NON_FOOD';
   name: string;
   quantity: string;
   unit: string;
@@ -24,6 +25,7 @@ export interface ReceiptOcrResult {
   confidence: number | null;
   warnings: string[];
   items: ReceiptOcrItem[];
+  nonFoodItems: ReceiptOcrItem[];
   providerDocumentId: string | null;
   reviewRequired: boolean;
 }

@@ -20,8 +20,10 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
       warnings: [],
       providerDocumentId: null,
       reviewRequired: false,
+      nonFoodItems: [],
       items: [
         {
+          itemType: 'FOOD',
           name: 'Milk',
           quantity: '2',
           unit: 'L',
@@ -91,6 +93,7 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
         fileUrl: 'https://signed.test/receipt',
         content: expect.any(Buffer),
         contentType: 'image/jpeg',
+        currencyHint: 'EUR',
       }),
     );
     expect(storage.delete).toHaveBeenCalledWith('households/household-id/receipts/file-id.jpg');
@@ -141,7 +144,7 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
       findByIdempotencyKey: jest.fn().mockResolvedValue(null),
       save: jest.fn(),
     } as any;
-    ocr.process.mockRejectedValueOnce(new Error('Gemini unavailable'));
+    ocr.process.mockRejectedValueOnce(new Error('OCR provider unavailable'));
     const useCase = new CreatePurchaseDraftFromReceiptUseCase(
       households,
       purchases,
@@ -158,7 +161,7 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
         fileName: 'receipt.jpg',
         contentType: 'image/jpeg',
       }),
-    ).rejects.toThrow('Gemini unavailable');
+    ).rejects.toThrow('OCR provider unavailable');
     expect(storage.delete).toHaveBeenCalledWith('households/household-id/receipts/file-id.jpg');
     expect(purchases.save).not.toHaveBeenCalled();
   });

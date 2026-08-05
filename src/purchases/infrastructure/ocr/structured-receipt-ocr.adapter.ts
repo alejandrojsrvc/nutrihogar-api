@@ -1,8 +1,8 @@
 import {
-  GeminiContentConfigurationError,
-  GeminiContentProcessingError,
-} from '../../../gemini/application/errors/gemini-content.errors';
-import { GeminiContentClient } from '../../../gemini/application/ports/gemini-content.port';
+  StructuredContentConfigurationError,
+  StructuredContentProcessingError,
+} from '../../../ai/application/errors/structured-content.errors';
+import { StructuredContentProvider } from '../../../ai/application/ports/structured-content-provider.port';
 import {
   ReceiptOcrConfigurationError,
   ReceiptOcrProcessingError,
@@ -12,21 +12,22 @@ import {
   RECEIPT_OCR_PROMPT,
   RECEIPT_OCR_SYSTEM_INSTRUCTION,
   RECEIPT_RESPONSE_SCHEMA,
-} from '../../application/models/receipt-structured.models';
+} from './receipt-structured-schema';
 import {
   mapReceiptToOcrResult,
   parseReceiptStructuredPayload,
 } from './receipt-structured.validator';
 
-export interface GeminiReceiptOcrOptions {
-  model?: string;
+export interface StructuredReceiptOcrOptions {
+  model: string;
   timeoutMs?: number;
+  provider: string;
 }
 
-export class GeminiReceiptOcrAdapter implements ReceiptOcrPort {
+export class StructuredReceiptOcrAdapter implements ReceiptOcrPort {
   constructor(
-    private readonly client: GeminiContentClient,
-    private readonly options: GeminiReceiptOcrOptions = {},
+    private readonly provider: StructuredContentProvider,
+    private readonly options: StructuredReceiptOcrOptions,
   ) {}
 
   async process(input: {
@@ -37,10 +38,12 @@ export class GeminiReceiptOcrAdapter implements ReceiptOcrPort {
     currencyHint?: string;
     locale?: string;
   }): Promise<ReceiptOcrResult> {
+    if (!this.options.model.trim() || !this.options.provider.trim())
+      throw new ReceiptOcrConfigurationError();
     let structuredContent: string;
     try {
-      structuredContent = await this.client.generateStructuredContent({
-        model: this.options.model ?? 'gemini-2.5-flash',
+      structuredContent = await this.provider.generateStructuredContent({
+        model: this.options.model,
         timeoutMs: this.options.timeoutMs ?? 120000,
         systemInstruction: RECEIPT_OCR_SYSTEM_INSTRUCTION,
         prompt: `${RECEIPT_OCR_PROMPT} Source file name: ${input.fileName}. Locale hint: ${input.locale ?? 'unknown'}. Currency hint: ${input.currencyHint ?? 'unknown'}.`,
@@ -48,16 +51,17 @@ export class GeminiReceiptOcrAdapter implements ReceiptOcrPort {
         responseSchema: RECEIPT_RESPONSE_SCHEMA,
       });
     } catch (error) {
-      if (error instanceof GeminiContentConfigurationError)
+      if (error instanceof StructuredContentConfigurationError)
         throw new ReceiptOcrConfigurationError();
-      if (error instanceof GeminiContentProcessingError)
+      if (error instanceof StructuredContentProcessingError)
         throw new ReceiptOcrProcessingError(error.message);
-      throw new ReceiptOcrProcessingError('Gemini receipt OCR could not be completed.');
+      throw new ReceiptOcrProcessingError('Structured receipt OCR could not be completed.');
     }
 
     return mapReceiptToOcrResult(
       parseReceiptStructuredPayload(structuredContent),
       input.currencyHint,
+      this.options.provider,
     );
   }
 }

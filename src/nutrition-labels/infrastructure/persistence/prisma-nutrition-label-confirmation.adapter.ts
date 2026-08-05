@@ -9,6 +9,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import type { InventoryUnit } from '../../../inventory/domain/models/inventory.models';
 import {
   NutritionLabelDraftAlreadyConfirmedError,
   NutritionLabelDraftExpiredError,
@@ -140,7 +141,7 @@ export class PrismaNutritionLabelConfirmationAdapter implements NutritionLabelCo
       if (
         target.householdId !== input.householdId ||
         target.isGlobal ||
-        ![FoodType.CUSTOM, FoodType.COMMERCIAL].includes(target.foodType)
+        (target.foodType !== FoodType.CUSTOM && target.foodType !== FoodType.COMMERCIAL)
       ) {
         throw new NutritionLabelTargetFoodNotAllowedError();
       }

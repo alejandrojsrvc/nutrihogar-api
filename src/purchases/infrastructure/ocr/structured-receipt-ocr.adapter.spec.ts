@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/unbound-method */
 import { ReceiptOcrDataError } from '../../application/errors/receipt-ocr.errors';
-import { GeminiContentClient } from '../../../gemini/application/ports/gemini-content.port';
-import { GeminiReceiptOcrAdapter } from './gemini-receipt-ocr.adapter';
+import { StructuredContentProvider } from '../../../ai/application/ports/structured-content-provider.port';
+import { StructuredReceiptOcrAdapter } from './structured-receipt-ocr.adapter';
 
-describe('GeminiReceiptOcrAdapter', () => {
+describe('StructuredReceiptOcrAdapter', () => {
   it('maps the structured receipt without changing currency or quantity', async () => {
     const payload = validReceipt();
     const client = {
       generateStructuredContent: jest.fn().mockResolvedValue(JSON.stringify(payload)),
-    } as GeminiContentClient;
-    const adapter = new GeminiReceiptOcrAdapter(client, {
+    } as StructuredContentProvider;
+    const adapter = new StructuredReceiptOcrAdapter(client, {
       model: 'receipt-model',
       timeoutMs: 9000,
+      provider: 'GEMINI',
     });
 
     const result = await adapter.process({
@@ -31,7 +32,8 @@ describe('GeminiReceiptOcrAdapter', () => {
       unitPrice: '4.2',
       total: '10.5',
     });
-    expect(result.structuredPayload).toEqual(payload);
+    expect(result.structuredPayload).toMatchObject(payload);
+    expect(result.structuredPayload?.items[0]?.item_type).toBe('FOOD');
     expect(result.reviewRequired).toBe(false);
     expect(client.generateStructuredContent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -49,8 +51,11 @@ describe('GeminiReceiptOcrAdapter', () => {
     payload.confidence = 0.4;
     const client = {
       generateStructuredContent: jest.fn().mockResolvedValue(JSON.stringify(payload)),
-    } as GeminiContentClient;
-    const result = await new GeminiReceiptOcrAdapter(client).process({
+    } as StructuredContentProvider;
+    const result = await new StructuredReceiptOcrAdapter(client, {
+      model: 'receipt-model',
+      provider: 'GEMINI',
+    }).process({
       fileUrl: 'unused',
       fileName: 'ticket.jpg',
       contentType: 'image/jpeg',
@@ -63,6 +68,75 @@ describe('GeminiReceiptOcrAdapter', () => {
     );
   });
 
+  it('defaults an unidentified unit to UNIT and requires review', async () => {
+    const payload = validReceipt();
+    (payload.items[0] as { unit: string | null }).unit = null;
+    const client = {
+      generateStructuredContent: jest.fn().mockResolvedValue(JSON.stringify(payload)),
+    } as StructuredContentProvider;
+
+    const result = await new StructuredReceiptOcrAdapter(client, {
+      model: 'receipt-model',
+      provider: 'GEMINI',
+    }).process({
+      fileUrl: 'unused',
+      fileName: 'ticket.jpg',
+      contentType: 'image/jpeg',
+      content: Buffer.from([0xff, 0xd8, 0xff]),
+    });
+
+    expect(result.items[0]).toMatchObject({ unit: 'UNIT', needsReview: true });
+    expect(result.warnings).toContain('Receipt item 1 unit was not identified; defaulted to UNIT.');
+    expect(result.reviewRequired).toBe(true);
+  });
+
+  it('normalizes line totals after discounts and separates non-food items', async () => {
+    const payload = validReceipt();
+    payload.schema_version = 'receipt.v2';
+    payload.subtotal = 150;
+    payload.discounts = 30;
+    payload.total = 120;
+    payload.items = [
+      {
+        item_type: 'FOOD',
+        description: 'Coffee',
+        quantity: 1,
+        unit: 'UNIT',
+        unit_price: 100,
+        discount: 30,
+        total: 100,
+      },
+      {
+        item_type: 'NON_FOOD',
+        description: 'Sweater',
+        quantity: 1,
+        unit: 'UNIT',
+        unit_price: 50,
+        discount: 0,
+        total: 50,
+      },
+    ];
+    const client = {
+      generateStructuredContent: jest.fn().mockResolvedValue(JSON.stringify(payload)),
+    } as StructuredContentProvider;
+
+    const result = await new StructuredReceiptOcrAdapter(client, {
+      model: 'receipt-model',
+      provider: 'GEMINI',
+    }).process({
+      fileUrl: 'unused',
+      fileName: 'ticket.jpg',
+      contentType: 'image/jpeg',
+      content: Buffer.from([0xff, 0xd8, 0xff]),
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({ name: 'Coffee', total: '70' });
+    expect(result.nonFoodItems).toHaveLength(1);
+    expect(result.nonFoodItems[0]).toMatchObject({ name: 'Sweater', total: '50' });
+    expect(result.reviewRequired).toBe(false);
+  });
+
   it('raises ReceiptOcrDataError for invalid JSON and incompatible shapes', async () => {
     const client = {
       generateStructuredContent: jest
@@ -71,8 +145,11 @@ describe('GeminiReceiptOcrAdapter', () => {
         .mockResolvedValueOnce(
           JSON.stringify({ ...validReceipt(), items: [{ description: 'Rice' }] }),
         ),
-    } as GeminiContentClient;
-    const adapter = new GeminiReceiptOcrAdapter(client);
+    } as StructuredContentProvider;
+    const adapter = new StructuredReceiptOcrAdapter(client, {
+      model: 'receipt-model',
+      provider: 'GEMINI',
+    });
     const input = {
       fileUrl: 'unused',
       fileName: 'ticket.jpg',
@@ -89,10 +166,13 @@ describe('GeminiReceiptOcrAdapter', () => {
     (payload.items[0] as { quantity: unknown }).quantity = '2.5';
     const client = {
       generateStructuredContent: jest.fn().mockResolvedValue(JSON.stringify(payload)),
-    } as GeminiContentClient;
+    } as StructuredContentProvider;
 
     await expect(
-      new GeminiReceiptOcrAdapter(client).process({
+      new StructuredReceiptOcrAdapter(client, {
+        model: 'receipt-model',
+        provider: 'GEMINI',
+      }).process({
         fileUrl: 'unused',
         fileName: 'ticket.jpg',
         contentType: 'image/jpeg',

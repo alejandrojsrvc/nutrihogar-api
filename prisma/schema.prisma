@@ -115,6 +115,11 @@ enum AiGenerationRequestStatus {
   FAILED
 }
 
+enum AiUsageStatus {
+  COMPLETED
+  FAILED
+}
+
 enum AiProposalStatus {
   GENERATED
   VALIDATED
@@ -387,8 +392,8 @@ model User {
   weeklyPlansCreated               WeeklyPlan[]                      @relation("WeeklyPlanCreatedBy")
   aiGenerationRequests             AiGenerationRequest[]             @relation("AiGenerationRequestRequestedBy")
   aiProposalDecisions              AiProposalDecision[]              @relation("AiProposalDecisionDecidedBy")
-  nutritionLabelDraftsCreated      NutritionLabelDraft[]              @relation("NutritionLabelDraftCreatedBy")
-  nutritionLabelDraftsConfirmed    NutritionLabelDraft[]              @relation("NutritionLabelDraftConfirmedBy")
+  nutritionLabelDraftsCreated      NutritionLabelDraft[]             @relation("NutritionLabelDraftCreatedBy")
+  nutritionLabelDraftsConfirmed    NutritionLabelDraft[]             @relation("NutritionLabelDraftConfirmedBy")
 
   @@map("users")
 }
@@ -673,6 +678,55 @@ model AiGenerationRequest {
   @@map("ai_generation_requests")
 }
 
+model AiModelPricing {
+  id                         String          @id @default(uuid()) @db.Uuid
+  provider                   String          @db.VarChar(100)
+  model                      String          @db.VarChar(150)
+  currency                   String          @default("USD") @db.Char(3)
+  inputCostPerMillionTokens  Decimal         @map("input_cost_per_million_tokens") @db.Decimal(18, 9)
+  outputCostPerMillionTokens Decimal         @map("output_cost_per_million_tokens") @db.Decimal(18, 9)
+  effectiveFrom              DateTime        @map("effective_from") @db.Timestamptz(6)
+  effectiveTo                DateTime?       @map("effective_to") @db.Timestamptz(6)
+  isActive                   Boolean         @default(true) @map("is_active")
+  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  usageRecords               AiUsageRecord[]
+
+  @@unique([provider, model, effectiveFrom])
+  @@index([provider, model, isActive])
+  @@map("ai_model_pricings")
+}
+
+model AiUsageRecord {
+  id                         String          @id @default(uuid()) @db.Uuid
+  pricingId                  String?         @map("pricing_id") @db.Uuid
+  provider                   String          @db.VarChar(100)
+  model                      String          @db.VarChar(150)
+  module                     String          @db.VarChar(100)
+  action                     String          @db.VarChar(150)
+  status                     AiUsageStatus   @default(COMPLETED)
+  inputTokens                Int?            @map("input_tokens")
+  outputTokens               Int?            @map("output_tokens")
+  thoughtTokens              Int?            @map("thought_tokens")
+  totalTokens                Int?            @map("total_tokens")
+  inputCost                  Decimal?        @map("input_cost") @db.Decimal(20, 12)
+  outputCost                 Decimal?        @map("output_cost") @db.Decimal(20, 12)
+  totalCost                  Decimal?        @map("total_cost") @db.Decimal(20, 12)
+  currency                   String          @default("USD") @db.Char(3)
+  inputRatePerMillionTokens  Decimal?        @map("input_rate_per_million_tokens") @db.Decimal(18, 9)
+  outputRatePerMillionTokens Decimal?        @map("output_rate_per_million_tokens") @db.Decimal(18, 9)
+  latencyMilliseconds        Int?            @map("latency_milliseconds")
+  errorCode                  String?         @map("error_code") @db.VarChar(100)
+  correlationId              String?         @map("correlation_id") @db.VarChar(255)
+  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  pricing                    AiModelPricing? @relation(fields: [pricingId], references: [id], onDelete: SetNull)
+
+  @@index([module, action, createdAt])
+  @@index([provider, model, createdAt])
+  @@index([status, createdAt])
+  @@map("ai_usage_records")
+}
+
 model AiGenerationRequestAdult {
   requestId      String              @map("request_id") @db.Uuid
   adultProfileId String              @map("adult_profile_id") @db.Uuid
@@ -830,30 +884,30 @@ model Food {
 }
 
 model NutritionLabelDraft {
-  id                String                    @id @default(uuid()) @db.Uuid
-  householdId       String                    @map("household_id") @db.Uuid
-  createdById       String                    @map("created_by_id") @db.Uuid
-  confirmedById     String?                   @map("confirmed_by_id") @db.Uuid
-  confirmedFoodId   String?                   @map("confirmed_food_id") @db.Uuid
-  documentHash      String                    @map("document_hash") @db.Char(64)
-  status            NutritionLabelDraftStatus @default(PENDING_REVIEW)
-  name              String?                   @db.VarChar(150)
-  brand             String?                   @db.VarChar(150)
-  packageQuantity   Decimal?                  @map("package_quantity") @db.Decimal(18, 6)
-  packageUnit       ReferenceUnit?            @map("package_unit")
-  extractedData     Json                      @map("extracted_data")
-  warnings          Json
-  missingFields     Json                      @map("missing_fields")
-  rawText           String                    @map("raw_text") @db.Text
-  confidence        Decimal?                  @db.Decimal(5, 4)
-  expiresAt         DateTime                  @map("expires_at") @db.Timestamptz(6)
-  confirmedAt       DateTime?                 @map("confirmed_at") @db.Timestamptz(6)
-  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  household         Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  createdBy         User                      @relation("NutritionLabelDraftCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  confirmedBy       User?                     @relation("NutritionLabelDraftConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
-  confirmedFood     Food?                     @relation(fields: [confirmedFoodId], references: [id], onDelete: Restrict)
+  id              String                    @id @default(uuid()) @db.Uuid
+  householdId     String                    @map("household_id") @db.Uuid
+  createdById     String                    @map("created_by_id") @db.Uuid
+  confirmedById   String?                   @map("confirmed_by_id") @db.Uuid
+  confirmedFoodId String?                   @map("confirmed_food_id") @db.Uuid
+  documentHash    String                    @map("document_hash") @db.Char(64)
+  status          NutritionLabelDraftStatus @default(PENDING_REVIEW)
+  name            String?                   @db.VarChar(150)
+  brand           String?                   @db.VarChar(150)
+  packageQuantity Decimal?                  @map("package_quantity") @db.Decimal(18, 6)
+  packageUnit     ReferenceUnit?            @map("package_unit")
+  extractedData   Json                      @map("extracted_data")
+  warnings        Json
+  missingFields   Json                      @map("missing_fields")
+  rawText         String                    @map("raw_text") @db.Text
+  confidence      Decimal?                  @db.Decimal(5, 4)
+  expiresAt       DateTime                  @map("expires_at") @db.Timestamptz(6)
+  confirmedAt     DateTime?                 @map("confirmed_at") @db.Timestamptz(6)
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  household       Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy       User                      @relation("NutritionLabelDraftCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  confirmedBy     User?                     @relation("NutritionLabelDraftConfirmedBy", fields: [confirmedById], references: [id], onDelete: Restrict)
+  confirmedFood   Food?                     @relation(fields: [confirmedFoodId], references: [id], onDelete: Restrict)
 
   @@unique([householdId, documentHash])
   @@index([householdId, status, expiresAt])
@@ -1299,7 +1353,7 @@ model Purchase {
   storeName         String         @map("store_name") @db.VarChar(150)
   purchaseDate      DateTime       @map("purchase_date") @db.Timestamptz(6)
   status            PurchaseStatus @default(DRAFT)
-  source            PurchaseSource  @default(MANUAL)
+  source            PurchaseSource @default(MANUAL)
   currency          String         @db.VarChar(3)
   total             Decimal        @db.Decimal(12, 2)
   idempotencyKey    String?        @unique @map("idempotency_key") @db.VarChar(255)

@@ -120,6 +120,8 @@ export class StructuredNutritionLabelExtractionAdapter implements NutritionLabel
         model: this.options.model,
         systemInstruction: SYSTEM_INSTRUCTION,
         prompt: EXTRACTION_PROMPT,
+        module: 'nutrition-labels',
+        action: 'extract-nutrition-label',
         media: { bytes: input.content, mimeType: input.contentType },
         responseSchema: NUTRITION_LABEL_RESPONSE_SCHEMA,
         timeoutMs: this.options.timeoutMs ?? 120000,

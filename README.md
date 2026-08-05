@@ -73,8 +73,8 @@ Prisma Studio continúa disponible con `npm run db:studio`.
 | `FRONTEND_URL`                     | Origen permitido por CORS                                   | No, `http://localhost:5173`                     |
 | `GEMINI_API_KEY`                   | API key privada del adapter Gemini                          | Sí para OCR                                     |
 | `GEMINI_BASE_URL`                  | URL base del adapter Gemini                                 | No, `https://generativelanguage.googleapis.com` |
-| `GEMINI_MODEL`                     | Modelo para extracción estructurada                         | No, `gemini-2.5-flash`                          |
-| `GEMINI_TIMEOUT_MS`                | Timeout del adapter Gemini en milisegundos                   | No, `120000`                                    |
+| `GEMINI_MODEL`                     | Modelo para extracción estructurada                         | No, `gemini-3.5-flash-lite`                     |
+| `GEMINI_TIMEOUT_MS`                | Timeout del adapter Gemini en milisegundos                  | No, `120000`                                    |
 | `NUTRITION_LABEL_MAX_FILE_SIZE_MB` | Tamaño máximo de etiquetas                                  | No, `10`                                        |
 
 No se deben subir archivos `.env` ni credenciales al repositorio.
@@ -194,6 +194,10 @@ La extracción devuelve siempre el contrato `nutrition-label.v1`. La confirmaci�
 usar `targetFoodId` para actualizar un alimento `CUSTOM` o `COMMERCIAL` perteneciente al hogar. Los alimentos globales
 no se modifican. El adapter configurado transcribe valores declarados; el backend normaliza nutrientes y calcula los
 resultados.
+
+Cada llamada al provider registra provider, modelo, módulo, acción, tokens, duración y coste calculado en USD. La tarifa
+inicial de `GEMINI / gemini-3.5-flash-lite` es `$0.30` por millón de tokens de entrada y `$2.50` por millón de tokens de
+salida; las tarifas se versionan en la tabla `ai_model_pricings`.
 
 No se modifican las reglas de negocio de compras, inventario ni hogares.
 

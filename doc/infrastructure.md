@@ -161,11 +161,12 @@ R2_ACCESS_KEY_ID=<R2 access key>
 R2_SECRET_ACCESS_KEY=<R2 secret key>
 R2_BUCKET=<bucket privado>
 FRONTEND_URL=<origen del frontend>
-VERYFI_CLIENT_ID=<si se usa OCR>
-VERYFI_CLIENT_API_KEY=<si se usa OCR>
-VERYFI_BASE_URL=https://api.veryfi.com
-VERYFI_TIMEOUT_MS=120000
+GEMINI_API_KEY=<si se usa OCR>
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_MS=120000
 UPLOAD_MAX_FILE_SIZE_MB=10
+NUTRITION_LABEL_MAX_FILE_SIZE_MB=10
 ```
 
 Render proporciona `PORT` cuando corresponde; la aplicación mantiene `3000` como valor local por defecto.

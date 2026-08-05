@@ -13,6 +13,20 @@ describe('environmentValidationSchema', () => {
     const result = environmentValidationSchema.validate({ NODE_ENV: 'test' });
 
     expect(result.error).toBeUndefined();
+    const value = result.value as {
+      GEMINI_BASE_URL?: string;
+      GEMINI_MODEL?: string;
+      GEMINI_TIMEOUT_MS?: number;
+    };
+    expect(value.GEMINI_BASE_URL).toBe('https://generativelanguage.googleapis.com');
+    expect(value.GEMINI_MODEL).toBe('gemini-2.5-flash');
+    expect(value.GEMINI_TIMEOUT_MS).toBe(120000);
+  });
+
+  it('does not require a Gemini key at startup', () => {
+    const result = environmentValidationSchema.validate({ NODE_ENV: 'test' });
+    expect(result.error).toBeUndefined();
+    expect((result.value as { GEMINI_API_KEY?: string }).GEMINI_API_KEY).toBeUndefined();
   });
 
   it('requires JWT secrets outside tests', () => {

@@ -35,6 +35,7 @@ export class Purchase {
       createdAt,
       updatedAt: new Date(createdAt),
       items: items.map((item) => item.toProps()),
+      ocrMetadata: input.ocrMetadata ? cloneOcrMetadata(input.ocrMetadata) : null,
     });
   }
 
@@ -58,6 +59,7 @@ export class Purchase {
       items: items.map((item) => item.toProps()),
       createdAt: new Date(props.createdAt),
       updatedAt: new Date(props.updatedAt),
+      ocrMetadata: props.ocrMetadata ? cloneOcrMetadata(props.ocrMetadata) : null,
     });
   }
 
@@ -90,6 +92,10 @@ export class Purchase {
   }
   get items(): readonly PurchaseItem[] {
     return Object.freeze(this.props.items.map((item) => PurchaseItem.reconstitute(item)));
+  }
+
+  get ocrMetadata() {
+    return this.props.ocrMetadata ? cloneOcrMetadata(this.props.ocrMetadata) : null;
   }
 
   addItem(input: CreatePurchaseItemInput, changedAt = new Date()): void {
@@ -160,6 +166,7 @@ export class Purchase {
       createdAt: new Date(this.props.createdAt),
       updatedAt: new Date(this.props.updatedAt),
       items: this.props.items.map((item) => ({ ...item, quantity: item.quantity })),
+      ocrMetadata: this.props.ocrMetadata ? cloneOcrMetadata(this.props.ocrMetadata) : null,
     };
   }
 
@@ -171,6 +178,14 @@ export class Purchase {
   private touch(changedAt: Date): void {
     this.props.updatedAt = PurchaseDate.from(changedAt).value;
   }
+}
+
+function cloneOcrMetadata(value: NonNullable<PurchaseProps['ocrMetadata']>) {
+  return {
+    ...value,
+    payload: structuredClone(value.payload),
+    warnings: [...value.warnings],
+  };
 }
 
 function requireId(value: string, label: string): string {

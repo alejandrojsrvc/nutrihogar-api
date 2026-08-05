@@ -66,7 +66,7 @@ export class PurchaseController {
     private readonly ocrDraft: CreatePurchaseDraftFromReceiptUseCase,
   ) {}
   @Post('households/:householdId/purchases/ocr-draft')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiHeader({
     name: 'Idempotency-Key',
@@ -86,7 +86,7 @@ export class PurchaseController {
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Compra creada como draft a partir del ticket procesado por Veryfi.',
+    description: 'Compra creada como draft a partir del ticket procesado por Gemini.',
     schema: {
       type: 'object',
       properties: {
@@ -118,10 +118,16 @@ export class PurchaseController {
         ocr: {
           type: 'object',
           properties: {
-            provider: { type: 'string', enum: ['VERYFI'] },
+            provider: { type: 'string', enum: ['GEMINI'] },
+            schemaVersion: { type: 'string', example: 'receipt.v1', nullable: true },
             confidence: { type: 'number', nullable: true, example: 0.91 },
             documentId: { type: 'string', nullable: true },
             warnings: { type: 'array', items: { type: 'string' } },
+            structuredPayload: {
+              type: 'object',
+              nullable: true,
+              description: 'Payload receipt.v1 original devuelto por Gemini.',
+            },
             items: {
               type: 'array',
               items: {
@@ -130,6 +136,9 @@ export class PurchaseController {
                   name: { type: 'string' },
                   quantity: { type: 'string' },
                   unit: { type: 'string' },
+                  unitPrice: { type: 'string', nullable: true },
+                  discount: { type: 'string', nullable: true },
+                  total: { type: 'string', nullable: true },
                   confidence: { type: 'number', nullable: true },
                   needsReview: { type: 'boolean' },
                 },
@@ -160,7 +169,7 @@ export class PurchaseController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_GATEWAY,
-    description: 'Veryfi no pudo procesar el documento.',
+    description: 'Gemini no pudo procesar el documento.',
   })
   @ApiResponse({
     status: HttpStatus.SERVICE_UNAVAILABLE,
@@ -183,15 +192,18 @@ export class PurchaseController {
         contentType: file.mimetype,
         idempotencyKey,
         currency: body.currency,
+        locale: body.locale,
       });
       return {
         ...toPurchaseResponse(result.purchase),
-        reviewRequired: true,
+        reviewRequired: result.ocr.reviewRequired,
         ocr: {
-          provider: 'VERYFI',
+          provider: result.ocr.provider,
+          schemaVersion: result.ocr.schemaVersion,
           confidence: result.ocr.confidence,
           documentId: result.ocr.providerDocumentId,
           warnings: result.ocr.warnings,
+          structuredPayload: result.ocr.structuredPayload,
           items: result.ocr.items,
         },
         receipt: {

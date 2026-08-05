@@ -1,6 +1,10 @@
 import Decimal from 'decimal.js';
 import { Purchase } from '../../domain/entities/purchase';
-import { PurchaseProps, PurchaseItemProps } from '../../domain/models/purchase.models';
+import {
+  PurchaseOcrMetadata,
+  PurchaseProps,
+  PurchaseItemProps,
+} from '../../domain/models/purchase.models';
 
 export interface PurchaseItemRecord {
   id: string;
@@ -24,6 +28,12 @@ export interface PurchaseRecord {
   currency: string;
   total: { toString(): string };
   idempotencyKey?: string | null;
+  ocrProvider?: string | null;
+  ocrSchemaVersion?: string | null;
+  ocrPayload?: unknown;
+  ocrConfidence?: { toString(): string } | null;
+  ocrWarnings?: unknown;
+  ocrRequiresReview?: boolean | null;
   createdAt: Date;
   updatedAt: Date;
   items: PurchaseItemRecord[];
@@ -42,6 +52,7 @@ export class PrismaPurchaseMapper {
       currency: record.currency,
       total: new Decimal(record.total.toString()),
       idempotencyKey: record.idempotencyKey ?? null,
+      ocrMetadata: readOcrMetadata(record),
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       items: record.items.map((item): PurchaseItemProps => ({
@@ -69,6 +80,12 @@ export class PrismaPurchaseMapper {
       currency: props.currency,
       total: props.total.toString(),
       idempotencyKey: props.idempotencyKey,
+      ocrProvider: props.ocrMetadata?.provider ?? null,
+      ocrSchemaVersion: props.ocrMetadata?.schemaVersion ?? null,
+      ocrPayload: props.ocrMetadata?.payload ?? null,
+      ocrConfidence: props.ocrMetadata?.confidence ?? null,
+      ocrWarnings: props.ocrMetadata?.warnings ?? null,
+      ocrRequiresReview: props.ocrMetadata?.requiresReview ?? null,
       createdAt: props.createdAt,
       updatedAt: props.updatedAt,
       items: props.items.map((item) => ({
@@ -83,4 +100,27 @@ export class PrismaPurchaseMapper {
       })),
     };
   }
+}
+
+function readOcrMetadata(record: PurchaseRecord): PurchaseOcrMetadata | null {
+  if (
+    !record.ocrProvider ||
+    !record.ocrSchemaVersion ||
+    !record.ocrPayload ||
+    typeof record.ocrPayload !== 'object' ||
+    Array.isArray(record.ocrPayload) ||
+    !Array.isArray(record.ocrWarnings) ||
+    typeof record.ocrRequiresReview !== 'boolean'
+  ) {
+    return null;
+  }
+
+  return {
+    provider: record.ocrProvider,
+    schemaVersion: record.ocrSchemaVersion,
+    payload: record.ocrPayload as Record<string, unknown>,
+    confidence: record.ocrConfidence ? Number(record.ocrConfidence.toString()) : null,
+    warnings: record.ocrWarnings.filter((value): value is string => typeof value === 'string'),
+    requiresReview: record.ocrRequiresReview,
+  };
 }

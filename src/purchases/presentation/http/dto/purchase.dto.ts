@@ -57,4 +57,5 @@ export class PurchaseResponseDto {
   @ApiProperty() total!: string;
   @ApiProperty() currency!: string;
   @ApiProperty() items!: unknown[];
+  @ApiPropertyOptional({ nullable: true, type: Object }) ocrMetadata!: object | null;
 }

@@ -42,11 +42,16 @@ import {
   UpdatePurchaseUseCase,
 } from './application/use-cases/purchase.use-cases';
 import { PurchaseController } from './presentation/http/purchase.controller';
-import { VeryfiReceiptOcrAdapter } from './infrastructure/ocr/veryfi-receipt-ocr.adapter';
 import { StorageModule } from '../storage/storage.module';
 import { RECEIPT_OCR, ReceiptOcrPort } from './application/ports/receipt-ocr.port';
 import { OBJECT_STORAGE, ObjectStorage } from '../storage/application/ports/object-storage.port';
 import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/create-purchase-draft-from-receipt.use-case';
+import {
+  GEMINI_CONTENT_CLIENT,
+  GeminiContentClient,
+} from '../gemini/application/ports/gemini-content.port';
+import { GeminiModule } from '../gemini/gemini.module';
+import { GeminiReceiptOcrAdapter } from './infrastructure/ocr/gemini-receipt-ocr.adapter';
 
 @Module({
   imports: [
@@ -57,13 +62,22 @@ import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/c
     InventoryModule,
     ShoppingListModule,
     StorageModule,
+    GeminiModule,
   ],
   controllers: [PurchaseController],
   providers: [
     PrismaPurchaseRepository,
-    VeryfiReceiptOcrAdapter,
+    {
+      provide: GeminiReceiptOcrAdapter,
+      inject: [GEMINI_CONTENT_CLIENT, ConfigService],
+      useFactory: (client: GeminiContentClient, config: ConfigService) =>
+        new GeminiReceiptOcrAdapter(client, {
+          model: config.get<string>('GEMINI_MODEL') ?? 'gemini-2.5-flash',
+          timeoutMs: config.get<number>('GEMINI_TIMEOUT_MS') ?? 120000,
+        }),
+    },
     { provide: PURCHASE_REPOSITORY, useExisting: PrismaPurchaseRepository },
-    { provide: RECEIPT_OCR, useExisting: VeryfiReceiptOcrAdapter },
+    { provide: RECEIPT_OCR, useExisting: GeminiReceiptOcrAdapter },
     PrismaPurchaseInventoryUnitOfWork,
     { provide: PURCHASE_INVENTORY_UNIT_OF_WORK, useExisting: PrismaPurchaseInventoryUnitOfWork },
     {

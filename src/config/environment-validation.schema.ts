@@ -73,8 +73,9 @@ export const environmentValidationSchema = Joi.object({
   R2_BUCKET: storageCredential('r2', 'R2_BUCKET'),
   UPLOAD_MAX_FILE_SIZE_MB: Joi.number().integer().min(1).max(100).default(10),
   FRONTEND_URL: Joi.string().uri().default('http://localhost:5173'),
-  VERYFI_CLIENT_ID: optionalString,
-  VERYFI_CLIENT_API_KEY: optionalString,
-  VERYFI_BASE_URL: Joi.string().uri().default('https://api.veryfi.com'),
-  VERYFI_TIMEOUT_MS: Joi.number().integer().min(1000).default(120000),
+  GEMINI_API_KEY: optionalString,
+  GEMINI_BASE_URL: Joi.string().uri().default('https://generativelanguage.googleapis.com'),
+  GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
+  GEMINI_TIMEOUT_MS: Joi.number().integer().min(1000).default(120000),
+  NUTRITION_LABEL_MAX_FILE_SIZE_MB: Joi.number().integer().min(1).max(100).default(10),
 }).unknown(true);

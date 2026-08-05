@@ -4,6 +4,15 @@ export type PurchaseStatus = 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
 export type PurchaseSource = 'MANUAL' | 'SHOPPING_LIST' | 'OCR';
 export type PurchaseUnit = 'GRAM' | 'MILLILITER' | 'UNIT' | 'KG' | 'G' | 'L' | 'ML' | 'EA';
 
+export interface PurchaseOcrMetadata {
+  provider: string;
+  schemaVersion: string;
+  payload: Record<string, unknown>;
+  confidence: number | null;
+  warnings: string[];
+  requiresReview: boolean;
+}
+
 export interface PurchaseItemProps {
   id: string;
   foodId: string | null;
@@ -28,6 +37,7 @@ export interface PurchaseProps {
   createdAt: Date;
   updatedAt: Date;
   items: PurchaseItemProps[];
+  ocrMetadata: PurchaseOcrMetadata | null;
 }
 
 export interface CreatePurchaseItemInput {
@@ -52,4 +62,5 @@ export interface CreatePurchaseInput {
   source?: PurchaseSource;
   items: CreatePurchaseItemInput[];
   createdAt: Date;
+  ocrMetadata?: PurchaseOcrMetadata | null;
 }

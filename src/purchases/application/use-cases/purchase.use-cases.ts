@@ -22,6 +22,7 @@ import {
   PurchaseNotFoundError,
 } from '../errors/purchase-application.errors';
 import { normalizePurchaseQuantity } from '../purchase-quantity-converter';
+import { PurchaseOcrMetadata } from '../../domain/models/purchase.models';
 
 export interface PurchaseItemCommand {
   id?: string;
@@ -42,6 +43,7 @@ export interface CreatePurchaseCommand {
   items: PurchaseItemCommand[];
   idempotencyKey?: string | null;
   source?: 'MANUAL' | 'SHOPPING_LIST' | 'OCR';
+  ocrMetadata?: PurchaseOcrMetadata | null;
 }
 interface PurchaseListFilters {
   status?: 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
@@ -77,6 +79,7 @@ export class CreatePurchaseUseCase {
       source: command.source,
       items: command.items.map((item) => ({ ...item, id: item.id ?? crypto.randomUUID() })),
       createdAt: new Date(),
+      ocrMetadata: command.ocrMetadata,
     });
     try {
       await this.purchases.save(purchase);

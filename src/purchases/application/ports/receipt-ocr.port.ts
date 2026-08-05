@@ -1,14 +1,23 @@
+import { ReceiptStructuredPayload } from '../models/receipt-structured.models';
+
 export const RECEIPT_OCR = Symbol('RECEIPT_OCR');
 
 export interface ReceiptOcrItem {
+  itemType: 'FOOD' | 'NON_FOOD';
   name: string;
   quantity: string;
   unit: string;
+  unitPrice: string | null;
+  discount: string | null;
+  total: string | null;
   confidence: number | null;
   needsReview: boolean;
 }
 
 export interface ReceiptOcrResult {
+  provider: string;
+  schemaVersion: string | null;
+  structuredPayload: ReceiptStructuredPayload | null;
   storeName: string;
   purchaseDate: Date;
   total: string;
@@ -16,7 +25,9 @@ export interface ReceiptOcrResult {
   confidence: number | null;
   warnings: string[];
   items: ReceiptOcrItem[];
+  nonFoodItems: ReceiptOcrItem[];
   providerDocumentId: string | null;
+  reviewRequired: boolean;
 }
 
 export interface ReceiptOcrPort {
@@ -24,5 +35,8 @@ export interface ReceiptOcrPort {
     fileUrl: string;
     fileName: string;
     contentType: string;
+    content: Buffer;
+    currencyHint?: string;
+    locale?: string;
   }): Promise<ReceiptOcrResult>;
 }

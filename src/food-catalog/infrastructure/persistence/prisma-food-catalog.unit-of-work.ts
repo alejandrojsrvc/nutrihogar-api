@@ -89,7 +89,7 @@ function mutableFoodWhere(foodId: string): Prisma.FoodWhereInput {
   return {
     id: foodId,
     householdId: { not: null },
-    foodType: FoodType.CUSTOM,
+    foodType: { in: [FoodType.CUSTOM, FoodType.COMMERCIAL] },
     isGlobal: false,
     isActive: true,
     deletedAt: null,

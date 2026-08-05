@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import Decimal from 'decimal.js';
 import { HouseholdRepository } from '../../../households/application/ports/household-repository.port';
 import {
   ObjectStorage,
@@ -8,7 +9,16 @@ import { PurchaseRepository } from '../ports/purchase-repository.port';
 import { CreatePurchaseUseCase } from './purchase.use-cases';
 import { ReceiptOcrPort, ReceiptOcrResult } from '../ports/receipt-ocr.port';
 import { Purchase } from '../../domain/entities/purchase';
+import { PurchaseOcrMetadata } from '../../domain/models/purchase.models';
+import {
+  RECEIPT_LEGACY_SCHEMA_VERSION,
+  RECEIPT_SCHEMA_VERSION,
+} from '../../application/models/receipt-structured.models';
 import { ReceiptOcrDataError, ReceiptOcrFileError } from '../errors/receipt-ocr.errors';
+import {
+  mapReceiptToOcrResult,
+  parseReceiptStructuredPayload,
+} from '../../infrastructure/ocr/receipt-structured.validator';
 
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SIGNED_URL_EXPIRATION_SECONDS = 600;
@@ -37,11 +47,14 @@ export class CreatePurchaseDraftFromReceiptUseCase {
     fileName: string;
     contentType: string;
     currency?: string;
+    locale?: string;
     idempotencyKey?: string;
   }): Promise<{ purchase: Purchase; ocr: ReceiptOcrResult }> {
     const access = await this.households.findAccess(input.actorId, input.householdId);
     if (!access || access.status !== 'ACTIVE')
       throw new ReceiptOcrFileError('Household access denied.');
+    const currencyHint =
+      normalizeCurrency(input.currency) ?? normalizeCurrency(access.household.currency) ?? 'ARS';
     validateFile(input.content, input.fileName, input.contentType, this.maxFileSizeBytes);
     const idempotencyKey =
       input.idempotencyKey?.trim() ||
@@ -50,23 +63,70 @@ export class CreatePurchaseDraftFromReceiptUseCase {
       ? await this.purchases.findByIdempotencyKey(input.householdId, idempotencyKey)
       : null;
     if (existing) {
+      const metadata = existing.ocrMetadata;
+      const restored = restoreReceiptOcr(metadata, existing.currency);
+      const payload = metadata?.payload as
+        | {
+            schema_version?: string;
+            items?: Array<{
+              item_type?: 'FOOD' | 'NON_FOOD';
+              description: string | null;
+              quantity: number | null;
+              unit: string | null;
+              unit_price: number | null;
+              discount: number | null;
+              total: number | null;
+            }>;
+          }
+        | undefined;
+      const fallbackItems = payload?.items?.length
+        ? payload.items
+            .filter((item) => item.item_type !== 'NON_FOOD')
+            .map((item) => ({
+              itemType: 'FOOD' as const,
+              name: item.description ?? 'Unknown item',
+              quantity: String(item.quantity ?? 0),
+              unit: item.unit ?? 'UNIT',
+              unitPrice: item.unit_price === null ? null : String(item.unit_price),
+              discount: item.discount === null ? null : String(item.discount),
+              total: item.total === null ? null : String(item.total),
+              confidence: null,
+              needsReview:
+                item.description === null || item.quantity === null || item.total === null,
+            }))
+        : existing.items.map((item) => ({
+            itemType: 'FOOD' as const,
+            name: item.nameSnapshot,
+            quantity: item.quantity.toString(),
+            unit: item.unit,
+            unitPrice: null,
+            discount: null,
+            total: null,
+            confidence: null,
+            needsReview: true,
+          }));
       return {
         purchase: existing,
         ocr: {
+          provider: restored?.provider ?? metadata?.provider ?? 'UNKNOWN',
+          schemaVersion: restored?.schemaVersion ?? metadata?.schemaVersion ?? null,
+          structuredPayload:
+            restored?.structuredPayload ??
+            ((metadata?.payload ?? null) as unknown as ReceiptOcrResult['structuredPayload']),
           storeName: existing.storeName,
           purchaseDate: existing.purchaseDate,
           total: existing.total.toString(),
           currency: existing.currency,
-          confidence: null,
-          warnings: ['An existing draft was returned for this document.'],
-          items: existing.items.map((item) => ({
-            name: item.nameSnapshot,
-            quantity: item.quantity.toString(),
-            unit: item.unit,
-            confidence: null,
-            needsReview: false,
-          })),
+          confidence: metadata?.confidence ?? null,
+          warnings: uniqueWarnings([
+            ...(metadata?.warnings ?? []),
+            ...(restored?.warnings ?? []),
+            'An existing draft was returned for this document.',
+          ]),
+          items: restored?.items ?? fallbackItems,
+          nonFoodItems: restored?.nonFoodItems ?? [],
           providerDocumentId: null,
+          reviewRequired: metadata?.requiresReview ?? restored?.reviewRequired ?? true,
         },
       };
     }
@@ -89,12 +149,14 @@ export class CreatePurchaseDraftFromReceiptUseCase {
         fileUrl,
         fileName: input.fileName,
         contentType: input.contentType,
+        content: input.content,
+        currencyHint,
+        locale: input.locale,
       });
     } finally {
       if (stored) await this.storage.delete(stored.key);
     }
-    if (result.items.length === 0)
-      throw new ReceiptOcrDataError('The receipt contains no purchase items.');
+    validateOcrResult(result);
 
     const purchase = await this.createPurchase.execute({
       actorId: input.actorId,
@@ -102,7 +164,7 @@ export class CreatePurchaseDraftFromReceiptUseCase {
       storeName: result.storeName,
       purchaseDate: result.purchaseDate,
       total: result.total,
-      currency: input.currency?.trim() || result.currency,
+      currency: normalizeCurrency(input.currency) ?? result.currency,
       source: 'OCR',
       idempotencyKey,
       items: result.items.map((item) => ({
@@ -110,9 +172,109 @@ export class CreatePurchaseDraftFromReceiptUseCase {
         unit: item.unit,
         quantity: item.quantity,
       })),
+      ocrMetadata: result.structuredPayload
+        ? {
+            provider: result.provider,
+            schemaVersion: result.schemaVersion ?? RECEIPT_SCHEMA_VERSION,
+            payload: result.structuredPayload as unknown as Record<string, unknown>,
+            confidence: result.confidence,
+            warnings: result.warnings,
+            requiresReview: result.reviewRequired,
+          }
+        : null,
     });
     return { purchase, ocr: result };
   }
+}
+
+function validateOcrResult(result: ReceiptOcrResult): void {
+  if (!result || typeof result !== 'object')
+    throw new ReceiptOcrDataError('Receipt OCR result is invalid.');
+  if (
+    typeof result.provider !== 'string' ||
+    !result.provider.trim() ||
+    (result.schemaVersion !== RECEIPT_SCHEMA_VERSION &&
+      result.schemaVersion !== RECEIPT_LEGACY_SCHEMA_VERSION)
+  )
+    throw new ReceiptOcrDataError('Receipt OCR provider data is invalid.');
+  if (
+    !result.structuredPayload ||
+    typeof result.structuredPayload !== 'object' ||
+    Array.isArray(result.structuredPayload)
+  )
+    throw new ReceiptOcrDataError('Receipt OCR payload is missing or invalid.');
+  if (!(result.purchaseDate instanceof Date) || Number.isNaN(result.purchaseDate.getTime()))
+    throw new ReceiptOcrDataError('Receipt date is invalid.');
+  if (typeof result.storeName !== 'string' || !result.storeName.trim())
+    throw new ReceiptOcrDataError('Receipt store name is required.');
+  if (typeof result.currency !== 'string' || !/^[A-Z]{3}$/.test(result.currency))
+    throw new ReceiptOcrDataError('Receipt currency is invalid.');
+  assertDecimal(result.total, 'Receipt total', false);
+  if (!Array.isArray(result.items) || result.items.length === 0)
+    throw new ReceiptOcrDataError('The receipt contains no purchase items.');
+  if (!Array.isArray(result.nonFoodItems))
+    throw new ReceiptOcrDataError('Receipt non-food items are invalid.');
+  if (
+    result.confidence !== null &&
+    (!Number.isFinite(result.confidence) || result.confidence < 0 || result.confidence > 1)
+  )
+    throw new ReceiptOcrDataError('Receipt confidence is invalid.');
+  if (
+    !Array.isArray(result.warnings) ||
+    result.warnings.some((warning) => typeof warning !== 'string' || !warning.trim())
+  )
+    throw new ReceiptOcrDataError('Receipt warnings are invalid.');
+  if (typeof result.reviewRequired !== 'boolean')
+    throw new ReceiptOcrDataError('Receipt review flag is invalid.');
+  for (const item of [...result.items, ...result.nonFoodItems]) {
+    if (
+      !item ||
+      (item.itemType !== 'FOOD' && item.itemType !== 'NON_FOOD') ||
+      typeof item.name !== 'string' ||
+      typeof item.unit !== 'string' ||
+      !item.name.trim() ||
+      !item.unit.trim()
+    )
+      throw new ReceiptOcrDataError('Receipt item name and unit are required.');
+    assertDecimal(item.quantity, 'Receipt item quantity', true);
+    if (item.unitPrice !== null) assertDecimal(item.unitPrice, 'Receipt item unit price', false);
+    if (item.discount !== null) assertDecimal(item.discount, 'Receipt item discount', false);
+    if (item.total !== null) assertDecimal(item.total, 'Receipt item total', false);
+  }
+}
+
+function assertDecimal(value: string, label: string, mustBePositive: boolean): void {
+  if (typeof value !== 'string') throw new ReceiptOcrDataError(`${label} is invalid.`);
+  let decimal: Decimal;
+  try {
+    decimal = new Decimal(value);
+  } catch {
+    throw new ReceiptOcrDataError(`${label} is invalid.`);
+  }
+  if (!decimal.isFinite() || (mustBePositive ? decimal.lte(0) : decimal.isNegative()))
+    throw new ReceiptOcrDataError(`${label} is invalid.`);
+}
+
+function normalizeCurrency(value: string | undefined): string | null {
+  const normalized = value?.trim().toUpperCase();
+  return normalized && /^[A-Z]{3}$/.test(normalized) ? normalized : null;
+}
+
+function restoreReceiptOcr(
+  metadata: PurchaseOcrMetadata | null,
+  currencyHint: string,
+): ReceiptOcrResult | null {
+  if (!metadata?.payload) return null;
+  try {
+    const payload = parseReceiptStructuredPayload(JSON.stringify(metadata.payload));
+    return mapReceiptToOcrResult(payload, currencyHint, metadata.provider);
+  } catch {
+    return null;
+  }
+}
+
+function uniqueWarnings(warnings: string[]): string[] {
+  return [...new Set(warnings)];
 }
 
 function validateFile(

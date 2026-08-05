@@ -50,31 +50,32 @@ Prisma Studio continúa disponible con `npm run db:studio`.
 
 ## Variables de entorno
 
-| Variable                  | Descripción                                                 | Requerida                    |
-| ------------------------- | ----------------------------------------------------------- | ---------------------------- |
-| `NODE_ENV`                | `development`, `test` o `production`                        | No, `development`            |
-| `PORT`                    | Puerto HTTP                                                 | No, `3000`                   |
-| `DATABASE_URL`            | Conexión PostgreSQL de la API y Prisma Client               | Sí fuera de tests            |
-| `DIRECT_URL`              | Conexión directa para migraciones y herramientas Prisma     | Según el comando Prisma      |
-| `JWT_ACCESS_SECRET`       | Secreto del access token, mínimo 32 caracteres              | Sí fuera de tests            |
-| `JWT_ACCESS_EXPIRES_IN`   | Expiración del access token                                 | No, `15m`                    |
-| `JWT_REFRESH_SECRET`      | Secreto diferente para refresh tokens, mínimo 32 caracteres | Sí fuera de tests            |
-| `JWT_REFRESH_EXPIRES_IN`  | Expiración del refresh token                                | No, `30d`                    |
-| `STORAGE_DRIVER`          | `minio` en local, `r2` en producción                        | No, `minio`                  |
-| `MINIO_ENDPOINT`          | Endpoint S3 local                                           | Sí con `minio`               |
-| `MINIO_ACCESS_KEY_ID`     | Credencial local de MinIO                                   | Sí con `minio`               |
-| `MINIO_SECRET_ACCESS_KEY` | Secreto local de MinIO                                      | Sí con `minio`               |
-| `MINIO_BUCKET`            | Bucket local privado                                        | Sí con `minio`               |
-| `R2_ACCOUNT_ID`           | Account ID de Cloudflare                                    | Sí con `r2`                  |
-| `R2_ACCESS_KEY_ID`        | Access key de R2                                            | Sí con `r2`                  |
-| `R2_SECRET_ACCESS_KEY`    | Secret key de R2                                            | Sí con `r2`                  |
-| `R2_BUCKET`               | Bucket privado de R2                                        | Sí con `r2`                  |
-| `UPLOAD_MAX_FILE_SIZE_MB` | Tamaño máximo de uploads                                    | No, `10`                     |
-| `FRONTEND_URL`            | Origen permitido por CORS                                   | No, `http://localhost:5173`  |
-| `VERYFI_CLIENT_ID`        | Identificador privado de Veryfi                             | Sí para OCR                  |
-| `VERYFI_CLIENT_API_KEY`   | API key privada de Veryfi                                   | Sí para OCR                  |
-| `VERYFI_BASE_URL`         | URL base de Veryfi                                          | No, `https://api.veryfi.com` |
-| `VERYFI_TIMEOUT_MS`       | Timeout OCR en milisegundos                                 | No, `120000`                 |
+| Variable                           | Descripción                                                 | Requerida                                       |
+| ---------------------------------- | ----------------------------------------------------------- | ----------------------------------------------- |
+| `NODE_ENV`                         | `development`, `test` o `production`                        | No, `development`                               |
+| `PORT`                             | Puerto HTTP                                                 | No, `3000`                                      |
+| `DATABASE_URL`                     | Conexión PostgreSQL de la API y Prisma Client               | Sí fuera de tests                               |
+| `DIRECT_URL`                       | Conexión directa para migraciones y herramientas Prisma     | Según el comando Prisma                         |
+| `JWT_ACCESS_SECRET`                | Secreto del access token, mínimo 32 caracteres              | Sí fuera de tests                               |
+| `JWT_ACCESS_EXPIRES_IN`            | Expiración del access token                                 | No, `15m`                                       |
+| `JWT_REFRESH_SECRET`               | Secreto diferente para refresh tokens, mínimo 32 caracteres | Sí fuera de tests                               |
+| `JWT_REFRESH_EXPIRES_IN`           | Expiración del refresh token                                | No, `30d`                                       |
+| `STORAGE_DRIVER`                   | `minio` en local, `r2` en producción                        | No, `minio`                                     |
+| `MINIO_ENDPOINT`                   | Endpoint S3 local                                           | Sí con `minio`                                  |
+| `MINIO_ACCESS_KEY_ID`              | Credencial local de MinIO                                   | Sí con `minio`                                  |
+| `MINIO_SECRET_ACCESS_KEY`          | Secreto local de MinIO                                      | Sí con `minio`                                  |
+| `MINIO_BUCKET`                     | Bucket local privado                                        | Sí con `minio`                                  |
+| `R2_ACCOUNT_ID`                    | Account ID de Cloudflare                                    | Sí con `r2`                                     |
+| `R2_ACCESS_KEY_ID`                 | Access key de R2                                            | Sí con `r2`                                     |
+| `R2_SECRET_ACCESS_KEY`             | Secret key de R2                                            | Sí con `r2`                                     |
+| `R2_BUCKET`                        | Bucket privado de R2                                        | Sí con `r2`                                     |
+| `UPLOAD_MAX_FILE_SIZE_MB`          | Tamaño máximo de uploads                                    | No, `10`                                        |
+| `FRONTEND_URL`                     | Origen permitido por CORS                                   | No, `http://localhost:5173`                     |
+| `GEMINI_API_KEY`                   | API key privada del adapter Gemini                          | Sí para OCR                                     |
+| `GEMINI_BASE_URL`                  | URL base del adapter Gemini                                 | No, `https://generativelanguage.googleapis.com` |
+| `GEMINI_MODEL`                     | Modelo para extracción estructurada                         | No, `gemini-2.5-flash`                          |
+| `GEMINI_TIMEOUT_MS`                | Timeout del adapter Gemini en milisegundos                   | No, `120000`                                    |
+| `NUTRITION_LABEL_MAX_FILE_SIZE_MB` | Tamaño máximo de etiquetas                                  | No, `10`                                        |
 
 No se deben subir archivos `.env` ni credenciales al repositorio.
 
@@ -174,15 +175,25 @@ La prueba de integración de persistencia usa una transacción con rollback y re
 DATABASE_URL_TEST=postgresql://postgres:postgres@127.0.0.1:5432/nutrihogar npm run test:db
 ```
 
-## OCR de recibos
+## OCR de recibos y etiquetas nutricionales
 
-El endpoint existente `POST /api/households/:householdId/purchases/ocr-draft` utiliza Storage temporal. Genera una key
-privada con el formato `households/{householdId}/receipts/{uuid}.{extension}`, crea una URL presigned para Veryfi y
-elimina el objeto después del procesamiento. No se persiste metadata de archivo.
+El endpoint existente `POST /api/households/:householdId/purchases/ocr-draft` utiliza Storage temporal, envía la imagen o
+PDF al puerto neutral de contenido estructurado y elimina el objeto después del procesamiento. Actualmente Gemini es el
+único adapter configurado y usa la API de Interactions con `store=false`, `application/json` y un JSON Schema versionado.
+El payload estructurado de la factura se conserva en el borrador para revisión.
 
-En local, Veryfi no puede acceder a URLs de MinIO en `localhost`; para probar OCR local se requiere un túnel público.
-El flujo de Storage sí puede probarse completamente contra MinIO. En producción R2 proporciona URLs accesibles para
-Veryfi.
+Los endpoints de etiquetas son:
+
+```http
+POST /api/households/:householdId/foods/nutrition-label-drafts
+GET  /api/households/:householdId/foods/nutrition-label-drafts/:draftId
+POST /api/households/:householdId/foods/nutrition-label-drafts/:draftId/confirm
+```
+
+La extracción devuelve siempre el contrato `nutrition-label.v1`. La confirmación permite crear un alimento comercial o
+usar `targetFoodId` para actualizar un alimento `CUSTOM` o `COMMERCIAL` perteneciente al hogar. Los alimentos globales
+no se modifican. El adapter configurado transcribe valores declarados; el backend normaliza nutrientes y calcula los
+resultados.
 
 No se modifican las reglas de negocio de compras, inventario ni hogares.
 

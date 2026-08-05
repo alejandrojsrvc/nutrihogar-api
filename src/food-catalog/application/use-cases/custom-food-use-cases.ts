@@ -190,7 +190,11 @@ async function ensureActiveMember(
 async function ensureMutableTarget(mutations: FoodCatalogMutationRepository, foodId: string) {
   const target = await mutations.findTarget(foodId);
   if (!target || !target.isActive || target.deletedAt) throw new FoodNotFoundError();
-  if (target.foodType !== 'CUSTOM' || target.isGlobal || !target.householdId) {
+  if (
+    !['CUSTOM', 'COMMERCIAL'].includes(target.foodType) ||
+    target.isGlobal ||
+    !target.householdId
+  ) {
     throw new FoodModificationNotAllowedError();
   }
   return { ...target, householdId: target.householdId };

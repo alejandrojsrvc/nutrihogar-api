@@ -40,6 +40,7 @@ export function toPurchaseResponse(purchase: Purchase) {
     currency: purchase.currency,
     total: purchase.total.toString(),
     idempotencyKey: purchase.toProps().idempotencyKey,
+    ocrMetadata: purchase.ocrMetadata,
     items: purchase.items.map((item) => ({
       id: item.id,
       foodId: item.foodId,

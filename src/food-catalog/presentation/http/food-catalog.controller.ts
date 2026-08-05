@@ -139,7 +139,7 @@ export class FoodCatalogController {
   }
 
   @Patch('foods/:foodId')
-  @ApiOperation({ summary: 'Edita un alimento personalizado del hogar' })
+  @ApiOperation({ summary: 'Edita un alimento personalizado o comercial del hogar' })
   @ApiParam({ name: 'foodId', format: 'uuid' })
   @ApiOkResponse({ type: FoodDetailResponseDto })
   @ApiBadRequestResponse({ description: 'Los datos nutricionales son inválidos.' })
@@ -165,7 +165,7 @@ export class FoodCatalogController {
 
   @Delete('foods/:foodId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Elimina lógicamente un alimento personalizado' })
+  @ApiOperation({ summary: 'Elimina lógicamente un alimento personalizado o comercial' })
   @ApiParam({ name: 'foodId', format: 'uuid' })
   @ApiNoContentResponse({ description: 'El alimento fue eliminado lógicamente.' })
   @ApiForbiddenResponse({

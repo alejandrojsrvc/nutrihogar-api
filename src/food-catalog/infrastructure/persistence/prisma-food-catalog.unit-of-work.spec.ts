@@ -65,7 +65,7 @@ describe('PrismaFoodCatalogUnitOfWork', () => {
       where: {
         id: 'food-id',
         householdId: { not: null },
-        foodType: 'CUSTOM',
+        foodType: { in: ['CUSTOM', 'COMMERCIAL'] },
         isGlobal: false,
         isActive: true,
         deletedAt: null,

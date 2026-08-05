@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import {
   FoodHouseholdAccessDeniedError,
   FoodModificationNotAllowedError,
@@ -138,6 +139,21 @@ describe('Custom food use cases', () => {
     const deletedAt = unitOfWork.softDelete.mock.calls[0]?.[1];
     expect(unitOfWork.softDelete.mock.calls[0]?.[0]).toBe('food-id');
     expect(deletedAt).toBeInstanceOf(Date);
+  });
+
+  it('allows household commercial foods to use the existing update and soft-delete flow', async () => {
+    mutations.findTarget.mockResolvedValue({ ...customTarget, foodType: 'COMMERCIAL' });
+    const update = new UpdateCustomFoodUseCase(access, mutations, catalog, unitOfWork);
+    const remove = new DeleteCustomFoodUseCase(access, mutations, unitOfWork);
+
+    await update.execute({ actorId: 'user-id', foodId: 'food-id', name: 'Updated label' });
+    await remove.execute('user-id', 'food-id');
+
+    expect(unitOfWork.update).toHaveBeenCalledWith(
+      'food-id',
+      expect.objectContaining({ name: 'Updated label' }),
+    );
+    expect(unitOfWork.softDelete).toHaveBeenCalledWith('food-id', expect.any(Date));
   });
 });
 

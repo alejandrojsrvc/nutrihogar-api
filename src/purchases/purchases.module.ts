@@ -42,11 +42,18 @@ import {
   UpdatePurchaseUseCase,
 } from './application/use-cases/purchase.use-cases';
 import { PurchaseController } from './presentation/http/purchase.controller';
-import { VeryfiReceiptOcrAdapter } from './infrastructure/ocr/veryfi-receipt-ocr.adapter';
 import { StorageModule } from '../storage/storage.module';
 import { RECEIPT_OCR, ReceiptOcrPort } from './application/ports/receipt-ocr.port';
 import { OBJECT_STORAGE, ObjectStorage } from '../storage/application/ports/object-storage.port';
 import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/create-purchase-draft-from-receipt.use-case';
+import {
+  STRUCTURED_CONTENT_OPTIONS,
+  STRUCTURED_CONTENT_PROVIDER,
+  StructuredContentOptions,
+  StructuredContentProvider,
+} from '../ai/application/ports/structured-content-provider.port';
+import { StructuredContentModule } from '../ai/structured-content.module';
+import { StructuredReceiptOcrAdapter } from './infrastructure/ocr/structured-receipt-ocr.adapter';
 
 @Module({
   imports: [
@@ -57,13 +64,19 @@ import { CreatePurchaseDraftFromReceiptUseCase } from './application/use-cases/c
     InventoryModule,
     ShoppingListModule,
     StorageModule,
+    StructuredContentModule,
   ],
   controllers: [PurchaseController],
   providers: [
     PrismaPurchaseRepository,
-    VeryfiReceiptOcrAdapter,
+    {
+      provide: StructuredReceiptOcrAdapter,
+      inject: [STRUCTURED_CONTENT_PROVIDER, STRUCTURED_CONTENT_OPTIONS],
+      useFactory: (provider: StructuredContentProvider, options: StructuredContentOptions) =>
+        new StructuredReceiptOcrAdapter(provider, options),
+    },
     { provide: PURCHASE_REPOSITORY, useExisting: PrismaPurchaseRepository },
-    { provide: RECEIPT_OCR, useExisting: VeryfiReceiptOcrAdapter },
+    { provide: RECEIPT_OCR, useExisting: StructuredReceiptOcrAdapter },
     PrismaPurchaseInventoryUnitOfWork,
     { provide: PURCHASE_INVENTORY_UNIT_OF_WORK, useExisting: PrismaPurchaseInventoryUnitOfWork },
     {

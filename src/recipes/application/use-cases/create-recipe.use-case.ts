@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import Decimal from 'decimal.js';
 import { NutritionEngineService } from '../../../nutrition/application/nutrition-engine.service';
 import { Clock } from '../../../nutrition/application/ports/clock.port';

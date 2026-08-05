@@ -41,7 +41,13 @@ export class ConfirmPurchaseRequestDto {
   @ApiPropertyOptional() @IsOptional() selections?: Record<string, string>;
 }
 export class CreatePurchaseFromReceiptRequestDto {
-  @ApiPropertyOptional({ example: 'EUR' }) @IsOptional() @IsString() currency?: string;
+  @ApiPropertyOptional({
+    example: 'ARS',
+    description: 'Sobrescribe la moneda configurada en el hogar.',
+  })
+  @IsOptional()
+  @IsString()
+  currency?: string;
   @ApiPropertyOptional({ example: 'es-ES' }) @IsOptional() @IsString() locale?: string;
 }
 export class ConvertShoppingListRequestDto extends CreatePurchaseRequestDto {
@@ -57,4 +63,5 @@ export class PurchaseResponseDto {
   @ApiProperty() total!: string;
   @ApiProperty() currency!: string;
   @ApiProperty() items!: unknown[];
+  @ApiPropertyOptional({ nullable: true, type: Object }) ocrMetadata!: object | null;
 }

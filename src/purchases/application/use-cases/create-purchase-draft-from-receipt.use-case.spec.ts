@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 import { Purchase } from '../../domain/entities/purchase';
 import { CreatePurchaseUseCase } from './purchase.use-cases';
@@ -9,14 +9,31 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
   const households = { findAccess: jest.fn().mockResolvedValue(access) } as any;
   const ocr = {
     process: jest.fn().mockResolvedValue({
+      provider: 'GEMINI',
+      schemaVersion: 'receipt.v1',
+      structuredPayload: validStructuredReceipt(),
       storeName: 'Market',
       purchaseDate: new Date('2026-08-03T00:00:00.000Z'),
       total: '12.50',
       currency: 'EUR',
       confidence: 0.91,
       warnings: [],
-      providerDocumentId: 'veryfi-id',
-      items: [{ name: 'Milk', quantity: '2', unit: 'L', confidence: 0.96, needsReview: false }],
+      providerDocumentId: null,
+      reviewRequired: false,
+      nonFoodItems: [],
+      items: [
+        {
+          itemType: 'FOOD',
+          name: 'Milk',
+          quantity: '2',
+          unit: 'L',
+          unitPrice: '6.25',
+          discount: '0',
+          total: '12.50',
+          confidence: null,
+          needsReview: false,
+        },
+      ],
     }),
   } as any;
   const storage = {
@@ -57,7 +74,8 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
 
     expect(result.purchase.source).toBe('OCR');
     expect(result.purchase.items[0]).toMatchObject({ nameSnapshot: 'Milk', unit: 'L' });
-    expect(result.ocr.providerDocumentId).toBe('veryfi-id');
+    expect(result.ocr.provider).toBe('GEMINI');
+    expect(result.ocr.structuredPayload).toEqual(validStructuredReceipt());
     expect(storage.upload).toHaveBeenCalledWith(
       expect.objectContaining({
         key: expect.stringMatching(/^households\/household-id\/receipts\/.+\.jpg$/),
@@ -69,6 +87,14 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
     expect(storage.createSignedDownloadUrl).toHaveBeenCalledWith(
       'households/household-id/receipts/file-id.jpg',
       600,
+    );
+    expect(ocr.process).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileUrl: 'https://signed.test/receipt',
+        content: expect.any(Buffer),
+        contentType: 'image/jpeg',
+        currencyHint: 'EUR',
+      }),
     );
     expect(storage.delete).toHaveBeenCalledWith('households/household-id/receipts/file-id.jpg');
     expect(purchases.save).toHaveBeenCalledTimes(1);
@@ -111,6 +137,33 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
     expect(result.purchase.id).toBe('purchase-id');
     expect(storage.upload).not.toHaveBeenCalled();
     expect(ocr.process).not.toHaveBeenCalled();
+  });
+
+  it('removes the temporary receipt when OCR fails before purchase creation', async () => {
+    const purchases = {
+      findByIdempotencyKey: jest.fn().mockResolvedValue(null),
+      save: jest.fn(),
+    } as any;
+    ocr.process.mockRejectedValueOnce(new Error('OCR provider unavailable'));
+    const useCase = new CreatePurchaseDraftFromReceiptUseCase(
+      households,
+      purchases,
+      new CreatePurchaseUseCase(households, purchases),
+      ocr,
+      storage,
+    );
+
+    await expect(
+      useCase.execute({
+        actorId: 'user-id',
+        householdId: 'household-id',
+        content: validJpegContent(),
+        fileName: 'receipt.jpg',
+        contentType: 'image/jpeg',
+      }),
+    ).rejects.toThrow('OCR provider unavailable');
+    expect(storage.delete).toHaveBeenCalledWith('households/household-id/receipts/file-id.jpg');
+    expect(purchases.save).not.toHaveBeenCalled();
   });
 
   it('rejects unsupported files before storage or OCR', async () => {
@@ -183,4 +236,33 @@ describe('CreatePurchaseDraftFromReceiptUseCase', () => {
 
 function validJpegContent(): Buffer {
   return Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(297)]);
+}
+
+function validStructuredReceipt() {
+  return {
+    schema_version: 'receipt.v1',
+    store: { name: 'Market', branch: null, cuit: null },
+    date: '2026-08-03',
+    time: null,
+    ticket_number: null,
+    currency: 'EUR',
+    items: [
+      {
+        description: 'Milk',
+        quantity: 2,
+        unit: 'L',
+        unit_price: 6.25,
+        discount: 0,
+        total: 12.5,
+      },
+    ],
+    subtotal: 12.5,
+    discounts: 0,
+    taxes: 0,
+    total: 12.5,
+    payment_methods: ['CARD'],
+    warnings: [],
+    confidence: 0.91,
+    requires_review: false,
+  };
 }

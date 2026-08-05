@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import Decimal from 'decimal.js';
 import {
   DuplicateRecipeIngredientError,

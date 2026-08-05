@@ -54,6 +54,8 @@ describe('StructuredNutritionLabelExtractionAdapter', () => {
     expect(provider.generateStructuredContent).toHaveBeenCalledWith(
       expect.objectContaining({
         model: 'gemini-test',
+        module: 'nutrition-labels',
+        action: 'extract-nutrition-label',
         media: { bytes: Buffer.from('image'), mimeType: 'image/png' },
         responseSchema: NUTRITION_LABEL_RESPONSE_SCHEMA,
       }),

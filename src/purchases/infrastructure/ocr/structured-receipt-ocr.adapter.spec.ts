@@ -39,6 +39,8 @@ describe('StructuredReceiptOcrAdapter', () => {
       expect.objectContaining({
         model: 'receipt-model',
         timeoutMs: 9000,
+        module: 'purchases',
+        action: 'receipt-ocr',
         media: { mimeType: 'application/pdf', bytes: expect.any(Buffer) },
         responseSchema: expect.objectContaining({ required: expect.arrayContaining(['total']) }),
       }),

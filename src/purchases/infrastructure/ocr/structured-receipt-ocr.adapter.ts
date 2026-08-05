@@ -47,6 +47,8 @@ export class StructuredReceiptOcrAdapter implements ReceiptOcrPort {
         timeoutMs: this.options.timeoutMs ?? 120000,
         systemInstruction: RECEIPT_OCR_SYSTEM_INSTRUCTION,
         prompt: `${RECEIPT_OCR_PROMPT} Source file name: ${input.fileName}. Locale hint: ${input.locale ?? 'unknown'}. Currency hint: ${input.currencyHint ?? 'unknown'}.`,
+        module: 'purchases',
+        action: 'receipt-ocr',
         media: { mimeType: input.contentType, bytes: input.content },
         responseSchema: RECEIPT_RESPONSE_SCHEMA,
       });

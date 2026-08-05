@@ -19,7 +19,7 @@ describe('environmentValidationSchema', () => {
       GEMINI_TIMEOUT_MS?: number;
     };
     expect(value.GEMINI_BASE_URL).toBe('https://generativelanguage.googleapis.com');
-    expect(value.GEMINI_MODEL).toBe('gemini-2.5-flash');
+    expect(value.GEMINI_MODEL).toBe('gemini-3.5-flash-lite');
     expect(value.GEMINI_TIMEOUT_MS).toBe(120000);
   });
 

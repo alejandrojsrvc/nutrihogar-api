@@ -30,6 +30,9 @@ export interface StructuredContentRequest {
   timeoutMs: number;
   systemInstruction: string;
   prompt: string;
+  module?: string;
+  action?: string;
+  correlationId?: string;
   media: {
     mimeType: string;
     bytes: Buffer;
